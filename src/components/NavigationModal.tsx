@@ -168,7 +168,10 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
       <div className="bg-white w-full h-[92vh] md:h-screen md:w-screen md:max-w-none rounded-t-3xl md:rounded-none flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300 border-none">
         
         {/* Header */}
-        <div className="w-full box-border px-4 py-3 sm:px-6 border-b border-blue-900/50 flex justify-between items-start bg-[#0a1931] text-white z-20 flex-shrink-0 shadow-md">
+        <div 
+          className="w-full box-border px-4 pb-3 sm:px-6 border-b border-blue-900/50 flex justify-between items-start bg-[#0a1931] text-white z-20 flex-shrink-0 shadow-md"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+        >
           <div className="flex items-start gap-3 min-w-0 flex-1">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-400 to-amber-500 flex items-center justify-center text-slate-950 shadow-sm font-black flex-shrink-0 mt-0.5">
               <Navigation className="w-5 h-5 animate-pulse" />

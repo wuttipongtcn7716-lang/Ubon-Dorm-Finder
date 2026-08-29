@@ -1229,21 +1229,21 @@ export default function MapComponent({
           <div className={`flex justify-between items-center select-none ${isComparePanelMinimized ? '' : 'mb-3 pb-2 border-b border-slate-100'}`}>
             <div 
               onClick={() => setIsComparePanelMinimized(!isComparePanelMinimized)}
-              className="flex items-center text-blue-600 font-bold text-sm sm:text-base cursor-pointer hover:opacity-85 select-none"
+              className="flex items-center text-blue-600 font-extrabold text-[11px] xs:text-xs sm:text-sm cursor-pointer hover:opacity-85 select-none flex-1 min-w-0 mr-1"
               title={isComparePanelMinimized ? "คลิกเพื่อขยายแถบเปรียบเทียบ" : "คลิกเพื่อย่อแถบเปรียบเทียบ"}
             >
-              <div className="w-2.5 h-2.5 bg-blue-600 rounded-full mr-2 animate-pulse"></div>
-              <span className="truncate">เปรียบเทียบระยะทาง ({destinations.length}/4)</span>
+              <div className="w-2 h-2 bg-blue-600 rounded-full mr-1.5 flex-shrink-0 animate-pulse"></div>
+              <span className="truncate">เปรียบเทียบ ({destinations.length}/4)</span>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               {/* ปุ่มเลือกโหมดเดินทาง */}
               {!isComparePanelMinimized && (
-                <div className="flex bg-gray-100 rounded-full p-1 select-none">
+                <div className="flex bg-gray-100 rounded-full p-0.5 select-none">
                   <button 
                     type="button"
                     onClick={() => setVehicleType('driving')}
-                    className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5 transition cursor-pointer ${
                       vehicleType === 'driving' 
                         ? 'bg-slate-900 text-yellow-400 shadow-xs' 
                         : 'text-gray-400 hover:text-gray-700'
@@ -1255,7 +1255,7 @@ export default function MapComponent({
                   <button 
                     type="button"
                     onClick={() => setVehicleType('motorcycle')}
-                    className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 transition cursor-pointer ${
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5 transition cursor-pointer ${
                       vehicleType === 'motorcycle' 
                         ? 'bg-slate-900 text-yellow-400 shadow-xs' 
                         : 'text-gray-400 hover:text-gray-700'
@@ -1271,7 +1271,7 @@ export default function MapComponent({
               <button
                 type="button"
                 onClick={() => setIsComparePanelMinimized(!isComparePanelMinimized)}
-                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition flex items-center justify-center cursor-pointer flex-shrink-0"
+                className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition flex items-center justify-center cursor-pointer flex-shrink-0"
                 title={isComparePanelMinimized ? "ขยายเนื้อหา" : "ย่อเนื้อหา"}
               >
                 {isComparePanelMinimized ? (

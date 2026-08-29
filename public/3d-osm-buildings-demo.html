@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UBU Dorm Finder - 3D OSM Buildings Map</title>
+    
+    <!-- 1. Leaflet CSS & OSM Buildings Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Sarabun', sans-serif; background: #f8fafc; overflow: hidden; }
+        #map { width: 100vw; height: 100vh; background: #f1f5f9; }
+
+        /* ซ่อนกล่อง Attribution เพื่อความสะอาดตา */
+        .leaflet-control-attribution { display: none !important; }
+
+        /* หมุด GPS สด พร้อมเอฟเฟกต์ Pulsing */
+        .custom-gps-pin {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gps-ping {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(37, 99, 235, 0.35);
+            animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+
+        .gps-core {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #1a73e8;
+            border: 2.5px solid #ffffff;
+            box-shadow: 0 0 12px rgba(26, 115, 232, 0.8);
+            z-index: 2;
+        }
+
+        .gps-tag {
+            position: absolute;
+            left: 26px;
+            background: #1e3a8a;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 12px;
+            border: 1.5px solid #93c5fd;
+            white-space: nowrap;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+            pointer-events: none;
+        }
+
+        /* หมุดหอพักสไตล์มินิมอล */
+        .custom-dorm-pin {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #ffffff;
+            color: #0a1931;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            border: 2px solid #1a73e8;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            white-space: nowrap;
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .custom-dorm-pin:hover {
+            transform: scale(1.1);
+        }
+
+        /* กล่องข้อมูลเส้นทางสไตล์ Google Maps */
+        .map-route-card {
+            position: absolute;
+            bottom: 24px;
+            left: 20px;
+            background: #ffffff;
+            padding: 12px 18px;
+            border-radius: 16px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            z-index: 1000;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+        }
+
+        .route-icon-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e8f0fe;
+            padding: 10px;
+            border-radius: 50%;
+        }
+
+        .route-time {
+            font-size: 18px;
+            font-weight: 800;
+            color: #1a73e8;
+            line-height: 1.2;
+        }
+
+        .route-distance {
+            font-size: 12px;
+            color: #5f6368;
+            font-weight: 600;
+        }
+
+        /* 3D Mode Floating Switcher */
+        .mode-toggle-card {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #ffffff;
+            padding: 8px 14px;
+            border-radius: 14px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+            border: 1px solid #e2e8f0;
+            font-size: 12px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        @keyframes ping {
+            75%, 100% { transform: scale(2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <!-- แถบแจ้งสถานะ 3D Buildings -->
+    <div class="mode-toggle-card">
+        <span>🏢</span>
+        <span>OSM 3D Buildings (ม.อุบลฯ)</span>
+    </div>
+
+    <!-- กล่องข้อมูลเส้นทางสไตล์ Google Maps -->
+    <div id="route-info-card" class="map-route-card">
+        <div class="route-icon-box">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#1a73e8">
+                <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
+                <circle cx="7.5" cy="14.5" r="1.5" fill="#1a73e8"/>
+                <circle cx="16.5" cy="14.5" r="1.5" fill="#1a73e8"/>
+            </svg>
+        </div>
+        <div>
+            <div id="route-time" class="route-time">-- นาที</div>
+            <div id="route-distance" class="route-distance">-- กม.</div>
+        </div>
+    </div>
+
+    <!-- Leaflet & OSM Buildings Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.osmbuildings.com/4.1.1/OSMBuildings-Leaflet.js"></script>
+
+    <script>
+        // 1. ตั้งค่าแผนที่และพิกัดเริ่มต้น (โซน ม.อุบลฯ ตำบลเมืองศรีไค)
+        const startPoint = [15.1186, 104.9150];
+        const map = L.map('map', { 
+            zoomControl: false,
+            minZoom: 13,
+            maxZoom: 19
+        }).setView(startPoint, 16);
+
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        // 2. Base Map: CartoDB Positron No-Labels (โทนสว่าง คลีนตา ไร้ตัวหนังสือรกตา และไม่มี API Key)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
+            subdomains: 'abcd',
+            maxZoom: 20,
+            attribution: ''
+        }).addTo(map);
+
+        // 3. เรนเดอร์ตึก 3 มิติ (OSM 3D Buildings) โทนสีมินิมอล
+        let osmb = null;
+        try {
+            if (typeof OSMBuildings !== 'undefined') {
+                osmb = new OSMBuildings(map);
+                osmb.load('https://{s}.data.osmbuildings.org/0.2/anonymous/tile/{z}/{x}/{y}.json');
+                
+                // ปรับแต่งสีตึก: ผนังสีเทาอ่อน #f2f2f2, หลังคาสีขาว #e8e8e8
+                osmb.setStyle({
+                    color: '#f2f2f2',
+                    roofColor: '#e8e8e8'
+                });
+            }
+        } catch (e) {
+            console.warn('OSMBuildings load fallback:', e);
+        }
+
+        // โหลด GeoJSON อาคารสำคัญใน ม.อุบลฯ เพิ่มเติม
+        fetch('/data/UBU_Buildings.geojson')
+            .then(res => res.json())
+            .then(geoData => {
+                L.geoJSON(geoData, {
+                    style: function () {
+                        return {
+                            color: '#b0b0b0',
+                            weight: 0.5,
+                            fillColor: '#dcdcdc',
+                            fillOpacity: 0.75
+                        };
+                    },
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties && feature.properties.name) {
+                            layer.bindTooltip(`🏢 <b>${feature.properties.name}</b>`, { sticky: true });
+                        }
+                    }
+                }).addTo(map);
+            })
+            .catch(() => {});
+
+        // 4. Custom Marker หมุด GPS สดของผู้ใช้
+        const gpsIcon = L.divIcon({
+            className: 'custom-gps-pin',
+            html: `
+                <div class="gps-ping"></div>
+                <div class="gps-core"></div>
+                <div class="gps-tag">ตำแหน่ง GPS ของคุณ</div>
+            `,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+        L.marker(startPoint, { icon: gpsIcon }).addTo(map);
+
+        // 5. ข้อมูลหอพักรอบมหาวิทยาลัยอุบลราชธานี
+        const dormitories = [
+            { id: 1, name: "บ้านชมดาว 2", lat: 15.1234, lng: 104.9123, price: 3500, type: "หอพักสีขาว" },
+            { id: 2, name: "มอซีนี เรสซิเดนท์", lat: 15.1205, lng: 104.9085, price: 3800, type: "หอพักทั่วไป" },
+            { id: 3, name: "บ้านสวนอยู่เจริญ", lat: 15.1145, lng: 104.9180, price: 3200, type: "หอพักสีขาว" }
+        ];
+
+        let currentRouteGlow = null;
+        let currentRouteCore = null;
+
+        // 6. สร้างหมุดหอพัก Interactive
+        dormitories.forEach(dorm => {
+            const dormIcon = L.divIcon({
+                className: '',
+                html: `<div class="custom-dorm-pin">🏠 ${dorm.name}</div>`,
+                iconSize: [1, 1],
+                iconAnchor: [0, 0]
+            });
+
+            const marker = L.marker([dorm.lat, dorm.lng], { icon: dormIcon }).addTo(map);
+
+            marker.bindPopup(`
+                <div style="font-family: 'Sarabun', sans-serif; text-align: center; padding: 4px;">
+                    <b style="font-size: 14px; color: #0a1931;">${dorm.name}</b><br>
+                    <span style="font-size: 11px; color: #059669; font-weight: bold;">🛡️ ${dorm.type}</span><br>
+                    <span style="font-size: 12px; color: #d97706; font-weight: bold;">฿${dorm.price.toLocaleString()}/เดือน</span><br><br>
+                    <button onclick="calculateDrivingRoute(${dorm.lat}, ${dorm.lng}, '${dorm.name}')" style="
+                        background: #1a73e8; color: white; border: none; padding: 7px 14px; border-radius: 8px; font-weight: 700; cursor: pointer;
+                    ">🚗 นำทางไปยังที่นี่</button>
+                </div>
+            `);
+        });
+
+        // 7. คำนวณและวาดเส้นทางขับรถ (Polyline) ผ่าน OSRM Engine
+        window.calculateDrivingRoute = function(destLat, destLng, dormName) {
+            const url = `https://router.project-osrm.org/route/v1/driving/${startPoint[1]},${startPoint[0]};${destLng},${destLat}?overview=full&geometries=geojson`;
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.code === 'Ok' && data.routes[0]) {
+                        const route = data.routes[0];
+                        const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+                        if (currentRouteGlow) map.removeLayer(currentRouteGlow);
+                        if (currentRouteCore) map.removeLayer(currentRouteCore);
+
+                        // เส้น Halo เรืองแสง
+                        currentRouteGlow = L.polyline(coords, {
+                            color: '#1e3a8a',
+                            weight: 8,
+                            opacity: 0.45,
+                            lineCap: 'round',
+                            lineJoin: 'round'
+                        }).addTo(map);
+
+                        // เส้น Polyline สีฟ้าเข้มแกนหลัก
+                        currentRouteCore = L.polyline(coords, {
+                            color: '#1a73e8',
+                            weight: 5,
+                            opacity: 0.95,
+                            lineCap: 'round',
+                            lineJoin: 'round'
+                        }).addTo(map);
+
+                        map.fitBounds(currentRouteCore.getBounds(), { padding: [60, 60] });
+
+                        // อัปเดตข้อมูลกล่องสไตล์ Google Maps
+                        const mins = Math.max(1, Math.round(route.duration / 60));
+                        const km = (route.distance / 1000).toFixed(1);
+                        document.getElementById('route-time').innerText = `${mins} นาที`;
+                        document.getElementById('route-distance').innerText = `${km} กม. (${dormName})`;
+                    }
+                })
+                .catch(() => {
+                    console.error('OSRM route calculation failed');
+                });
+        };
+
+        // คำนวณเส้นทางเริ่มต้นไปยังหอพักแรกอัตโนมัติ
+        calculateDrivingRoute(dormitories[0].lat, dormitories[0].lng, dormitories[0].name);
+    </script>
+</body>
+</html>

@@ -213,25 +213,6 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
               <span className="text-slate-500 font-medium text-[11px]">กำลังคำนวณเส้นทาง...</span>
             )}
           </div>
-
-          <div className="flex items-center bg-slate-200 p-0.5 rounded-lg gap-0.5 text-[11px] flex-shrink-0">
-            <button
-              onClick={() => setTravelMode('driving')}
-              className={`px-2 py-0.5 rounded font-bold ${
-                travelMode === 'driving' ? 'bg-blue-950 text-amber-300' : 'text-slate-600'
-              }`}
-            >
-              รถยนต์
-            </button>
-            <button
-              onClick={() => setTravelMode('motorcycle')}
-              className={`px-2 py-0.5 rounded font-bold ${
-                travelMode === 'motorcycle' ? 'bg-blue-950 text-amber-300' : 'text-slate-600'
-              }`}
-            >
-              มอเตอร์ไซค์
-            </button>
-          </div>
         </div>
 
         {/* Fullscreen Map Viewport */}

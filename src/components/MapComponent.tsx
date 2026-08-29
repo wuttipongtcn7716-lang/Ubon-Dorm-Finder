@@ -559,13 +559,22 @@ function MultiRoadRoutingLayer({
   const map = useMap();
   const [legs, setLegs] = useState<MultiColorLeg[]>([]);
   const lastFitKeyRef = useRef<string | null>(null);
+  const lastDestinationsKeyRef = useRef<string>('');
 
   useEffect(() => {
-    // Clear previous legs instantly when inputs change to avoid displaying stale routes
-    setLegs([]);
-
     if (!map || destinations.length === 0) {
+      setLegs([]);
       return;
+    }
+
+    // Determine if the actual list of destinations changed
+    const destKeys = destinations.map((d) => d.id).join('|');
+    const destsChanged = lastDestinationsKeyRef.current !== destKeys;
+    lastDestinationsKeyRef.current = destKeys;
+
+    // Clear previous legs instantly ONLY if destinations list changed (prevents flickering on GPS updates)
+    if (destsChanged) {
+      setLegs([]);
     }
 
     let isCancelled = false;
@@ -1213,7 +1222,7 @@ export default function MapComponent({
     <div className={`relative w-full h-full flex flex-col overflow-hidden bg-slate-100 ${className}`}>
       
       {/* 1. Google Maps Style Multi-Destination Comparison Box (Floating Card on Top-Left) */}
-      <div className={`absolute top-3 left-3 sm:left-4 w-[calc(100%-24px)] sm:w-88 md:w-[420px] pointer-events-auto transition-all duration-300 ${isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1000]'}`}>
+      <div className={`absolute top-3 left-3 sm:left-4 w-[calc(100%-110px)] sm:w-88 md:w-[420px] pointer-events-auto transition-all duration-300 ${isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1000]'}`}>
         <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-200/90 p-4 flex flex-col font-sans transition-all">
           
           {/* 1. ส่วนหัว */}
@@ -1314,22 +1323,22 @@ export default function MapComponent({
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-1 p-0.5 bg-slate-100 rounded-xl text-[10px] font-extrabold">
+                    <div className="flex overflow-x-auto no-scrollbar gap-1 p-0.5 bg-slate-100 rounded-xl text-[10px] font-extrabold whitespace-nowrap">
                       <button
                         onClick={() => setOriginTab('gps')}
-                        className={`py-1 rounded-lg transition text-center ${originTab === 'gps' ? 'bg-[#0a1931] text-amber-300 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                        className={`flex-1 min-w-[70px] py-1 px-1 rounded-lg transition text-center ${originTab === 'gps' ? 'bg-[#0a1931] text-amber-300 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
                       >
                         📡 GPS สด
                       </button>
                       <button
                         onClick={() => setOriginTab('dorm')}
-                        className={`py-1 rounded-lg transition text-center ${originTab === 'dorm' ? 'bg-[#0a1931] text-amber-300 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                        className={`flex-1 min-w-[80px] py-1 px-1 rounded-lg transition text-center ${originTab === 'dorm' ? 'bg-[#0a1931] text-amber-300 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
                       >
                         🏠 หอพัก (60)
                       </button>
                       <button
                         onClick={() => setOriginTab('gate')}
-                        className={`py-1 rounded-lg transition text-center ${originTab === 'gate' ? 'bg-[#0a1931] text-amber-300 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                        className={`flex-1 min-w-[85px] py-1 px-1 rounded-lg transition text-center ${originTab === 'gate' ? 'bg-[#0a1931] text-amber-300 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
                       >
                         🏛️ จุดสำคัญ ม.
                       </button>
@@ -1340,7 +1349,7 @@ export default function MapComponent({
                           setIsOriginModalOpen(false);
                           setGpsToast('👆 คลิกจุดใดก็ได้บนแผนที่เพื่อตั้งเป็นจุดเริ่มต้น');
                         }}
-                        className={`py-1 rounded-lg transition text-center ${originTab === 'map' ? 'bg-[#0a1931] text-amber-300 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                        className={`flex-1 min-w-[80px] py-1 px-1 rounded-lg transition text-center ${originTab === 'map' ? 'bg-[#0a1931] text-amber-300 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
                       >
                         📍 ปักหมุดเอง
                       </button>
@@ -1412,7 +1421,7 @@ export default function MapComponent({
               </div>
 
               {/* 3. จุดหมาย (Destinations List with Interactive Search & Metrics) */}
-              <div className="flex flex-col gap-2 mb-3">
+              <div className="flex flex-col gap-2 mb-3 max-h-48 overflow-y-auto pr-1 no-scrollbar">
                 {destinations.map((dest, idx) => {
                   const colorMeta = ROUTE_COLORS[idx % ROUTE_COLORS.length];
                   const stats = destinationStats[dest.id];
@@ -1495,7 +1504,7 @@ export default function MapComponent({
 
                   {/* Add POI Dropdown Menu - z-[9999] to prevent overlapping */}
                   {isAddPoiDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-80 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-64 sm:max-h-80 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150">
                       <div className="flex items-center justify-between pb-1 border-b border-slate-100 text-[11px] font-extrabold text-slate-700">
                         <span>เลือกสถานที่ปลายทาง ({availablePoisToAdd.length} แห่ง)</span>
                         <button 

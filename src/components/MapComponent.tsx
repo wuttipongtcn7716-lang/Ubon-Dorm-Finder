@@ -365,7 +365,6 @@ function MarkerClusterGroupLayer({
   visibleLandmarks,
   onSelectPlace,
   adjustLatLng,
-  onMarkerDragged,
 }: {
   dorms: Dormitory[];
   selectedDormId?: string | number | null;
@@ -373,7 +372,6 @@ function MarkerClusterGroupLayer({
   visibleLandmarks: LandmarkItem[];
   onSelectPlace: (place: SelectedPlaceType) => void;
   adjustLatLng: (lat: number, lng: number) => [number, number];
-  onMarkerDragged: (name: string, lat: number, lng: number) => void;
 }) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | L.LayerGroup | null>(null);
@@ -454,22 +452,17 @@ function MarkerClusterGroupLayer({
       const marker = L.marker([dormLat, dormLng], {
         icon: createCustomMarker(isWhite, false, dorm.name),
         riseOnHover: true,
-        draggable: true,
+        draggable: false,
       });
 
       marker.on('click', () => {
         onSelectPlace({ type: 'dorm', dorm });
       });
 
-      marker.on('dragend', (event) => {
-        const newLatLng = event.target.getLatLng();
-        onMarkerDragged(dorm.name, newLatLng.lat, newLatLng.lng);
-      });
-
       group.addLayer(marker);
       dormMarkersMapRef.current.set(dorm.id, marker);
     });
-  }, [dorms, selectedDormId, onSelectPlace, adjustLatLng, onMarkerDragged]);
+  }, [dorms, selectedDormId, onSelectPlace, adjustLatLng]);
 
   useEffect(() => {
     const group = clusterGroupRef.current;
@@ -493,22 +486,17 @@ function MarkerClusterGroupLayer({
         icon: createLandmarkMarker(landmark, isSelected),
         riseOnHover: true,
         zIndexOffset: isSelected ? 500 : 0,
-        draggable: true,
+        draggable: false,
       });
 
       marker.on('click', () => {
         onSelectPlace({ type: 'landmark', landmark });
       });
 
-      marker.on('dragend', (event) => {
-        const newLatLng = event.target.getLatLng();
-        onMarkerDragged(landmark.name, newLatLng.lat, newLatLng.lng);
-      });
-
       group.addLayer(marker);
       landmarkMarkersMapRef.current.set(landmark.name, marker);
     });
-  }, [visibleLandmarks, selectedLandmarkName, onSelectPlace, adjustLatLng, onMarkerDragged]);
+  }, [visibleLandmarks, selectedLandmarkName, onSelectPlace, adjustLatLng]);
 
   return null;
 }
@@ -849,13 +837,7 @@ export default function MapComponent({
     }
   };
 
-  // Draggable marker coordinate display state
-  const [copiedCoords, setCopiedCoords] = useState<{ name: string; lat: number; lng: number } | null>(null);
 
-  const handleMarkerDragEnd = useCallback((name: string, newLat: number, newLng: number) => {
-    setCopiedCoords({ name, lat: newLat, lng: newLng });
-    console.log(`[Draggable Marker] "${name}" moved to Lat: ${newLat}, Lng: ${newLng}`);
-  }, []);
 
   // Dynamic Origin State: Defaults to GPS
   const [originPoint, setOriginPoint] = useState<OriginPointData>(() => {
@@ -1870,7 +1852,7 @@ export default function MapComponent({
               key={gate.id}
               position={[gateLat, gateLng]}
               icon={createCampusGateMarker(gate.name)}
-              draggable={true}
+              draggable={false}
               eventHandlers={{
                 click: () => {
                   handleAddPoiDestination({
@@ -1879,10 +1861,6 @@ export default function MapComponent({
                     lng: gate.lng,
                     category: gate.category,
                   });
-                },
-                dragend: (event) => {
-                  const newLatLng = event.target.getLatLng();
-                  handleMarkerDragEnd(gate.name, newLatLng.lat, newLatLng.lng);
                 }
               }}
             />
@@ -1896,16 +1874,12 @@ export default function MapComponent({
               key={p.id}
               position={[destLat, destLng]}
               icon={createDestinationPoiMarker(p.name, idx, p.icon)}
-              draggable={true}
+              draggable={false}
               zIndexOffset={activeDestId === p.id ? 1000 : 800}
               eventHandlers={{
                 mouseover: () => setActiveDestId(p.id),
                 mouseout: () => setActiveDestId(null),
-                click: () => setActiveDestId(p.id),
-                dragend: (event) => {
-                  const newLatLng = event.target.getLatLng();
-                  handleMarkerDragEnd(p.name, newLatLng.lat, newLatLng.lng);
-                }
+                click: () => setActiveDestId(p.id)
               }}
             />
           );
@@ -1930,7 +1904,6 @@ export default function MapComponent({
           visibleLandmarks={visibleLandmarks}
           onSelectPlace={handleSelectPlace}
           adjustLatLng={adjustLatLng}
-          onMarkerDragged={handleMarkerDragEnd}
         />
       </MapContainer>
 
@@ -2125,70 +2098,6 @@ export default function MapComponent({
         </div>
       )}
 
-      {/* 5. Draggable Calibration Copy Card */}
-      {copiedCoords && (
-        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-24px)] sm:w-96 bg-slate-900/95 text-white p-4 rounded-2xl shadow-2xl border border-amber-400/40 backdrop-blur-md animate-in fade-in slide-in-from-bottom-4 duration-200 flex flex-col gap-2.5 font-sans">
-          <div className="flex justify-between items-center">
-            <span className="text-xs font-black text-amber-300 flex items-center gap-1">
-              📍 ขยับพิกัด: {copiedCoords.name}
-            </span>
-            <button 
-              onClick={() => setCopiedCoords(null)} 
-              className="p-1 rounded-full text-slate-400 hover:text-white transition cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <p className="text-[10px] text-slate-400 leading-relaxed">
-            ลากหมุดขยับตำแหน่งเสร็จแล้ว! ใช้ตัวเลือกด้านล่างเพื่อคัดลอกค่าไปอัปเดตลงในฐานข้อมูล
-          </p>
-
-          <div className="flex flex-col gap-2">
-            {/* OSM Position */}
-            <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-2.5 flex flex-col gap-1">
-              <div className="flex justify-between items-center text-[10px] font-extrabold text-slate-400">
-                <span>1. พิกัดจริงบน OSM (ยึดตามหมุดที่ลากล่าสุด)</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(`"lat": ${copiedCoords.lat.toFixed(6)}, "lng": ${copiedCoords.lng.toFixed(6)}`);
-                    alert('คัดลอกพิกัดจริง OSM เรียบร้อย!');
-                  }}
-                  className="px-2 py-0.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black rounded-md text-[9px] transition cursor-pointer"
-                >
-                  Copy
-                </button>
-              </div>
-              <div className="font-mono text-xs text-amber-200 font-bold select-all">
-                "lat": {copiedCoords.lat.toFixed(6)}, "lng": {copiedCoords.lng.toFixed(6)}
-              </div>
-            </div>
-
-            {/* Database Raw Position */}
-            <div className="bg-slate-800/80 border border-slate-700/50 rounded-xl p-2.5 flex flex-col gap-1">
-              <div className="flex justify-between items-center text-[10px] font-extrabold text-slate-400">
-                <span>2. พิกัดดิบสำหรับฐานข้อมูล (หักล้างค่าชดเชยออก)</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const rawLat = copiedCoords.lat - latOffset;
-                    const rawLng = copiedCoords.lng - lngOffset;
-                    navigator.clipboard.writeText(`"lat": ${rawLat.toFixed(6)}, "lng": ${rawLng.toFixed(6)}`);
-                    alert('คัดลอกพิกัดสำหรับฐานข้อมูลเรียบร้อย!');
-                  }}
-                  className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-md text-[9px] transition cursor-pointer"
-                >
-                  Copy
-                </button>
-              </div>
-              <div className="font-mono text-xs text-indigo-300 font-bold select-all">
-                "lat": {(copiedCoords.lat - latOffset).toFixed(6)}, "lng": {(copiedCoords.lng - lngOffset).toFixed(6)}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

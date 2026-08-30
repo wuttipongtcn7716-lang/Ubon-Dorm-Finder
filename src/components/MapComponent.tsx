@@ -1937,7 +1937,7 @@ export default function MapComponent({
 
       {/* Detail Card Overlay */}
       {selectedPlace && (
-        <div className="absolute bottom-3 left-3 right-3 sm:left-4 sm:right-auto sm:w-[380px] z-[1000] bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl rounded-3xl p-4 animate-in slide-in-from-bottom-4 duration-300">
+        <div className="absolute bottom-3 left-3 right-3 sm:left-4 sm:right-auto sm:w-[380px] z-[1000] bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl rounded-3xl p-4 animate-in slide-in-from-bottom-4 duration-300 max-h-[60dvh] sm:max-h-[75dvh] overflow-y-auto no-scrollbar">
           {selectedPlace.type === 'dorm' ? (
             (() => {
               const dorm = selectedPlace.dorm;

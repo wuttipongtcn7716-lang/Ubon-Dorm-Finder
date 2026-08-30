@@ -45,7 +45,7 @@ export default function WelcomeScreen() {
       <div className="absolute -bottom-32 left-1/3 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
 
       {/* Top Header Tag */}
-      <div className="pt-6 sm:pt-8 px-4 z-10 text-center animate-in fade-in slide-in-from-top-4 duration-700">
+      <div className="pt-4 md:pt-6 lg:pt-8 px-4 z-10 text-center animate-in fade-in slide-in-from-top-4 duration-700">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 text-amber-300 border border-amber-300/30 backdrop-blur-md text-xs sm:text-sm font-bold shadow-lg">
           <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
           <span>ยินดีต้อนรับสู่ Dormie UBU • แอปค้นหาหอพัก ม.อุบลฯ</span>
@@ -53,8 +53,8 @@ export default function WelcomeScreen() {
       </div>
 
       {/* Centerpiece Cover Image */}
-      <div className="relative flex-1 w-full max-w-4xl flex items-center justify-center p-4 sm:p-6 z-10">
-        <div className="relative w-full h-full max-h-[72vh] flex items-center justify-center">
+      <div className="relative flex-1 w-full max-w-4xl flex items-center justify-center p-2 sm:p-4 md:p-6 z-10">
+        <div className="relative w-full h-full max-h-[45dvh] md:max-h-[52dvh] lg:max-h-[60dvh] flex items-center justify-center">
           <img
             src="/cover.jpg"
             alt="Dormie UBU Cover"
@@ -67,7 +67,7 @@ export default function WelcomeScreen() {
       </div>
 
       {/* Bottom Floating Hint Button: Two-Line Bilingual CTA */}
-      <div className="pb-8 sm:pb-10 px-4 z-10 text-center space-y-2.5">
+      <div className="pb-4 md:pb-6 lg:pb-10 px-4 z-10 text-center space-y-2.5 md:space-y-3">
         <div className="inline-flex flex-col items-center justify-center px-8 py-3.5 rounded-3xl bg-gradient-to-r from-blue-950/90 via-indigo-950/95 to-blue-950/90 border border-amber-400/50 text-white shadow-2xl backdrop-blur-xl animate-pulse hover:brightness-110 active:scale-95 transition">
           <div className="flex items-center gap-2">
             <Compass className="w-5 h-5 text-amber-400 animate-spin" />

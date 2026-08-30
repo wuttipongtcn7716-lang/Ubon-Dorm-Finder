@@ -81,7 +81,7 @@ export const landmarksData: LandmarkItem[] = [
 
   // สวนสาธารณะ (Park)
   { name: "สวนสาธารณะ (หนองอีเจม)", lat: 15.128649, lng: 104.911567, category: "Park" },
-  { name: "ทุ่งหญ้าลานหมาแมว", lat: 15.128649, lng: 104.911567, category: "Park" },
+  { name: "ทุ่งหญ้าลานหมาแมว", lat: 15.126235, lng: 104.915526, category: "Park" },
 
   // คาเฟ่เพิ่มเติม (Cafe)
   { name: "เฮือนกำนันคาเฟ่ (Huankamnan Cafe)", lat: 15.122857, lng: 104.913619, category: "Cafe" },

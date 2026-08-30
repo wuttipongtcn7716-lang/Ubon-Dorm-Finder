@@ -140,6 +140,15 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
         favoritesCount={favoritesCount}
       />
 
+      {/* Disclaimer Banner */}
+      <div className="bg-blue-50/70 border border-blue-200/70 rounded-2xl p-4 sm:p-5 flex items-start gap-3 shadow-2xs font-sans">
+        <span className="text-lg flex-shrink-0 mt-0.5">📌</span>
+        <div className="text-xs sm:text-sm text-blue-950 font-bold leading-relaxed">
+          <span className="font-extrabold text-blue-900">หมายเหตุ: </span>
+          แพลตฟอร์มนี้จัดทำขึ้นเพื่อรวบรวมข้อมูลหอพักเครือข่ายมหาวิทยาลัยอุบลราชธานี จำนวน 60 แห่ง โดยให้บริการข้อมูลพื้นฐานและแนะนำเส้นทาง ทั้งนี้ ระบบไม่ครอบคลุมถึงการเช็คสถานะห้องว่างแบบเรียลไทม์ หรือการจัดการค่าน้ำ-ค่าไฟ
+        </div>
+      </div>
+
       {/* Result Count Status Bar */}
       <div className="flex items-center justify-between pt-2">
         <div className="flex items-center gap-2">

@@ -141,7 +141,10 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
       />
 
       {/* Disclaimer Banner */}
-      <div className="bg-blue-50/70 border border-blue-200/70 rounded-2xl p-4 sm:p-5 flex items-start gap-3 shadow-2xs font-sans">
+      <div 
+        className="bg-blue-50/70 border border-blue-200/70 rounded-2xl p-4 sm:p-5 flex items-start gap-3 shadow-2xs font-sans"
+        style={{ animation: 'pulse 3.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}
+      >
         <span className="text-lg flex-shrink-0 mt-0.5">📌</span>
         <div className="text-xs sm:text-sm text-blue-950 font-bold leading-relaxed">
           <span className="font-extrabold text-blue-900">หมายเหตุ: </span>

@@ -1510,7 +1510,7 @@ export default function MapComponent({
                       </div>
 
                       <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[10px] no-scrollbar">
-                        {['all', 'building', 'official', 'food', 'cafe', 'store', 'hospital', 'service', 'hangout'].map((cat) => (
+                        {['all', 'building', 'official', 'food', 'cafe', 'store', 'hospital', 'service', 'hangout', 'park', 'stadium', 'bank'].map((cat) => (
                           <button
                             key={cat}
                             onClick={() => setPoiFilterCategory(cat)}
@@ -1520,7 +1520,7 @@ export default function MapComponent({
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             }`}
                           >
-                            {cat === 'all' ? 'ทั้งหมด' : cat === 'building' ? '🏛️ ประตู/อาคาร' : cat === 'official' ? '🏛️ ราชการ' : cat === 'food' ? '🍜 อาหาร' : cat === 'cafe' ? '☕ คาเฟ่' : cat === 'store' ? '🏪 ร้านค้า' : cat === 'hospital' ? '🏥 สุขภาพ' : cat === 'service' ? '✂️ บริการ' : '🍻 แฮงค์เอาท์'}
+                            {cat === 'all' ? 'ทั้งหมด' : cat === 'building' ? '🏛️ ประตู/อาคาร' : cat === 'official' ? '🏛️ ราชการ' : cat === 'food' ? '🍜 อาหาร' : cat === 'cafe' ? '☕ คาเฟ่' : cat === 'store' ? '🏪 ร้านค้า' : cat === 'hospital' ? '🏥 สุขภาพ' : cat === 'service' ? '✂️ บริการ' : cat === 'park' ? '🌳 สวนสาธารณะ' : cat === 'stadium' ? '⚽ สนามกีฬา' : cat === 'bank' ? '💵 ธนาคาร' : '🍻 แฮงค์เอาท์'}
                           </button>
                         ))}
                       </div>

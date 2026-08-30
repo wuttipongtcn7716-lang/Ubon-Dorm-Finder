@@ -73,8 +73,30 @@ export const landmarksData: LandmarkItem[] = [
   // สถานที่ราชการ (หมวดหมู่ใหม่)
   { name: "เคาน์เตอร์ไปรษณีย์ สาขาเมืองศรีไค", lat: 15.112173, lng: 104.900438, category: "official place" },
   { name: "สถานีตำรวจภูธรย่อย เทศบาลตำบลเมืองศรีไค", lat: 15.116160, lng: 104.899548, category: "official place" },
-  { name: "โรงพยาบาลส่งเสริมสุขภาพตำบลบัววัด", lat: 15.128705, lng: 104.897584, category: "official place" },
+  { name: "โรงพยาบาลส่งเสริมสุขภาพตำบลบัววัด", lat: 15.128640, lng: 104.897745, category: "official place" },
   { name: "ศูนย์อนามัยที่ 10 อุบลราชธานี", lat: 15.127623, lng: 104.896865, category: "official place" },
+  { name: "สำนักงานเทศบาลตำบลธาตุ", lat: 15.128156, lng: 104.897662, category: "official place" },
+  { name: "สำนักงานเทศบาลตำบลเมืองศรีไค", lat: 15.115886, lng: 104.899572, category: "official place" },
+  { name: "องค์การบริหารส่วนตำบลโพธิ์ใหญ่", lat: 15.120420, lng: 104.936900, category: "official place" },
+
+  // สวนสาธารณะ (Park)
+  { name: "สวนสาธารณะ (หนองอีเจม)", lat: 15.128649, lng: 104.911567, category: "Park" },
+  { name: "ทุ่งหญ้าลานหมาแมว", lat: 15.128649, lng: 104.911567, category: "Park" },
+
+  // คาเฟ่เพิ่มเติม (Cafe)
+  { name: "เฮือนกำนันคาเฟ่ (Huankamnan Cafe)", lat: 15.122857, lng: 104.913619, category: "Cafe" },
+  { name: "Blue Cabin Coffee", lat: 15.117867, lng: 104.916381, category: "Cafe" },
+  { name: "GOLDEN HOUR COFFEE", lat: 15.117062, lng: 104.912894, category: "Cafe" },
+  { name: "Inthanin Coffee - มหาวิทยาลัยอุบลราชธานี", lat: 15.120174, lng: 104.911261, category: "Cafe" },
+
+  // สนามกีฬา (Stadium)
+  { name: "สนามกีฬากลาง (มหาวิทยาลัยอุบลราชธานี)", lat: 15.126596, lng: 104.917202, category: "Stadium" },
+  { name: "โรงพละศึกษาอเนกประสงค์ (มหาวิทยาลัยอุบลราชธานี)", lat: 15.128172, lng: 104.916537, category: "Stadium" },
+  { name: "ศูนย์กีฬาอเนกประสงค์ (มหาวิทยาลัยอุบลราชธานี)", lat: 15.128077, lng: 104.914734, category: "Stadium" },
+  { name: "สระว่ายน้ำยอดเศรณี (มหาวิทยาลัยอุบลราชธานี)", lat: 15.126979, lng: 104.914863, category: "Stadium" },
+
+  // ธนาคาร (Bank)
+  { name: "ธนาคารไทยพาณิชย์ (สาขามหาวิทยาลัยอุบลราชธานี)", lat: 15.117302, lng: 104.902729, category: "Bank" },
 
   // ร้านอาหาร (เพิ่มเติม)
   { name: "กลมกรอบ - ข้าวไก่ทอด Fried Chicken 炸鸡饭 (สาขา หน้า ม.อุบล)", lat: 15.119063, lng: 104.898842, category: "food" },
@@ -94,7 +116,10 @@ export type LandmarkGroup =
   | 'service'
   | 'hospital'
   | 'hangout'
-  | 'official';
+  | 'official'
+  | 'park'
+  | 'stadium'
+  | 'bank';
 
 export const MAIN_CATEGORIES: { id: LandmarkGroup; label: string; icon: string }[] = [
   { id: 'none', label: 'ซ่อนสถานที่รอบข้าง', icon: '🚫' },
@@ -108,6 +133,9 @@ export const MAIN_CATEGORIES: { id: LandmarkGroup; label: string; icon: string }
   { id: 'hospital', label: 'สุขภาพ / คลินิก / รพ.', icon: '🏥' },
   { id: 'hangout', label: 'แฮงค์เอาท์ / บาร์', icon: '🍻' },
   { id: 'faculty', label: 'คณะต่างๆ ม.อุบลฯ', icon: '🎓' },
+  { id: 'park', label: 'สวนสาธารณะ / พักผ่อน', icon: '🌳' },
+  { id: 'stadium', label: 'สนามกีฬา / ฟิตเนส', icon: '⚽' },
+  { id: 'bank', label: 'ธนาคาร / การเงิน', icon: '💵' },
 ];
 
 export const getLandmarkMeta = (category: string, name?: string) => {
@@ -133,6 +161,7 @@ export const getLandmarkMeta = (category: string, name?: string) => {
     case 'streetfood':
       return { icon: '🍢', label: 'ของกินเล่น / สตรีทฟู้ด / ตลาด', color: '#E11D48', group: 'streetfood' };
     case 'cafe':
+    case 'Cafe':
       return { icon: '☕', label: 'คาเฟ่ / กาแฟ / ขนมหวาน', color: '#D97706', group: 'cafe' };
     case 'store':
       return { icon: '🏪', label: 'ร้านสะดวกซื้อ / มินิมาร์ท / ชุมชน', color: '#059669', group: 'store' };
@@ -152,6 +181,15 @@ export const getLandmarkMeta = (category: string, name?: string) => {
       return { icon: '🛒', label: 'ตลาด / แหล่งช้อปปิ้ง', color: '#E11D48', group: 'streetfood' };
     case 'official place':
       return { icon: '🏛️', label: 'สถานที่ราชการ / บริการสาธารณะ', color: '#4F46E5', group: 'official' };
+    case 'Park':
+    case 'park':
+      return { icon: '🌳', label: 'สวนสาธารณะ / พักผ่อน', color: '#16A34A', group: 'park' };
+    case 'Stadium':
+    case 'stadium':
+      return { icon: '⚽', label: 'สนามกีฬา / ฟิตเนส', color: '#EA580C', group: 'stadium' };
+    case 'Bank':
+    case 'bank':
+      return { icon: '💵', label: 'ธนาคาร / การเงิน', color: '#0284C7', group: 'bank' };
     default:
       return { icon: '📍', label: 'สถานที่สำคัญ', color: '#64748B', group: 'building' };
   }

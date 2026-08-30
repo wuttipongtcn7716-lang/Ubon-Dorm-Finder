@@ -114,7 +114,7 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
         <div className="absolute -top-16 -right-16 w-64 h-64 bg-amber-400/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -bottom-16 -left-16 w-64 h-64 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 max-w-2xl space-y-3">
+        <div className="relative z-10 max-w-2xl md:max-w-3xl lg:max-w-4xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-900/80 text-amber-300 text-xs font-bold border border-amber-400/30 backdrop-blur-md">
             <Sparkles className="w-3.5 h-3.5" />
             <span>มาตรฐานหอพักสีขาว มหาวิทยาลัยอุบลราชธานี ปี 2569</span>
@@ -126,7 +126,7 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
           </h1>
 
           <p className="text-xs sm:text-sm text-blue-200/80 leading-relaxed">
-            สำรวจหอพัก 60 แห่งรอบรั้วมหาวิทยาลัย พร้อมเปรียบเทียบระยะทางไปยังสถานที่สำคัญ และเส้นทางนำทางแบบเรียลไทม์
+            สำรวจหอพัก 60 แห่งรอบรั้วมหาวิทยาลัย พร้อมเปรียบเทียบระยะทางไปยังสถานที่สำคัญ และเส้นทางนำทางแบบ<span className="whitespace-nowrap">เรียลไทม์</span>
           </p>
         </div>
       </div>

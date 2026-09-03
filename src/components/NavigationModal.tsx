@@ -177,6 +177,24 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
     };
   }, [requestGPS]);
 
+  // Handle ESC (Escape) key press to close modal with proper cleanup
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isPermissionModalOpen) {
+          setIsPermissionModalOpen(false);
+          return;
+        }
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose, isPermissionModalOpen]);
+
   // Callback from MapComponent with real road calculated metrics
   const handleRouteCalculated = useCallback((meters: number, durationSeconds: number) => {
     setDistanceMeters(meters);

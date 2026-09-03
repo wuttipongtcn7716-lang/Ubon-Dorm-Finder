@@ -60,6 +60,22 @@ export default function GpsPermissionModal({
     };
   }, [isOpen, onRetry, onClose]);
 
+  // Handle ESC (Escape) key press to close modal with proper cleanup
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (

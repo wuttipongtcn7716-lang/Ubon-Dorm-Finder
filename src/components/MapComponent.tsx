@@ -1178,6 +1178,38 @@ export default function MapComponent({
     };
   }, []);
 
+  // Handle ESC (Escape) key press to close open modals, drawers, or selected place with cleanup
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        if (isPermissionModalOpen) {
+          setIsPermissionModalOpen(false);
+          return;
+        }
+        if (isOriginModalOpen) {
+          setIsOriginModalOpen(false);
+          return;
+        }
+        if (isAddPoiDropdownOpen) {
+          setIsAddPoiDropdownOpen(false);
+          return;
+        }
+        if (isCategoryDropdownOpen) {
+          setIsCategoryDropdownOpen(false);
+          return;
+        }
+        if (selectedPlace) {
+          setSelectedPlace(null);
+          return;
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isPermissionModalOpen, isOriginModalOpen, isAddPoiDropdownOpen, isCategoryDropdownOpen, selectedPlace]);
+
   const handleSetOriginToGps = () => {
     if (liveGpsLocation) {
       setOriginPoint({

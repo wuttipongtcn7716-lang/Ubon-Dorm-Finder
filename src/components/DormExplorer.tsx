@@ -21,6 +21,12 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
 
   useEffect(() => {
     setIsClientLoaded(true);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('white') === 'true' || params.get('whiteOnly') === 'true') {
+        setFilters((prev) => ({ ...prev, isWhiteDormOnly: true }));
+      }
+    }
   }, []);
 
   const [filters, setFilters] = useState<FilterState>({

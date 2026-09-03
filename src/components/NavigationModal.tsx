@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { 
   X, Navigation, Car, Bike,
   AlertCircle, Loader2, ShieldCheck,
-  MapPin, Info
+  MapPin, Info, RotateCcw
 } from 'lucide-react';
 import { Dormitory } from '@/types/dormitory';
 import { MapComponentProps } from './MapComponent';
@@ -32,6 +32,11 @@ interface NavigationModalProps {
 export default function NavigationModal({ dorm, onClose }: NavigationModalProps) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isLoadingGPS, setIsLoadingGPS] = useState(true);
+  const [gpsStatus, setGpsStatus] = useState<'requesting' | 'acquired' | 'error'>('requesting');
+  const [gpsErrorCode, setGpsErrorCode] = useState<'denied' | 'timeout' | 'unavailable' | 'unsupported' | null>(null);
+  const [gpsErrorMessage, setGpsErrorMessage] = useState<string | null>(null);
+  const [gpsTimestamp, setGpsTimestamp] = useState<Date | null>(null);
+  const [dismissError, setDismissError] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [travelMode, setTravelMode] = useState<'driving' | 'motorcycle'>('driving');
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
@@ -42,9 +47,6 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
   const fallbackTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isWhite = Boolean(dorm.isWhiteDorm || dorm.status === 'ผ่าน' || dorm.evalResult === 'ผ่าน');
 
-  // Default Campus Coordinates: Main UBU Entrance
-  const defaultCenter = { lat: 15.118944, lng: 104.902778 };
-
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -52,33 +54,45 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
     }, 4500);
   }, []);
 
-  // Robust GPS Tracking with 8s Timeout & Instant Fallback
-  useEffect(() => {
+  // Strict GPS Tracking with 8s Timeout, Specific Error Traps & No-Spoofing Policy
+  const requestGPS = useCallback(() => {
     if (typeof window === 'undefined') return;
 
-    let hasResolved = false;
+    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+    if (watchIdRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
 
-    const resolveWithFallback = (reasonText?: string) => {
-      if (hasResolved) return;
-      hasResolved = true;
-      setUserLocation(defaultCenter);
-      setIsLoadingGPS(false);
-      showToast(reasonText || 'ไม่สามารถดึงตำแหน่งปัจจุบันได้ กำลังใช้พิกัดเริ่มต้น (ม.อุบลฯ)');
-    };
+    setIsLoadingGPS(true);
+    setGpsStatus('requesting');
+    setGpsErrorCode(null);
+    setGpsErrorMessage(null);
+    setDismissError(false);
 
     if (!navigator.geolocation) {
-      resolveWithFallback('เบราว์เซอร์ไม่รองรับ GPS กำลังใช้พิกัดเริ่มต้น ม.อุบลฯ');
+      setIsLoadingGPS(false);
+      setGpsStatus('error');
+      setGpsErrorCode('unsupported');
+      setGpsErrorMessage('เบราว์เซอร์หรืออุปกรณ์ของคุณไม่รองรับการระบุตำแหน่ง GPS');
+      setUserLocation(null);
       return;
     }
 
-    // Explicit 8-second Fallback Timer in JS
+    let hasResolved = false;
+
+    // Strict 8-second Timeout Timer
     fallbackTimerRef.current = setTimeout(() => {
       if (!hasResolved) {
-        resolveWithFallback('ค้นหาตำแหน่ง GPS เกิน 8 วินาที กำลังใช้พิกัดเริ่มต้น (ม.อุบลฯ)');
+        hasResolved = true;
+        setIsLoadingGPS(false);
+        setGpsStatus('error');
+        setGpsErrorCode('timeout');
+        setGpsErrorMessage('ค้นหาตำแหน่ง GPS เกินเวลาที่กำหนด (Timeout 8 วินาที) กรุณากดปุ่มลองใหม่');
+        setUserLocation(null);
       }
     }, 8000);
 
-    // 1. Get Current Position with 8s Timeout & maximumAge: 0
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         if (!hasResolved) {
@@ -88,12 +102,30 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
           });
+          setGpsTimestamp(new Date());
+          setGpsStatus('acquired');
           setIsLoadingGPS(false);
+          setGpsErrorMessage(null);
         }
       },
       (err) => {
         if (!hasResolved) {
-          resolveWithFallback('ไม่สามารถเข้าถึงตำแหน่ง GPS ได้ กำลังใช้พิกัดเริ่มต้น (ม.อุบลฯ)');
+          hasResolved = true;
+          if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+          setIsLoadingGPS(false);
+          setGpsStatus('error');
+          setUserLocation(null); // NEVER pretend default center is real user position
+
+          if (err.code === err.PERMISSION_DENIED) {
+            setGpsErrorCode('denied');
+            setGpsErrorMessage('คุณได้ปฏิเสธสิทธิ์การเข้าถึงตำแหน่ง (Permission Denied) กรุณาเปิดสิทธิ์ Location ในเบราว์เซอร์');
+          } else if (err.code === err.TIMEOUT) {
+            setGpsErrorCode('timeout');
+            setGpsErrorMessage('การค้นหาพิกัด GPS ใช้เวลานานเกินกำหนด (Timeout 8 วินาที) กรุณากดปุ่มลองใหม่อีกครั้ง');
+          } else {
+            setGpsErrorCode('unavailable');
+            setGpsErrorMessage('ไม่สามารถระบุตำแหน่ง GPS ได้ กรุณาเปิดบริการระบุตำแหน่ง (Location Services) หรือตรวจสอบการเชื่อมต่อ');
+          }
         }
       },
       {
@@ -103,7 +135,7 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
       }
     );
 
-    // 2. Background Watch Position for real-time live movements
+    // Background Watch Position for real-time live movements
     try {
       const watchId = navigator.geolocation.watchPosition(
         (pos) => {
@@ -116,8 +148,11 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
           });
+          setGpsTimestamp(new Date());
+          setGpsStatus('acquired');
+          setGpsErrorMessage(null);
         },
-        (err) => {},
+        () => {},
         {
           enableHighAccuracy: true,
           timeout: 8000,
@@ -126,6 +161,10 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
       );
       watchIdRef.current = watchId;
     } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    requestGPS();
 
     return () => {
       if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
@@ -133,7 +172,7 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
     };
-  }, [showToast]);
+  }, [requestGPS]);
 
   // Callback from MapComponent with real road calculated metrics
   const handleRouteCalculated = useCallback((meters: number, durationSeconds: number) => {
@@ -190,6 +229,41 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
               <p className="text-[11px] text-blue-200/70 truncate mt-0.5">
                 โซน: {dorm.zone || 'รอบ ม.อุบลฯ'}
               </p>
+              
+              {/* GPS Live Status Indicator & Timestamp */}
+              {gpsStatus === 'acquired' && gpsTimestamp && (
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-300 font-medium mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                  <span className="truncate">GPS สด • {gpsTimestamp.toLocaleTimeString('th-TH')} น.</span>
+                  <button 
+                    onClick={requestGPS}
+                    title="รีเฟรชพิกัด GPS ล่าสุด"
+                    className="p-0.5 hover:bg-white/10 rounded transition text-blue-200 hover:text-white ml-0.5 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+
+              {gpsStatus === 'requesting' && (
+                <div className="flex items-center gap-1.5 text-[11px] text-amber-300 font-medium mt-0.5">
+                  <Loader2 className="w-3 h-3 animate-spin text-amber-400 flex-shrink-0" />
+                  <span className="truncate">กำลังขอพิกัด GPS... (8s)</span>
+                </div>
+              )}
+
+              {gpsStatus === 'error' && (
+                <div className="flex items-center gap-1.5 text-[11px] text-rose-300 font-medium mt-0.5">
+                  <AlertCircle className="w-3 h-3 text-rose-400 flex-shrink-0" />
+                  <span className="truncate">{gpsErrorCode === 'denied' ? 'ปฏิเสธสิทธิ์ GPS' : 'ไม่พบสัญญาณ GPS'}</span>
+                  <button 
+                    onClick={requestGPS}
+                    className="underline hover:text-white ml-1 font-bold cursor-pointer"
+                  >
+                    ลองใหม่
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -206,30 +280,84 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
         </div>
 
         {/* Real-Time Road Routing Stats Bar on Mobile */}
-        <div className="sm:hidden bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-between gap-2 text-xs flex-shrink-0">
-          <div className="flex items-baseline gap-1.5 truncate">
-            {distanceKm !== null ? (
-              <span className="font-extrabold text-blue-950 truncate">
-                ห่าง {distanceKm < 1 && distanceMeters ? `${distanceMeters} ม.` : `${distanceKm} กม.`} (~{estimatedMins} น.)
-              </span>
-            ) : (
-              <span className="text-slate-500 font-medium text-[11px]">กำลังคำนวณเส้นทาง...</span>
-            )}
+        {userLocation ? (
+          <div className="sm:hidden bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-between gap-2 text-xs flex-shrink-0">
+            <div className="flex items-baseline gap-1.5 truncate">
+              {distanceKm !== null ? (
+                <span className="font-extrabold text-blue-950 truncate">
+                  ห่าง {distanceKm < 1 && distanceMeters ? `${distanceMeters} ม.` : `${distanceKm} กม.`} (~{estimatedMins} น.)
+                </span>
+              ) : (
+                <span className="text-slate-500 font-medium text-[11px]">กำลังคำนวณเส้นทาง...</span>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="sm:hidden bg-amber-50/90 px-4 py-2 border-b border-amber-200 flex items-center justify-between gap-2 text-xs flex-shrink-0">
+            <div className="flex items-center gap-1.5 text-amber-900 font-medium truncate">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+              <span className="truncate">{gpsErrorMessage || 'ยังไม่ได้รับพิกัด GPS เพื่อคำนวณเส้นทาง'}</span>
+            </div>
+            <button
+              onClick={requestGPS}
+              className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 flex-shrink-0 cursor-pointer active:scale-95"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>ลองใหม่</span>
+            </button>
+          </div>
+        )}
 
         {/* Fullscreen Map Viewport */}
         <div className="relative flex-1 w-full h-full md:h-full bg-slate-100 flex flex-col justify-between overflow-hidden">
           {/* Loading Indicator while Connecting GPS */}
           {isLoadingGPS && (
-            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-white/85 backdrop-blur-sm gap-2 animate-in fade-in duration-150">
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-white/85 backdrop-blur-sm gap-2.5 animate-in fade-in duration-150 p-6 text-center">
               <Loader2 className="w-9 h-9 text-blue-900 animate-spin" />
-              <p className="text-xs font-bold text-blue-950">กำลังค้นหาตำแหน่ง GPS ของคุณ (Timeout 8s)...</p>
-              <p className="text-[11px] text-slate-500">หากนานเกินระบบจะสลับใช้พิกัดเริ่มต้น ม.อุบลฯ ทันที</p>
+              <p className="text-sm font-bold text-blue-950">กำลังค้นหาตำแหน่ง GPS สดของคุณ...</p>
+              <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+                ระบบกำลังเชื่อมต่อพิกัดดาวเทียม (ตัด Timeout ใน 8 วินาที)<br/>
+                กรุณากด <strong>&quot;อนุญาต (Allow)&quot;</strong> หากเบราว์เซอร์แจ้งเตือนขอสิทธิ์ Location
+              </p>
             </div>
           )}
 
-          {/* Toast Notification for GPS Fallback */}
+          {/* GPS Error Alert Card with Retry Button */}
+          {gpsStatus === 'error' && !dismissError && (
+            <div className="absolute top-4 inset-x-4 sm:inset-x-auto sm:left-4 sm:w-96 z-30 bg-white/95 backdrop-blur-md rounded-2xl border border-rose-200 p-4 shadow-xl space-y-3 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                    {gpsErrorCode === 'denied' ? 'ไม่ได้รับสิทธิ์เข้าถึงพิกัด GPS' : 'ไม่สามารถระบุตำแหน่ง GPS ได้'}
+                  </h4>
+                  <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed mt-1">
+                    {gpsErrorMessage}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={requestGPS}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition shadow-xs active:scale-95 cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>ลองใหม่ (Retry)</span>
+                </button>
+                <button
+                  onClick={() => setDismissError(true)}
+                  className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  ดูแผนที่หอพัก
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Toast Notification for GPS Feedback */}
           {toastMessage && (
             <div className="absolute bottom-4 left-3 right-3 sm:left-auto sm:right-4 sm:w-96 z-[1100] bg-slate-900/95 border border-amber-400/50 text-white px-3.5 py-2.5 rounded-2xl text-xs flex items-center justify-between gap-2 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-2 duration-300">
               <div className="flex items-center gap-2 min-w-0">

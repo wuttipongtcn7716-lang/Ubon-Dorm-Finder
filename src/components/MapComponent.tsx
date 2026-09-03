@@ -586,6 +586,17 @@ function MultiRoadRoutingLayer({
 
         const colorMeta = ROUTE_COLORS[idx % ROUTE_COLORS.length];
 
+        // Calculate straight-line Haversine distance in meters
+        const R_EARTH = 6371e3;
+        const phi1 = (startLat * Math.PI) / 180;
+        const phi2 = (adjLat * Math.PI) / 180;
+        const dphi = ((adjLat - startLat) * Math.PI) / 180;
+        const dlam = ((adjLng - startLng) * Math.PI) / 180;
+        const aDist =
+          Math.sin(dphi / 2) ** 2 +
+          Math.cos(phi1) * Math.cos(phi2) * Math.sin(dlam / 2) ** 2;
+        const straightMeters = R_EARTH * 2 * Math.atan2(Math.sqrt(aDist), Math.sqrt(1 - aDist));
+
         const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${adjLng},${adjLat}?overview=full&geometries=geojson&steps=true&radiuses=150;150`;
 
         return fetch(url)
@@ -596,9 +607,21 @@ function MultiRoadRoutingLayer({
               const coords: [number, number][] = r.geometry.coordinates.map(
                 ([lng, lat]: [number, number]) => [lat, lng]
               );
-              const km = parseFloat((r.distance / 1000).toFixed(1));
-              const duration = Math.max(r.duration, (r.distance / 1000 / 28) * 3600);
-              const baseMins = Math.max(1, Math.round(duration / 60));
+
+              // Detour Detection: If straight-line distance is short (< 2.5km) but OSRM detour exceeds 2.2x straight distance
+              // (due to dual-carriageway highway U-turns or wrong-side highway snapping)
+              let effectiveDistanceMeters = r.distance;
+              const isDetour = straightMeters < 2500 && r.distance > straightMeters * 2.2;
+              if (isDetour) {
+                // Calibrate to realistic local road connection in town/campus grid (straightMeters * 1.25)
+                effectiveDistanceMeters = Math.round(straightMeters * 1.25);
+              }
+
+              const km = parseFloat((effectiveDistanceMeters / 1000).toFixed(1));
+              const effectiveDurationSecs = isDetour
+                ? (effectiveDistanceMeters / 1000 / 28) * 3600
+                : Math.max(r.duration, (effectiveDistanceMeters / 1000 / 28) * 3600);
+              const baseMins = Math.max(1, Math.round(effectiveDurationSecs / 60));
 
               return {
                 id: d.id,
@@ -607,7 +630,7 @@ function MultiRoadRoutingLayer({
                 haloColor: colorMeta.haloColor,
                 distanceKm: km,
                 baseDurationMins: baseMins,
-                distanceMeters: r.distance,
+                distanceMeters: effectiveDistanceMeters,
               };
             }
             throw new Error('No route');
@@ -839,13 +862,21 @@ export default function MapComponent({
 
 
 
-  // Dynamic Origin State: Defaults to GPS
+  // Dynamic Origin State: Defaults to GPS (if valid userLocation provided) or Gate 1
   const [originPoint, setOriginPoint] = useState<OriginPointData>(() => {
+    if (userLocation && !isNaN(userLocation.lat) && !isNaN(userLocation.lng)) {
+      return {
+        mode: 'gps',
+        lat: userLocation.lat,
+        lng: userLocation.lng,
+        label: 'ตำแหน่ง GPS ของคุณ',
+      };
+    }
     return {
-      mode: 'gps',
-      lat: userLocation?.lat || defaultCenter[0],
-      lng: userLocation?.lng || defaultCenter[1],
-      label: 'ตำแหน่ง GPS ของคุณ',
+      mode: 'gate',
+      lat: defaultCenter[0],
+      lng: defaultCenter[1],
+      label: 'ประตู 1 ม.อุบลฯ (จุดเริ่มต้น)',
     };
   });
 
@@ -1009,7 +1040,7 @@ export default function MapComponent({
     }
 
     setIsLocatingGps(true);
-    setGpsToast('กำลังค้นหาพิกัด GPS สดของคุณ...');
+    setGpsToast('กำลังขอสิทธิ์และค้นหาพิกัด GPS สด (Timeout 8s)...');
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -1018,21 +1049,24 @@ export default function MapComponent({
         setLiveGpsLocation({ lat: userLat, lng: userLng });
         setTargetFlyCenter([userLat, userLng]);
         setIsLocatingGps(false);
-        setGpsToast(`📍 พิกัด GPS: ${userLat.toFixed(4)}, ${userLng.toFixed(4)}`);
-        setTimeout(() => setGpsToast(null), 4000);
+        const timeStr = new Date().toLocaleTimeString('th-TH');
+        setGpsToast(`📍 พิกัด GPS สด (${timeStr} น.): ${userLat.toFixed(4)}, ${userLng.toFixed(4)}`);
+        setTimeout(() => setGpsToast(null), 4500);
       },
       (err) => {
         setIsLocatingGps(false);
         if (err.code === err.PERMISSION_DENIED) {
-          setGpsToast('กรุณาอนุญาตการเข้าถึง Location ในเบราว์เซอร์');
+          setGpsToast('คุณปฏิเสธสิทธิ์ Location กรุณาเปิดอนุญาตในการตั้งค่าเบราว์เซอร์');
+        } else if (err.code === err.TIMEOUT) {
+          setGpsToast('ค้นหาพิกัด GPS เกินเวลา (Timeout 8 วินาที) กรุณากดลองใหม่');
         } else {
-          setGpsToast('ไม่สามารถค้นหาตำแหน่ง GPS ได้ในขณะนี้');
+          setGpsToast('ไม่สามารถระบุตำแหน่ง GPS ได้ กรุณาตรวจสอบสัญญาณหรือเปิด Location Services');
         }
         setTimeout(() => setGpsToast(null), 5000);
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 8000,
         maximumAge: 0,
       }
     );

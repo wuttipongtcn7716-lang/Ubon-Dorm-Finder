@@ -9,7 +9,8 @@ import {
   Clock, Compass, Bed, Tv, Refrigerator, Building,
   CheckCircle2, XCircle, DollarSign, FileText, Share2,
   Shield, Lock, Sparkles, Fan, Snowflake, Store, Heart,
-  ChevronDown, Dog, Waves, ShieldAlert, BookOpen, Clock4, Loader2
+  ChevronDown, Dog, Waves, ShieldAlert, BookOpen, Clock4, Loader2,
+  ArrowRight
 } from 'lucide-react';
 import { Dormitory, PriceStructure } from '@/types/dormitory';
 import NavigationModal from '@/components/NavigationModal';
@@ -20,12 +21,85 @@ interface DormProfileViewProps {
   dorm: Dormitory;
 }
 
+const WHITE_DORM_CRITERIA = [
+  {
+    id: 'security',
+    number: 1,
+    title: 'ความปลอดภัย & ไร้อบายมุข',
+    icon: Shield,
+    summary: 'มีกล้องวงจรปิด/รปภ. ดูแล และไม่มีการพนัน สุรา หรือยาเสพติดในบริเวณหอพัก',
+    details: [
+      'ติดตั้งกล้องวงจรปิด (CCTV) บันทึกภาพตลอด 24 ชั่วโมงในจุดเข้า-ออกและโถงทางเดิน',
+      'มีระบบควบคุมการเข้าออกที่ปลอดภัย เช่น ประตูคีย์การ์ด หรือผู้ดูแลประจำ',
+      'ปลอดการพนัน เครื่องดื่มแอลกอฮอล์ และสิ่งเสพติดทุกชนิดในบริเวณหอพัก',
+      'มีแสงสว่างรอบอาคารและบริเวณลานจอดรถเพียงพอในยามค่ำคืน',
+    ],
+    tags: ['กล้อง CCTV', 'คีย์การ์ด', 'ปลอดอบายมุข'],
+  },
+  {
+    id: 'cleanliness',
+    number: 2,
+    title: 'สะอาด & ถูกสุขลักษณะ',
+    icon: CheckCircle2,
+    summary: 'ห้องพักและพื้นที่ส่วนรวมสะอาด ถูกสุขอนามัย มีระบบกำจัดขยะมิดชิด',
+    details: [
+      'ห้องพักและพื้นที่ส่วนกลางสะอาด มีการทำความสะอาดและดูแลรักษาอย่างสม่ำเสมอ',
+      'มีถังขยะและจุดคัดแยกขยะที่ถูกสุขอนามัย มีฝาปิดมิดชิดป้องกันสัตว์นำโรค',
+      'ระบบระบายน้ำและสิ่งปฏิกูลได้มาตรฐาน ไม่มีน้ำท่วมขังหรือกลิ่นรบกวน',
+      'การระบายอากาศและแสงสว่างในห้องพักถ่ายเทได้สะดวก ไม่อับชื้น',
+    ],
+    tags: ['ถูกสุขอนามัย', 'จัดการขยะมิดชิด', 'ไม่อับชื้น'],
+  },
+  {
+    id: 'facilities',
+    number: 3,
+    title: 'สิ่งอำนวยความสะดวก & การเรียนรู้',
+    icon: BookOpen,
+    summary: 'มีสถานที่ทบทวนตำรา อินเทอร์เน็ต (Wi-Fi) และระบบสาธารณูปโภคปลอดภัย',
+    details: [
+      'มีสัญญาณอินเทอร์เน็ตความเร็วสูง (Wi-Fi) เสถียรและครอบคลุมทุกห้องพัก',
+      'มีโต๊ะ เก้าอี้ หรือพื้นที่สงบสำหรับอ่านหนังสือและทำงานค้นคว้า',
+      'ระบบน้ำประปาและไฟฟ้ามีความเสถียร มีเบรกเกอร์ตัดไฟปลอดภัย',
+      'สิ่งอำนวยความสะดวกพื้นฐาน เช่น ที่จอดรถ เครื่องซักผ้าหยอดเหรียญ หรือตู้น้ำดื่ม',
+    ],
+    tags: ['Wi-Fi ความเร็วสูง', 'โต๊ะอ่านหนังสือ', 'ระบบไฟปลอดภัย'],
+  },
+  {
+    id: 'care24h',
+    number: 4,
+    title: 'อุ่นใจ 24 ชั่วโมง & ช่วยเหลือฉุกเฉิน',
+    icon: Clock4,
+    summary: 'มีผู้ดูแลหรือช่องทางติดต่อเพื่อช่วยเหลือฉุกเฉินตลอด 24 ชม.',
+    details: [
+      'มีผู้ดูแลหอพักประจำ หรือมีช่องทางโทรศัพท์ติดต่อฉุกเฉินได้ตลอด 24 ชั่วโมง',
+      'มีตู้ยาสามัญประจำบ้านและชุดปฐมพยาบาลเบื้องต้น',
+      'มีแนวทางและช่องทางติดต่อส่งต่อนักศึกษาที่เจ็บป่วยฉุกเฉินไปยังโรงพยาบาล ม.อุบลฯ ทันที',
+    ],
+    tags: ['ติดต่อได้ 24 ชม.', 'ปฐมพยาบาล', 'ส่งต่อ รพ.'],
+  },
+  {
+    id: 'building',
+    number: 5,
+    title: 'มาตรฐานอาคาร & ป้องกันอัคคีภัย',
+    icon: Building,
+    summary: 'มีระเบียบประกาศชัดเจน มีอุปกรณ์ดับเพลิง และมีแผนผัง/ป้ายทางหนีไฟที่ได้มาตรฐาน',
+    details: [
+      'มีถังดับเพลิงเคมีติดตั้งในตำแหน่งที่เห็นเด่นชัดทุกชั้น พร้อมใช้งาน',
+      'มีป้ายบอกทางหนีไฟและแผนผังอพยพกรณีเกิดเหตุฉุกเฉินชัดเจน',
+      'โครงสร้างอาคารมั่นคง แข็งแรง ผ่านการตรวจสอบความปลอดภัย',
+      'มีระเบียบข้อบังคับและข้อปฏิบัติของหอพักติดประกาศชัดเจนเพื่อความสงบเรียบร้อย',
+    ],
+    tags: ['ถังดับเพลิงทุกชั้น', 'ป้ายทางหนีไฟ', 'ระเบียบชัดเจน'],
+  },
+];
+
 export default function DormProfileView({ dorm }: DormProfileViewProps) {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   // Default state: Collapsed (hidden) by default
   const [isCriteriaOpen, setIsCriteriaOpen] = useState(false);
+  const [activeCriterionId, setActiveCriterionId] = useState<string | null>(null);
   const { isFavorite, toggleFavorite } = useFavorites();
 
   const handleShare = () => {
@@ -377,18 +451,24 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
           {/* Header Bar with Golden Shield (Click to Toggle Accordion) */}
           <button
             onClick={() => setIsCriteriaOpen(!isCriteriaOpen)}
-            className="w-full p-5 sm:p-6 flex items-center justify-between text-left hover:bg-amber-50/50 transition-colors active:scale-[0.99] select-none"
+            className="w-full p-5 sm:p-6 flex items-center justify-between text-left hover:bg-amber-50/50 transition-colors active:scale-[0.99] select-none cursor-pointer"
+            aria-expanded={isCriteriaOpen}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0 pr-2">
               <div className="w-10 h-10 rounded-2xl bg-amber-400/20 text-amber-600 border border-amber-400/40 flex items-center justify-center flex-shrink-0 shadow-xs">
                 <ShieldCheck className="w-5 h-5 text-amber-600 font-bold" />
               </div>
-              <div>
-                <h3 className="font-extrabold text-blue-950 text-base sm:text-lg">
-                  เกณฑ์หอพักสีขาว ม.อุบลฯ
-                </h3>
-                <p className="text-xs text-slate-500 font-medium">
-                  แตะเพื่อดูข้อกำหนดและมาตรฐานความปลอดภัยสำหรับนักศึกษา
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-extrabold text-blue-950 text-base sm:text-lg">
+                    เกณฑ์หอพักสีขาว ม.อุบลฯ
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300/60">
+                    5 ด้านมาตรฐาน
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                  แตะเพื่อดูข้อกำหนด 5 ด้าน และมาตรฐานความปลอดภัยสำหรับนักศึกษา
                 </p>
               </div>
             </div>
@@ -400,74 +480,133 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
             </div>
           </button>
 
-          {/* Collapsible Content with Smooth Animation */}
-          {isCriteriaOpen && (
-            <div className="px-5 pb-6 sm:px-6 space-y-3 text-xs sm:text-sm text-slate-700 border-t border-amber-100/80 pt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {/* 1. Security & Substance Free */}
-                <div className="p-3.5 bg-white/90 rounded-2xl border border-amber-200/60 space-y-1 shadow-xs">
-                  <div className="flex items-center gap-2 text-blue-950 font-bold">
-                    <Shield className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                    <span>ความปลอดภัย & ไร้อบายมุข</span>
-                  </div>
-                  <p className="text-slate-600 text-xs pl-6 leading-relaxed">
-                    มีกล้องวงจรปิด/รปภ. ดูแล และไม่มีการพนัน สุรา หรือยาเสพติดในบริเวณหอพัก
-                  </p>
-                </div>
+          {/* Collapsible Content with Smooth CSS Transition */}
+          <div
+            className={`transition-all duration-300 ease-in-out overflow-hidden ${
+              isCriteriaOpen ? 'max-h-[2200px] opacity-100 border-t border-amber-100/80' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="p-4 sm:p-6 space-y-3.5">
+              <p className="text-xs text-slate-600">
+                แตะแต่ละหัวข้อด้านล่างเพื่อตรวจสอบรายละเอียดข้อกำหนดและมาตรการความปลอดภัย:
+              </p>
 
-                {/* 2. Cleanliness & Hygiene */}
-                <div className="p-3.5 bg-white/90 rounded-2xl border border-amber-200/60 space-y-1 shadow-xs">
-                  <div className="flex items-center gap-2 text-blue-950 font-bold">
-                    <CheckCircle2 className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                    <span>สะอาด & ถูกสุขลักษณะ</span>
-                  </div>
-                  <p className="text-slate-600 text-xs pl-6 leading-relaxed">
-                    ห้องพักและพื้นที่ส่วนรวมสะอาด ถูกสุขอนามัย มีระบบกำจัดขยะมิดชิด
-                  </p>
-                </div>
+              {/* 5 Topic Sub-Accordions (Single Active State prevents overlapping) */}
+              <div className="space-y-2.5">
+                {WHITE_DORM_CRITERIA.map((criterion) => {
+                  const IconComponent = criterion.icon;
+                  const isItemExpanded = activeCriterionId === criterion.id;
 
-                {/* 3. Study Facilities & Wi-Fi */}
-                <div className="p-3.5 bg-white/90 rounded-2xl border border-amber-200/60 space-y-1 shadow-xs">
-                  <div className="flex items-center gap-2 text-blue-950 font-bold">
-                    <BookOpen className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                    <span>สิ่งอำนวยความสะดวก</span>
-                  </div>
-                  <p className="text-slate-600 text-xs pl-6 leading-relaxed">
-                    มีสถานที่ทบทวนตำรา อินเทอร์เน็ต (Wi-Fi) และระบบสาธารณูปโภคปลอดภัย
-                  </p>
-                </div>
+                  return (
+                    <div
+                      key={criterion.id}
+                      className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
+                        isItemExpanded
+                          ? 'bg-amber-50/40 border-amber-300/80 shadow-sm ring-1 ring-amber-300/40'
+                          : 'bg-white/90 border-slate-200/80 hover:border-amber-200 hover:bg-amber-50/20'
+                      }`}
+                    >
+                      {/* Topic Trigger Button */}
+                      <button
+                        onClick={() => setActiveCriterionId(isItemExpanded ? null : criterion.id)}
+                        className="w-full p-3.5 sm:p-4 flex items-center justify-between text-left gap-3 select-none cursor-pointer transition-colors"
+                        aria-expanded={isItemExpanded}
+                      >
+                        <div className="flex items-start gap-3 min-w-0 flex-1">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${
+                            isItemExpanded
+                              ? 'bg-amber-500 text-white shadow-xs'
+                              : 'bg-amber-100/80 text-amber-700'
+                          }`}>
+                            <IconComponent className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-extrabold text-amber-700 bg-amber-100/80 px-1.5 py-0.5 rounded-md">
+                                ด้านที่ {criterion.number}
+                              </span>
+                              <h4 className="font-bold text-blue-950 text-xs sm:text-sm truncate">
+                                {criterion.title}
+                              </h4>
+                            </div>
+                            <p className="text-[11px] sm:text-xs text-slate-600 mt-1 line-clamp-2 leading-relaxed">
+                              {criterion.summary}
+                            </p>
+                          </div>
+                        </div>
 
-                {/* 4. 24h Assistance */}
-                <div className="p-3.5 bg-white/90 rounded-2xl border border-amber-200/60 space-y-1 shadow-xs">
-                  <div className="flex items-center gap-2 text-blue-950 font-bold">
-                    <Clock4 className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                    <span>อุ่นใจ 24 ชั่วโมง</span>
-                  </div>
-                  <p className="text-slate-600 text-xs pl-6 leading-relaxed">
-                    มีผู้ดูแลหรือช่องทางติดต่อเพื่อช่วยเหลือฉุกเฉินตลอด 24 ชม.
-                  </p>
-                </div>
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-slate-400 transition-transform duration-300 flex-shrink-0 ${
+                          isItemExpanded ? 'rotate-180 text-amber-700 bg-amber-100' : ''
+                        }`}>
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </div>
+                      </button>
 
-                {/* 5. Building Standards & Fire Exit */}
-                <div className="p-3.5 bg-white/90 rounded-2xl border border-amber-200/60 space-y-1 shadow-xs md:col-span-2">
-                  <div className="flex items-center gap-2 text-blue-950 font-bold">
-                    <Building className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                    <span>มาตรฐานอาคาร</span>
-                  </div>
-                  <p className="text-slate-600 text-xs pl-6 leading-relaxed">
-                    มีระเบียบประกาศชัดเจน มีอุปกรณ์ดับเพลิง และมีแผนผัง/ป้ายทางหนีไฟที่ได้มาตรฐาน
-                  </p>
-                </div>
+                      {/* Smooth Expanding Details */}
+                      <div
+                        className={`transition-all duration-300 ease-in-out overflow-hidden px-4 sm:px-5 ${
+                          isItemExpanded
+                            ? 'max-h-96 opacity-100 pb-4 pt-2 border-t border-amber-200/50'
+                            : 'max-h-0 opacity-0 pb-0 pt-0'
+                        }`}
+                      >
+                        <ul className="space-y-2 text-xs text-slate-700 leading-relaxed">
+                          {criterion.details.map((detail, dIdx) => (
+                            <li key={dIdx} className="flex items-start gap-2">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                              <span>{detail}</span>
+                            </li>
+                          ))}
+                        </ul>
+
+                        {/* Tags */}
+                        <div className="flex items-center gap-1.5 flex-wrap mt-3 pt-2.5 border-t border-amber-100">
+                          <span className="text-[10px] font-semibold text-slate-400">จุดเด่น:</span>
+                          {criterion.tags.map((tag, tIdx) => (
+                            <span
+                              key={tIdx}
+                              className="text-[10px] font-medium bg-white text-amber-900 border border-amber-200 px-2 py-0.5 rounded-lg shadow-2xs"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              <div className="p-3 bg-amber-100/70 rounded-xl text-amber-950 text-[11px] font-semibold flex items-center gap-2 border border-amber-200/70">
-                <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                <span>
-                  หอพักที่มีสัญลักษณ์ <strong>หอพักสีขาว</strong> ได้รับการตรวจสอบและประเมินผ่านเกณฑ์โดย ม.อุบลฯ
-                </span>
+              {/* Status Note & Quick Navigation Links */}
+              <div className="pt-2 space-y-3">
+                <div className="p-3 bg-amber-100/70 rounded-2xl text-amber-950 text-xs font-medium flex items-center gap-2.5 border border-amber-200/80">
+                  <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <span>
+                    หอพักที่มีสัญลักษณ์ <strong>หอพักสีขาว</strong> ได้รับการตรวจสอบและประเมินผ่านเกณฑ์โดยมหาวิทยาลัยอุบลราชธานี
+                  </span>
+                </div>
+
+                {/* Navigation Links inside Accordion */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-1">
+                  <Link
+                    href="/?white=true"
+                    className="inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl font-bold text-xs shadow-sm transition active:scale-98 cursor-pointer"
+                  >
+                    <span>ค้นหาหอพักสีขาวทั้งหมด (60 แห่ง)</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+
+                  <a
+                    href="#contact-section"
+                    className="inline-flex items-center justify-center gap-1.5 py-2.5 px-4 bg-white hover:bg-slate-50 text-blue-950 rounded-xl font-semibold text-xs border border-slate-200 transition shadow-2xs cursor-pointer"
+                  >
+                    <span>ติดต่อสอบถามข้อมูลหอพักนี้</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                  </a>
+                </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Nearby Landmarks & POIs */}
@@ -502,7 +641,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
         </div>
 
         {/* Contact Info Card */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
+        <div id="contact-section" className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4 scroll-mt-24">
           <h3 className="font-extrabold text-blue-950 text-lg">ช่องทางติดต่อเจ้าของหอพัก</h3>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

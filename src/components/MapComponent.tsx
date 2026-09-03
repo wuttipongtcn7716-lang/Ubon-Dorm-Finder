@@ -568,11 +568,23 @@ function MultiRoadRoutingLayer({
 
     let isCancelled = false;
     
+    // Clean and validate origin coordinates (guard against inverted lat/lng order)
+    let cleanStartLat = Number(originLocation.lat);
+    let cleanStartLng = Number(originLocation.lng);
+
+    // In Thailand (Ubon Ratchathani), Latitude is ~15 and Longitude is ~104
+    // If lat > 50 and lng < 30, they were accidentally inverted - auto-correct here
+    if (cleanStartLat > 50 && cleanStartLng < 30) {
+      const temp = cleanStartLat;
+      cleanStartLat = cleanStartLng;
+      cleanStartLng = temp;
+    }
+
     // Apply offset adjustment to origin if it's a database/stored point
     const originNeedsOffset = originLocation.mode !== 'gps' && originLocation.mode !== 'custom';
     const [startLat, startLng] = originNeedsOffset
-      ? adjustLatLng(Number(originLocation.lat), Number(originLocation.lng))
-      : [Number(originLocation.lat), Number(originLocation.lng)];
+      ? adjustLatLng(cleanStartLat, cleanStartLng)
+      : [cleanStartLat, cleanStartLng];
 
     if (isNaN(startLat) || isNaN(startLng)) return;
 
@@ -580,9 +592,21 @@ function MultiRoadRoutingLayer({
       const allCoords: [number, number][] = [];
       const statsMap: Record<string | number, { distanceKm: number; baseDurationMins: number; distanceMeters: number }> = {};
       
-      // 2. วนลูปสร้าง Request แยกแต่ละเส้นทางจาก Origin -> Destination[i] (ยิงแยกเส้นตรงจาก GPS ไปหาแต่ละจุดโดยตรง)
+      // 2. Loop and generate independent OSRM route request from Origin -> Destination[i]
       const legPromises = destinations.map((d, idx) => {
-        const [adjLat, adjLng] = adjustLatLng(Number(d.lat), Number(d.lng));
+        let rawDLat = Number(d.lat ?? (d as any).latitude);
+        let rawDLng = Number(d.lng ?? (d as any).longitude);
+
+        if (isNaN(rawDLat) || isNaN(rawDLng)) return Promise.resolve(null);
+
+        // Guard against inverted lat/lng order on destination
+        if (rawDLat > 50 && rawDLng < 30) {
+          const temp = rawDLat;
+          rawDLat = rawDLng;
+          rawDLng = temp;
+        }
+
+        const [adjLat, adjLng] = adjustLatLng(rawDLat, rawDLng);
         if (isNaN(adjLat) || isNaN(adjLng)) return Promise.resolve(null);
 
         const colorMeta = ROUTE_COLORS[idx % ROUTE_COLORS.length];
@@ -598,16 +622,15 @@ function MultiRoadRoutingLayer({
           Math.cos(phi1) * Math.cos(phi2) * Math.sin(dlam / 2) ** 2;
         const straightMeters = R_EARTH * 2 * Math.atan2(Math.sqrt(aDist), Math.sqrt(1 - aDist));
 
-        const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${adjLng},${adjLat}?overview=full&geometries=geojson&steps=true&radiuses=150;150`;
+        // Note: OSRM strictly expects coordinates in [longitude, latitude] order:
+        // Format: /route/v1/driving/{startLng},{startLat};{destLng},{destLat}
+        const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${adjLng},${adjLat}?overview=full&geometries=geojson&steps=false&continue_straight=false`;
 
         return fetch(url)
           .then((res) => res.json())
           .then((data) => {
             if (data.code === 'Ok' && data.routes && data.routes[0]) {
               const r = data.routes[0];
-              const coords: [number, number][] = r.geometry.coordinates.map(
-                ([lng, lat]: [number, number]) => [lat, lng]
-              );
 
               // Detour Detection: If straight-line distance is short (< 2.5km) but OSRM detour exceeds 2.2x straight distance
               // (due to dual-carriageway highway U-turns or wrong-side highway snapping)
@@ -624,6 +647,40 @@ function MultiRoadRoutingLayer({
                 : Math.max(r.duration, (effectiveDistanceMeters / 1000 / 28) * 3600);
               const baseMins = Math.max(1, Math.round(effectiveDurationSecs / 60));
 
+              // Seamless Pin-to-Pin Route Stitching:
+              // Ensure the polyline starts directly AT the origin pin and connects directly INTO the dorm pin
+              const coords: [number, number][] = [];
+
+              if (isDetour) {
+                // For detour cases, connect directly between origin and dorm pin
+                coords.push([startLat, startLng]);
+                coords.push([adjLat, adjLng]);
+              } else {
+                // 1. Prepend exact Origin Pin coordinate (eliminates start gap)
+                coords.push([startLat, startLng]);
+
+                // 2. Add OSRM intermediate road waypoints [latitude, longitude]
+                r.geometry.coordinates.forEach(([lon, lat]: [number, number]) => {
+                  let ptLat = lat;
+                  let ptLon = lon;
+                  if (ptLat > 50 && ptLon < 30) {
+                    ptLat = lon;
+                    ptLon = lat;
+                  }
+                  // Deduplicate adjacent identical coordinates
+                  const prevPt = coords[coords.length - 1];
+                  if (!prevPt || Math.abs(prevPt[0] - ptLat) > 0.00002 || Math.abs(prevPt[1] - ptLon) > 0.00002) {
+                    coords.push([ptLat, ptLon]);
+                  }
+                });
+
+                // 3. Append exact Destination Dorm Pin coordinate (eliminates dorm gap)
+                const lastPt = coords[coords.length - 1];
+                if (!lastPt || Math.abs(lastPt[0] - adjLat) > 0.00002 || Math.abs(lastPt[1] - adjLng) > 0.00002) {
+                  coords.push([adjLat, adjLng]);
+                }
+              }
+
               return {
                 id: d.id,
                 coords,
@@ -637,16 +694,19 @@ function MultiRoadRoutingLayer({
             throw new Error('No route');
           })
           .catch((err) => {
-            console.error(`ไม่สามารถคำนวณเส้นทางไปยัง "${d.name}" ได้ กรุณาตรวจสอบพิกัดของสถานที่นี้`, err);
-            // Fallback เส้นตรงเชื่อมคู่จุดนั้นๆ
+            console.warn(`การคำนวณเส้นทาง OSRM ไปยัง "${d.name}" ไม่สำเร็จ ใช้เส้นทางตรงสำรอง:`, err);
+            const fallbackMeters = Math.round(straightMeters * 1.25);
+            const fallbackKm = parseFloat((fallbackMeters / 1000).toFixed(1));
+            const fallbackMins = Math.max(1, Math.round((fallbackMeters / 1000 / 28) * 60));
+
             return {
               id: d.id,
               coords: [[startLat, startLng], [adjLat, adjLng]] as [number, number][],
               color: colorMeta.color,
               haloColor: colorMeta.haloColor,
-              distanceKm: 0,
-              baseDurationMins: 0,
-              distanceMeters: 0,
+              distanceKm: fallbackKm,
+              baseDurationMins: fallbackMins,
+              distanceMeters: fallbackMeters,
             };
           });
       });
@@ -885,17 +945,21 @@ export default function MapComponent({
   // Auto-update GPS origin when userLocation prop or GPS arrives
   useEffect(() => {
     if (userLocation && !isNaN(userLocation.lat) && !isNaN(userLocation.lng)) {
-      setLiveGpsLocation(userLocation);
-      setOriginPoint((prev) => {
-        if (prev.mode === 'gps') {
-          return {
-            ...prev,
-            lat: userLocation.lat,
-            lng: userLocation.lng,
-          };
-        }
-        return prev;
+      let uLat = Number(userLocation.lat);
+      let uLng = Number(userLocation.lng);
+      if (uLat > 50 && uLng < 30) {
+        const temp = uLat;
+        uLat = uLng;
+        uLng = temp;
+      }
+      setLiveGpsLocation({ lat: uLat, lng: uLng });
+      setOriginPoint({
+        mode: 'gps',
+        lat: uLat,
+        lng: uLng,
+        label: 'ตำแหน่ง GPS ของคุณ',
       });
+      setTargetFlyCenter([uLat, uLng]);
     }
   }, [userLocation]);
 
@@ -904,22 +968,28 @@ export default function MapComponent({
     if (typeof window === 'undefined' || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const uLat = pos.coords.latitude;
-        const uLng = pos.coords.longitude;
+        let uLat = pos.coords.latitude;
+        let uLng = pos.coords.longitude;
+        if (uLat > 50 && uLng < 30) {
+          const temp = uLat;
+          uLat = uLng;
+          uLng = temp;
+        }
         setLiveGpsLocation({ lat: uLat, lng: uLng });
         setOriginPoint((prev) => {
-          if (prev.mode === 'gps') {
+          if (prev.mode === 'gps' || (prev.mode === 'gate' && prev.label.includes('จุดเริ่มต้น'))) {
             return {
-              ...prev,
+              mode: 'gps',
               lat: uLat,
               lng: uLng,
+              label: 'ตำแหน่ง GPS ของคุณ',
             };
           }
           return prev;
         });
       },
       () => {},
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
   }, []);
 
@@ -931,8 +1001,13 @@ export default function MapComponent({
     try {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
-          const uLat = pos.coords.latitude;
-          const uLng = pos.coords.longitude;
+          let uLat = pos.coords.latitude;
+          let uLng = pos.coords.longitude;
+          if (uLat > 50 && uLng < 30) {
+            const temp = uLat;
+            uLat = uLng;
+            uLng = temp;
+          }
           setLiveGpsLocation({ lat: uLat, lng: uLng });
           setOriginPoint((prev) => {
             if (prev.mode === 'gps') {
@@ -944,7 +1019,7 @@ export default function MapComponent({
         () => {},
         {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 8000,
           maximumAge: 1000,
         }
       );
@@ -967,8 +1042,13 @@ export default function MapComponent({
   // Multi-Destination Comparison State
   const [destinations, setDestinations] = useState<DestinationItem[]>(() => {
     if (selectedDorm) {
-      const dLat = Number(selectedDorm.lat ?? selectedDorm.latitude);
-      const dLng = Number(selectedDorm.lng ?? selectedDorm.longitude);
+      let dLat = Number(selectedDorm.lat ?? selectedDorm.latitude);
+      let dLng = Number(selectedDorm.lng ?? selectedDorm.longitude);
+      if (dLat > 50 && dLng < 30) {
+        const temp = dLat;
+        dLat = dLng;
+        dLng = temp;
+      }
       return [{
         id: selectedDorm.id,
         name: selectedDorm.name,
@@ -994,8 +1074,13 @@ export default function MapComponent({
   // Sync destination 1 when selectedDorm changes
   useEffect(() => {
     if (selectedDorm) {
-      const dLat = Number(selectedDorm.lat ?? selectedDorm.latitude);
-      const dLng = Number(selectedDorm.lng ?? selectedDorm.longitude);
+      let dLat = Number(selectedDorm.lat ?? selectedDorm.latitude);
+      let dLng = Number(selectedDorm.lng ?? selectedDorm.longitude);
+      if (dLat > 50 && dLng < 30) {
+        const temp = dLat;
+        dLat = dLng;
+        dLng = temp;
+      }
       if (!isNaN(dLat) && !isNaN(dLng)) {
         setDestinations((prev) => {
           const rest = prev.slice(1);

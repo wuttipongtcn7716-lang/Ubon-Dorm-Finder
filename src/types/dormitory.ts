@@ -32,7 +32,7 @@ export interface Dormitory {
   electricRate: string;
   deposit: number;
   minLease: string;
-  genderType: 'หอพักชาย' | 'หอพักหญิง' | 'หอพักรวม' | string;
+  genderType: 'female' | 'male' | 'mixed' | string;
   roomType: string;
   waterHeater: boolean;
   fridge: boolean;

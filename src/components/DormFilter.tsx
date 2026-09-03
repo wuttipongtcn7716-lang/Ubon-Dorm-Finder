@@ -235,12 +235,14 @@ export default function DormFilter({
 
           {/* Gender Filter */}
           <div className="space-y-1.5">
-            <label className="text-slate-700 font-bold flex items-center gap-1">
+            <label htmlFor="genderFilter" className="text-slate-700 font-bold flex items-center gap-1 cursor-pointer">
               <Users className="w-3.5 h-3.5 text-blue-900" />
               <span>ประเภทผู้พักอาศัย:</span>
             </label>
             <select
               id="genderFilter"
+              name="genderType"
+              aria-label="ประเภทผู้พักอาศัย"
               value={filters.genderType}
               onChange={(e) => updateFilter('genderType', e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-semibold text-slate-800"

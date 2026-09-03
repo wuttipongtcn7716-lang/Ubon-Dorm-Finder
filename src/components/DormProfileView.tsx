@@ -133,7 +133,11 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
           )}
 
           <div className="absolute bottom-4 right-4 bg-blue-950/80 backdrop-blur-md text-amber-200 px-3.5 py-1.5 rounded-xl text-xs font-bold z-20">
-            {dorm.genderType || 'หอพักรวม'}
+            {dorm.genderType === 'female' || dorm.genderType === 'หอพักหญิง'
+              ? 'หอพักหญิง'
+              : dorm.genderType === 'male' || dorm.genderType === 'หอพักชาย'
+              ? 'หอพักชาย'
+              : 'หอพักรวม'}
           </div>
         </div>
 

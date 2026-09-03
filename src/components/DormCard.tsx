@@ -38,7 +38,12 @@ export default function DormCard({
   const minPriceVal = dorm.minPrice || (hasBothPrices ? Math.min(fanPrice, airPrice) : (airPrice || fanPrice || 0));
   const maxPriceVal = dorm.maxPrice || (hasBothPrices ? Math.max(fanPrice, airPrice) : minPriceVal);
 
-  const genderLabel = dorm.genderType || 'หอพักรวม';
+  const genderLabel =
+    dorm.genderType === 'female' || dorm.genderType === 'หอพักหญิง'
+      ? 'หอพักหญิง'
+      : dorm.genderType === 'male' || dorm.genderType === 'หอพักชาย'
+      ? 'หอพักชาย'
+      : 'หอพักรวม';
   const statusLabel = dorm.status || dorm.evalResult || 'หอพักทั่วไป';
 
   // Distance highlight for fast decision making (Dynamic Nearest POI)

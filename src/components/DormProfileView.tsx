@@ -54,6 +54,28 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
   const airPrice = priceObj?.air ?? null;
   const hasBothPrices = fanPrice !== null && airPrice !== null && fanPrice !== airPrice;
 
+  // External website / facebook link resolution
+  const hasExternalLink = Boolean(
+    dorm.facebook && 
+    dorm.facebook.trim() !== '' && 
+    dorm.facebook.trim() !== '-' && 
+    dorm.facebook.trim() !== 'ไม่มี'
+  );
+
+  const externalName = hasExternalLink ? dorm.facebook : (dorm.name || 'เพจหอพัก');
+
+  const externalHref = hasExternalLink
+    ? (dorm.facebook.startsWith('http') 
+        ? dorm.facebook 
+        : `https://www.facebook.com/search/top?q=${encodeURIComponent(dorm.facebook)}`)
+    : undefined;
+
+  // Multiple phone numbers resolution
+  const phoneList = (dorm.phone || '')
+    .split(/[,/]|และ/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
   return (
     <div className="min-h-screen bg-slate-50 pb-36 sm:pb-40">
       {/* Top Header Action Bar (Glassmorphism Style) */}
@@ -450,13 +472,28 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
           <h3 className="font-extrabold text-blue-950 text-lg">ช่องทางติดต่อเจ้าของหอพัก</h3>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <a
-              href={`tel:${dorm.phone || ''}`}
-              className="flex items-center justify-center gap-2.5 p-3.5 bg-amber-50 hover:bg-amber-100 text-amber-950 rounded-2xl font-bold text-sm transition border border-amber-200/80"
-            >
-              <Phone className="w-4 h-4 text-amber-600" />
-              <span>{dorm.phone || 'โทรสอบถาม'}</span>
-            </a>
+            {phoneList.length > 1 ? (
+              <div className="flex flex-col justify-center gap-1.5 p-2 bg-amber-50 rounded-2xl border border-amber-200/80">
+                {phoneList.map((p, idx) => (
+                  <a
+                    key={idx}
+                    href={`tel:${p.replace(/[^\d+]/g, '')}`}
+                    className="flex items-center justify-center gap-2 py-1 px-2.5 bg-white/90 hover:bg-amber-100/90 text-amber-950 rounded-xl font-bold text-xs sm:text-sm transition border border-amber-200/60 shadow-2xs"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                    <span className="truncate">{p}</span>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <a
+                href={`tel:${(dorm.phone || '').replace(/[^\d+]/g, '')}`}
+                className="flex items-center justify-center gap-2.5 p-3.5 bg-amber-50 hover:bg-amber-100 text-amber-950 rounded-2xl font-bold text-sm transition border border-amber-200/80"
+              >
+                <Phone className="w-4 h-4 text-amber-600" />
+                <span>{dorm.phone || 'โทรสอบถาม'}</span>
+              </a>
+            )}
 
             {dorm.lineId && (
               <div className="flex items-center justify-center gap-2.5 p-3.5 bg-green-50 text-green-900 rounded-2xl font-semibold text-sm border border-green-200/60">
@@ -465,10 +502,25 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
               </div>
             )}
 
-            {dorm.facebook && (
-              <div className="flex items-center justify-center gap-2.5 p-3.5 bg-blue-50 text-blue-900 rounded-2xl font-semibold text-sm border border-blue-200/60">
-                <ExternalLink className="w-4 h-4 text-blue-600" />
-                <span className="truncate">{dorm.facebook}</span>
+            {/* External / Facebook / Website Button */}
+            {hasExternalLink ? (
+              <a
+                href={externalHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2.5 p-3.5 bg-blue-50 hover:bg-blue-100 text-blue-900 rounded-2xl font-semibold text-sm border border-blue-200/60 transition cursor-pointer"
+                title={externalName}
+              >
+                <ExternalLink className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                <span className="truncate">{externalName}</span>
+              </a>
+            ) : (
+              <div
+                className="flex items-center justify-center gap-2.5 p-3.5 bg-blue-50 text-blue-900 rounded-2xl font-semibold text-sm border border-blue-200/60"
+                title={externalName}
+              >
+                <ExternalLink className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                <span className="truncate">{externalName}</span>
               </div>
             )}
           </div>

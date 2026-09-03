@@ -3756,9 +3756,9 @@
     "keycard": true,
     "cctv": true,
     "securityGuard": true,
-    "phone": "082-979-7898",
+    "phone": "082-979-7898, 084-167-4545",
     "lineId": "082-979-7898",
-    "facebook": "-",
+    "facebook": "หอพักหญิงวีระพร",
     "allowPet": false,
     "allowCooking": true,
     "gateClosingTime": "05.00-22.00 น.",
@@ -3797,14 +3797,14 @@
     "latitude": 15.120888,
     "longitude": 104.89965,
     "price": {
-      "fan": 4200,
+      "fan": 3200,
       "air": 4200
     },
     "prices": {
-      "fan": 4200,
+      "fan": 3200,
       "air": 4200
     },
-    "minPrice": 4200,
+    "minPrice": 3200,
     "maxPrice": 4200,
     "type": "ห้องพัดลม / ห้องแอร์",
     "roomType": "ห้องพัดลม / ห้องแอร์",
@@ -3826,7 +3826,7 @@
     "keycard": true,
     "cctv": true,
     "securityGuard": true,
-    "phone": "082-979-7898",
+    "phone": "082-979-7898, 084-167-4545",
     "lineId": "082-979-7898",
     "facebook": "หอพักหญิงวีระพร",
     "allowPet": false,
@@ -3867,14 +3867,14 @@
     "latitude": 15.120946,
     "longitude": 104.900725,
     "price": {
-      "fan": 4400,
+      "fan": 3400,
       "air": 4400
     },
     "prices": {
-      "fan": 4400,
+      "fan": 3400,
       "air": 4400
     },
-    "minPrice": 4400,
+    "minPrice": 3400,
     "maxPrice": 4400,
     "type": "ห้องพัดลม / ห้องแอร์",
     "roomType": "ห้องพัดลม / ห้องแอร์",
@@ -3896,7 +3896,7 @@
     "keycard": true,
     "cctv": true,
     "securityGuard": true,
-    "phone": "082-979-7898",
+    "phone": "082-979-7898, 084-167-4545",
     "lineId": "082-979-7898",
     "facebook": "หอพักหญิงวีระพร",
     "allowPet": false,

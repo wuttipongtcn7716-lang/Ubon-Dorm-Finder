@@ -71,10 +71,44 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
     : undefined;
 
   // Multiple phone numbers resolution
-  const phoneList = (dorm.phone || '')
-    .split(/[,/]|และ/)
-    .map((p) => p.trim())
-    .filter(Boolean);
+  const hasPhone = Boolean(
+    dorm.phone && 
+    dorm.phone.trim() !== '' && 
+    dorm.phone.trim() !== '-' && 
+    dorm.phone.trim() !== 'ไม่มี'
+  );
+
+  const phoneList = hasPhone
+    ? (dorm.phone || '')
+        .split(/[,/]|และ/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+    : [];
+
+  // LINE ID resolution & Clickable link formatting
+  const rawLine = (dorm.lineId || '').trim();
+  const hasValidLine = Boolean(
+    rawLine &&
+    rawLine !== '-' &&
+    rawLine !== 'ไม่มี' &&
+    rawLine !== 'ไม่ระบุ' &&
+    rawLine !== 'ไม่ทราบ'
+  );
+
+  let lineHref: string | undefined = undefined;
+  let displayLineId = rawLine;
+
+  if (hasValidLine) {
+    if (rawLine.startsWith('http://') || rawLine.startsWith('https://')) {
+      lineHref = rawLine;
+      const match = rawLine.match(/line\.me\/ti\/p\/~?(.+)/i);
+      if (match && match[1]) {
+        displayLineId = match[1];
+      }
+    } else {
+      lineHref = `https://line.me/ti/p/~${rawLine}`;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-36 sm:pb-40">
@@ -472,37 +506,61 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
           <h3 className="font-extrabold text-blue-950 text-lg">ช่องทางติดต่อเจ้าของหอพัก</h3>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {phoneList.length > 1 ? (
-              <div className="flex flex-col justify-center gap-1.5 p-2 bg-amber-50 rounded-2xl border border-amber-200/80">
-                {phoneList.map((p, idx) => (
-                  <a
-                    key={idx}
-                    href={`tel:${p.replace(/[^\d+]/g, '')}`}
-                    className="flex items-center justify-center gap-2 py-1 px-2.5 bg-white/90 hover:bg-amber-100/90 text-amber-950 rounded-xl font-bold text-xs sm:text-sm transition border border-amber-200/60 shadow-2xs"
-                  >
-                    <Phone className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                    <span className="truncate">{p}</span>
-                  </a>
-                ))}
-              </div>
+            {/* 1. Phone Button(s) */}
+            {hasPhone ? (
+              phoneList.length > 1 ? (
+                <div className="flex flex-col justify-center gap-1.5 p-2 bg-amber-50 rounded-2xl border border-amber-200/80">
+                  {phoneList.map((p, idx) => (
+                    <a
+                      key={idx}
+                      href={`tel:${p.replace(/[^\d+]/g, '')}`}
+                      className="flex items-center justify-center gap-2 py-1 px-2.5 bg-white/90 hover:bg-amber-100/90 text-amber-950 rounded-xl font-bold text-xs sm:text-sm transition border border-amber-200/60 shadow-2xs"
+                    >
+                      <Phone className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                      <span className="truncate">{p}</span>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <a
+                  href={`tel:${(phoneList[0] || dorm.phone || '').replace(/[^\d+]/g, '')}`}
+                  className="flex items-center justify-center gap-2.5 p-3.5 bg-amber-50 hover:bg-amber-100 text-amber-950 rounded-2xl font-bold text-sm transition border border-amber-200/80"
+                >
+                  <Phone className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <span className="truncate">{dorm.phone || 'โทรสอบถาม'}</span>
+                </a>
+              )
             ) : (
-              <a
-                href={`tel:${(dorm.phone || '').replace(/[^\d+]/g, '')}`}
-                className="flex items-center justify-center gap-2.5 p-3.5 bg-amber-50 hover:bg-amber-100 text-amber-950 rounded-2xl font-bold text-sm transition border border-amber-200/80"
-              >
-                <Phone className="w-4 h-4 text-amber-600" />
-                <span>{dorm.phone || 'โทรสอบถาม'}</span>
-              </a>
-            )}
-
-            {dorm.lineId && (
-              <div className="flex items-center justify-center gap-2.5 p-3.5 bg-green-50 text-green-900 rounded-2xl font-semibold text-sm border border-green-200/60">
-                <MessageCircle className="w-4 h-4 text-green-600" />
-                <span className="truncate">Line: {dorm.lineId}</span>
+              <div className="flex items-center justify-center gap-2.5 p-3.5 bg-slate-50 text-slate-400 rounded-2xl text-sm border border-slate-200/60">
+                <Phone className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <span className="truncate text-slate-500">
+                  โทร: <span className="italic text-gray-400 font-normal">ไม่มีข้อมูล</span>
+                </span>
               </div>
             )}
 
-            {/* External / Facebook / Website Button */}
+            {/* 2. LINE Button */}
+            {hasValidLine ? (
+              <a
+                href={lineHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2.5 p-3.5 bg-green-50 hover:bg-green-100 text-green-900 rounded-2xl font-semibold text-sm border border-green-200/60 transition cursor-pointer"
+                title={`เพิ่มเพื่อนใน LINE: ${displayLineId}`}
+              >
+                <MessageCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <span className="truncate">Line: {displayLineId}</span>
+              </a>
+            ) : (
+              <div className="flex items-center justify-center gap-2.5 p-3.5 bg-slate-50 text-slate-400 rounded-2xl text-sm border border-slate-200/60">
+                <MessageCircle className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <span className="truncate text-slate-500">
+                  Line: <span className="italic text-gray-400 font-normal">ไม่มีข้อมูล</span>
+                </span>
+              </div>
+            )}
+
+            {/* 3. External / Facebook / Website Button */}
             {hasExternalLink ? (
               <a
                 href={externalHref}

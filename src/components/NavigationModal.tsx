@@ -10,18 +10,14 @@ import {
 import { Dormitory } from '@/types/dormitory';
 import { MapComponentProps } from './MapComponent';
 import GpsPermissionModal from './GpsPermissionModal';
+import MapSkeleton from './MapSkeleton';
 
-// Dynamically // Import Leaflet Map to ensure 100% SSR safety
+// Dynamically Import Leaflet Map to ensure 100% SSR safety with realistic MapSkeleton
 const MapComponent = dynamic<MapComponentProps>(
   () => import('./MapComponent'),
   {
     ssr: false,
-    loading: () => (
-      <div className="w-full h-full min-h-[350px] flex flex-col items-center justify-center bg-slate-100 text-slate-400 gap-2">
-        <Loader2 className="w-8 h-8 text-blue-900 animate-spin" />
-        <p className="text-xs font-bold text-slate-700">กำลังเตรียมแผนที่นำทาง...</p>
-      </div>
-    ),
+    loading: () => <MapSkeleton message="กำลังเตรียมแผนที่นำทาง..." className="w-full h-full min-h-[350px]" />,
   }
 );
 

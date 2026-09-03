@@ -22,6 +22,8 @@ import {
 import Link from 'next/link';
 import { LAT_OFFSET as DEFAULT_LAT_OFFSET, LNG_OFFSET as DEFAULT_LNG_OFFSET } from '@/config/mapConfig';
 import GpsPermissionModal from './GpsPermissionModal';
+import MapSkeleton from './MapSkeleton';
+import MapErrorState from './MapErrorState';
 
 // Dynamically require leaflet.markercluster only in browser
 if (typeof window !== 'undefined') {
@@ -357,6 +359,160 @@ function MapController({
     }
   }, [targetCenter, zoom, map]);
   return null;
+}
+
+function MapReadyHandler({ onReady }: { onReady: () => void }) {
+  const map = useMap();
+  useEffect(() => {
+    if (map) {
+      const timer = setTimeout(() => {
+        onReady();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [map, onReady]);
+  return null;
+}
+
+// Unified Right-Side Floating Action Dock: Combines Primary GPS, Layer Switcher, Re-center, and Zoom Controls
+function UnifiedActionDock({
+  isLocatingGps,
+  onLocateGps,
+  onRecenterCampus,
+  mapTileStyle,
+  onToggleLayer,
+  gpsToast,
+}: {
+  isLocatingGps: boolean;
+  onLocateGps: () => void;
+  onRecenterCampus: () => void;
+  mapTileStyle: 'osm' | 'voyager';
+  onToggleLayer: () => void;
+  gpsToast: string | null;
+}) {
+  const map = useMap();
+
+  return (
+    <div className="absolute bottom-6 right-3 sm:right-4 z-[1000] flex flex-col items-end gap-2.5 pointer-events-auto select-none">
+      {gpsToast && (
+        <div className="bg-slate-900/95 text-white text-[11px] font-bold px-3.5 py-2 rounded-2xl shadow-2xl border border-blue-400/40 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200 max-w-[260px] text-right">
+          {gpsToast}
+        </div>
+      )}
+
+      {/* 1. Primary Action (ปุ่มหลักที่เด่นที่สุด): Prominent, Large GPS Locate Button */}
+      <button
+        type="button"
+        onClick={onLocateGps}
+        disabled={isLocatingGps}
+        className="group relative flex items-center justify-center gap-2.5 min-h-[48px] px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm shadow-2xl shadow-blue-600/40 border-2 border-blue-300/40 ring-4 ring-blue-500/25 backdrop-blur-md active:scale-95 hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 cursor-pointer"
+        title="ค้นหาตำแหน่ง GPS สดของคุณ (ปุ่มหลัก)"
+        aria-label="ค้นหาตำแหน่ง GPS สดของคุณ"
+      >
+        {isLocatingGps ? (
+          <Loader2 className="w-5 h-5 text-white animate-spin flex-shrink-0" />
+        ) : (
+          <div className="relative flex items-center justify-center flex-shrink-0">
+            <span className="absolute -inset-1 rounded-full bg-amber-400/40 animate-ping opacity-75" />
+            <LocateFixed className="relative w-5 h-5 text-amber-300 group-hover:rotate-45 transition-transform" />
+          </div>
+        )}
+        <span className="tracking-wide">
+          <span className="inline sm:hidden">ตำแหน่ง GPS</span>
+          <span className="hidden sm:inline">ตำแหน่งของฉัน (GPS)</span>
+        </span>
+      </button>
+
+      {/* 2. Secondary Utility Dock: Unified Card containing Layer Toggle, Campus Re-center, and Zoom In/Out */}
+      <div className="flex flex-col items-center bg-white/95 rounded-2xl shadow-xl border border-slate-200/90 backdrop-blur-md overflow-hidden divide-y divide-slate-100">
+        {/* Map Layer Switcher */}
+        <button
+          type="button"
+          onClick={onToggleLayer}
+          className="w-11 h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition cursor-pointer"
+          title={`เปลี่ยนรูปแบบแผนที่ (ปัจจุบัน: ${mapTileStyle === 'osm' ? 'OSM มาตรฐาน' : 'CartoDB สบายตา'})`}
+          aria-label="เปลี่ยนเลเยอร์แผนที่"
+        >
+          <Layers className="w-4 h-4 text-slate-700" />
+        </button>
+
+        {/* Campus Re-center */}
+        <button
+          type="button"
+          onClick={onRecenterCampus}
+          className="w-11 h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition cursor-pointer"
+          title="กลับสู่มุมมอง ม.อุบลฯ (Campus Overview)"
+          aria-label="มุมมอง ม.อุบลฯ"
+        >
+          <Compass className="w-4 h-4 text-blue-900" />
+        </button>
+
+        {/* Zoom In (+) */}
+        <button
+          type="button"
+          onClick={() => map.zoomIn()}
+          className="w-11 h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition font-black text-base cursor-pointer select-none"
+          title="ซูมเข้า (+)"
+          aria-label="ซูมเข้า"
+        >
+          <Plus className="w-4 h-4 text-slate-700" />
+        </button>
+
+        {/* Zoom Out (−) */}
+        <button
+          type="button"
+          onClick={() => map.zoomOut()}
+          className="w-11 h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition font-black text-base cursor-pointer select-none"
+          title="ซูมออก (-)"
+          aria-label="ซูมออก"
+        >
+          <Minus className="w-4 h-4 text-slate-700" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// React Error Boundary for resilient map rendering
+interface MapErrorBoundaryProps {
+  children: React.ReactNode;
+  onRetry: () => void;
+}
+
+interface MapErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class MapErrorBoundary extends React.Component<MapErrorBoundaryProps, MapErrorBoundaryState> {
+  constructor(props: MapErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): MapErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('MapComponent Error Boundary caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <MapErrorState
+          error={this.state.error}
+          errorMessage="ไม่สามารถแสดงผลแผนที่ได้ชั่วคราว กรุณากดปุ่มลองใหม่อีกครั้ง"
+          onRetry={() => {
+            this.setState({ hasError: false, error: null });
+            this.props.onRetry();
+          }}
+        />
+      );
+    }
+    return this.props.children;
+  }
 }
 
 function MarkerClusterGroupLayer({
@@ -884,6 +1040,19 @@ export default function MapComponent({
   const [targetFlyCenter, setTargetFlyCenter] = useState<[number, number] | null>(null);
   const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
 
+  // Map Loading Skeleton & Error Recovery States
+  const [isMapReady, setIsMapReady] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [mapKey, setMapKey] = useState<number>(0);
+  const [mapTileStyle, setMapTileStyle] = useState<'osm' | 'voyager'>('osm');
+
+  const handleRetryMap = useCallback(() => {
+    setMapError(null);
+    setIsMapReady(false);
+    setMapKey((k) => k + 1);
+    setForceFitKey(Date.now());
+  }, []);
+
   // Coordinate Offset Adjustment (Google Maps -> OpenStreetMap alignment)
   const [latOffset, setLatOffset] = useState<number>(() => {
     if (typeof window !== 'undefined') {
@@ -1358,8 +1527,8 @@ export default function MapComponent({
     <div className={`relative w-full h-full flex flex-col overflow-hidden bg-slate-100 ${className}`}>
       
       {/* 1. Google Maps Style Multi-Destination Comparison Box (Floating Card on Top-Left) */}
-      <div className={`absolute top-3 left-3 sm:left-4 w-[calc(100%-110px)] sm:w-88 md:w-[420px] pointer-events-auto transition-all duration-300 ${isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1000]'}`}>
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-200/90 p-4 flex flex-col font-sans transition-all">
+      <div className={`absolute top-3 left-3 sm:left-4 pointer-events-auto transition-all duration-300 ${isComparePanelMinimized ? 'w-auto max-w-[220px]' : 'w-[calc(100%-76px)] sm:w-80 md:w-96 max-w-[420px]'} ${isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1000]'}`}>
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-200/90 p-3.5 sm:p-4 flex flex-col font-sans transition-all">
           
           {/* 1. ส่วนหัว */}
           <div className={`flex justify-between items-center select-none ${isComparePanelMinimized ? '' : 'mb-3 pb-2 border-b border-slate-100'}`}>
@@ -1915,29 +2084,22 @@ export default function MapComponent({
         )}
       </div>
 
-      {/* 3. Floating Live GPS Button on Bottom Right */}
-      <div className="absolute bottom-24 right-3 sm:right-4 z-[1000] flex flex-col items-end gap-2 pointer-events-auto">
-        <button
-          type="button"
-          onClick={handleSetOriginToGps}
-          disabled={isLocatingGps}
-          className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-white/95 text-blue-900 font-extrabold text-xs shadow-xl border border-slate-200/90 backdrop-blur-md hover:bg-blue-50 active:scale-95 transition disabled:opacity-50 cursor-pointer"
-          title="ค้นหาตำแหน่ง GPS สดของคุณ"
-        >
-          {isLocatingGps ? (
-            <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-          ) : (
-            <LocateFixed className="w-4 h-4 text-blue-600 animate-pulse" />
-          )}
-          <span className="hidden sm:inline">ตำแหน่งของฉัน (GPS)</span>
-        </button>
+      {/* Map Loading Skeleton: Displayed while Leaflet and tiles are mounting */}
+      {!isMapReady && !mapError && (
+        <div className="absolute inset-0 z-[1500] pointer-events-none transition-opacity duration-300">
+          <MapSkeleton message="กำลังเตรียมแผนที่ ม.อุบลฯ..." />
+        </div>
+      )}
 
-        {gpsToast && (
-          <div className="bg-slate-900/95 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl shadow-2xl border border-blue-400/40 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200">
-            {gpsToast}
-          </div>
-        )}
-      </div>
+      {/* Explicit Map Error State: Triggered on network failure or tile load error */}
+      {mapError && (
+        <div className="absolute inset-0 z-[2000] bg-white">
+          <MapErrorState
+            errorMessage={mapError}
+            onRetry={handleRetryMap}
+          />
+        </div>
+      )}
 
       {/* Dedicated GPS Permission Guidance Modal */}
       <GpsPermissionModal
@@ -1946,25 +2108,71 @@ export default function MapComponent({
         onRetry={handleRequestLiveGps}
       />
 
-      {/* Main Map Container with CartoDB Positron */}
-      <MapContainer
-        center={originPoint.mode !== 'gps' && originPoint.mode !== 'custom' 
-          ? adjustLatLng(originPoint.lat, originPoint.lng)
-          : [originPoint.lat, originPoint.lng]}
-        zoom={initialZoom}
-        zoomControl={false}
-        attributionControl={false}
-        scrollWheelZoom={true}
-        style={{ width: '100%', height: '100%' }}
-        className="w-full h-full flex-1 [&_.leaflet-control-attribution]:hidden"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maxZoom={19}
-        />
+      {/* Main Map Container with Error Boundary */}
+      <MapErrorBoundary onRetry={handleRetryMap}>
+        <MapContainer
+          key={mapKey}
+          center={originPoint.mode !== 'gps' && originPoint.mode !== 'custom' 
+            ? adjustLatLng(originPoint.lat, originPoint.lng)
+            : [originPoint.lat, originPoint.lng]}
+          zoom={initialZoom}
+          zoomControl={false}
+          attributionControl={false}
+          scrollWheelZoom={true}
+          style={{ width: '100%', height: '100%' }}
+          className="w-full h-full flex-1 [&_.leaflet-control-attribution]:hidden"
+        >
+          {/* Dynamic TileLayer based on selected map layer style */}
+          {mapTileStyle === 'osm' ? (
+            <TileLayer
+              key="osm-tile"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              maxZoom={19}
+              eventHandlers={{
+                tileerror: (err) => {
+                  console.warn('Map Tile Loading Error (OSM):', err);
+                },
+              }}
+            />
+          ) : (
+            <TileLayer
+              key="voyager-tile"
+              attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+              maxZoom={19}
+              eventHandlers={{
+                tileerror: (err) => {
+                  console.warn('Map Tile Loading Error (Carto):', err);
+                },
+              }}
+            />
+          )}
 
-        <ZoomControl position="bottomright" />
+          {/* Map Readiness Listener to transition out Loading Skeleton */}
+          <MapReadyHandler onReady={() => setIsMapReady(true)} />
+
+          {/* Unified Right-Side Action Dock (Primary GPS, Layer Switcher, Campus Re-center, and Clean Zoom Controls) */}
+          <UnifiedActionDock
+            isLocatingGps={isLocatingGps}
+            onLocateGps={handleSetOriginToGps}
+            onRecenterCampus={() => {
+              const gate = OFFICIAL_CAMPUS_GATES[0];
+              const [gLat, gLng] = adjustLatLng(gate.lat, gate.lng);
+              setTargetFlyCenter([gLat, gLng]);
+            }}
+            mapTileStyle={mapTileStyle}
+            onToggleLayer={() => {
+              setMapTileStyle((prev) => {
+                const nextStyle = prev === 'osm' ? 'voyager' : 'osm';
+                setGpsToast(nextStyle === 'voyager' ? '🗺️ เปลี่ยนเป็นแผนที่สีสบายตา (CartoDB)' : '🗺️ เปลี่ยนเป็นแผนที่มาตรฐาน (OSM)');
+                setTimeout(() => setGpsToast(null), 3000);
+                return nextStyle;
+              });
+            }}
+            gpsToast={gpsToast}
+          />
+
 
         {/* Map Center & Pan Handler */}
         <MapController targetCenter={targetFlyCenter} />
@@ -2067,6 +2275,7 @@ export default function MapComponent({
           adjustLatLng={adjustLatLng}
         />
       </MapContainer>
+      </MapErrorBoundary>
 
       {/* Google Maps Style Route Info Card (Floating Bottom-Left) */}
       {!selectedPlace && destinations.length > 0 && destinationStats[destinations[0].id] && (
@@ -2099,7 +2308,7 @@ export default function MapComponent({
       {/* Detail Card Overlay */}
       {selectedPlace && (
         <div 
-          className="absolute bottom-3 left-3 right-3 sm:left-4 sm:right-auto sm:w-[380px] z-[1000] bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl rounded-3xl pt-4 px-4 pb-4 animate-in slide-in-from-bottom-4 duration-300 max-h-[calc(100dvh-8rem)] overflow-y-auto no-scrollbar"
+          className="absolute bottom-3 left-3 right-16 sm:left-4 sm:right-auto sm:w-[380px] z-[1000] bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl rounded-3xl pt-4 px-4 pb-4 animate-in slide-in-from-bottom-4 duration-300 max-h-[calc(100dvh-8rem)] overflow-y-auto no-scrollbar"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
         >
           {selectedPlace.type === 'dorm' ? (

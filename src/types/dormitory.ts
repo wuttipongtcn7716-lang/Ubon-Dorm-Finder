@@ -69,7 +69,7 @@ export interface FilterState {
   searchTerm: string;
   zone: string;
   maxPrice: number;
-  genderType: string; // 'all' | 'หอพักชาย' | 'หอพักหญิง' | 'หอพักรวม'
+  genderType: string; // 'all' | 'female' | 'male' | 'mixed'
   roomType: string; // 'all' | 'air' | 'fan'
   onlyPetAllowed: boolean;
   requireParking: boolean;

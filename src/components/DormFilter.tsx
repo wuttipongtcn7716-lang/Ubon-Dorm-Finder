@@ -240,14 +240,15 @@ export default function DormFilter({
               <span>ประเภทผู้พักอาศัย:</span>
             </label>
             <select
+              id="genderFilter"
               value={filters.genderType}
               onChange={(e) => updateFilter('genderType', e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-semibold text-slate-800"
             >
-              <option value="all">ทั้งหมด (ชาย, หญิง, รวม)</option>
-              <option value="หอพักหญิง">หอพักหญิงเท่านั้น 👩</option>
-              <option value="หอพักชาย">หอพักชาย 👨</option>
-              <option value="หอพักรวม">หอพักรวม 👥</option>
+              <option value="all">ทั้งหมด</option>
+              <option value="female">หอพักหญิง</option>
+              <option value="male">หอพักชาย</option>
+              <option value="mixed">หอพักรวม</option>
             </select>
           </div>
 

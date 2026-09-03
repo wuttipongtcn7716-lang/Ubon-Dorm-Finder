@@ -48,7 +48,18 @@ export async function GET(request: Request) {
   }
 
   if (genderType && genderType !== 'all') {
-    filtered = filtered.filter(d => (d.genderType || '').includes(genderType));
+    filtered = filtered.filter(d => {
+      const raw = (d.genderType || '').trim();
+      let mapped = 'mixed';
+      if (raw === 'หอหญิง' || raw === 'หอพักหญิง' || raw === 'female') {
+        mapped = 'female';
+      } else if (raw === 'หอชาย' || raw === 'หอพักชาย' || raw === 'male') {
+        mapped = 'male';
+      } else if (raw === 'หอพักรวม' || raw === 'mixed') {
+        mapped = 'mixed';
+      }
+      return mapped === genderType;
+    });
   }
 
   if (maxPrice) {

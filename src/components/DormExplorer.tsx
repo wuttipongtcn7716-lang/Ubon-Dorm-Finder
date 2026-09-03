@@ -84,10 +84,16 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
       }
 
       if (filters.genderType !== 'all') {
-        const gType = d.genderType || '';
-        if (filters.genderType === 'female' && !gType.includes('หญิง') && !gType.includes('หอหญิง')) return false;
-        if (filters.genderType === 'male' && !gType.includes('ชาย') && !gType.includes('หอชาย')) return false;
-        if (filters.genderType === 'mixed' && !gType.includes('รวม') && !gType.includes('หอพักรวม')) return false;
+        const rawType = (d.genderType || '').trim();
+        let mappedGender = 'mixed';
+        if (rawType === 'หอหญิง' || rawType === 'หอพักหญิง' || rawType === 'female') {
+          mappedGender = 'female';
+        } else if (rawType === 'หอชาย' || rawType === 'หอพักชาย' || rawType === 'male') {
+          mappedGender = 'male';
+        } else if (rawType === 'หอพักรวม' || rawType === 'mixed') {
+          mappedGender = 'mixed';
+        }
+        if (mappedGender !== filters.genderType) return false;
       }
 
       if (filters.roomType !== 'all') {

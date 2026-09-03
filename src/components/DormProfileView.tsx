@@ -234,6 +234,10 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
               </div>
             </div>
           </div>
+
+          <p className="text-sm text-gray-500 italic mt-4">
+            หมายเหตุ: ข้อมูลนี้เป็นข้อมูลพื้นฐานเพื่อประกอบการตัดสินใจ โปรดติดต่อสอบถามสถานะห้องว่างและราคาปัจจุบันกับทางหอพักโดยตรง
+          </p>
         </div>
 
         {/* Amenities Card */}
@@ -468,10 +472,6 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
               </div>
             )}
           </div>
-
-          <p className="text-sm text-gray-500 italic mt-2">
-            หมายเหตุ: ข้อมูลนี้เป็นข้อมูลพื้นฐานเพื่อประกอบการตัดสินใจ โปรดติดต่อสอบถามสถานะห้องว่างและราคาปัจจุบันกับทางหอพักโดยตรง
-          </p>
         </div>
       </main>
 

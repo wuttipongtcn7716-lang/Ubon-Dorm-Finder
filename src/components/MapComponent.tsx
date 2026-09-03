@@ -21,6 +21,7 @@ import {
 } from '@/data/landmarks';
 import Link from 'next/link';
 import { LAT_OFFSET as DEFAULT_LAT_OFFSET, LNG_OFFSET as DEFAULT_LNG_OFFSET } from '@/config/mapConfig';
+import GpsPermissionModal from './GpsPermissionModal';
 
 // Dynamically require leaflet.markercluster only in browser
 if (typeof window !== 'undefined') {
@@ -821,6 +822,7 @@ export default function MapComponent({
   const [isLocatingGps, setIsLocatingGps] = useState(false);
   const [gpsToast, setGpsToast] = useState<string | null>(null);
   const [targetFlyCenter, setTargetFlyCenter] = useState<[number, number] | null>(null);
+  const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
 
   // Coordinate Offset Adjustment (Google Maps -> OpenStreetMap alignment)
   const [latOffset, setLatOffset] = useState<number>(() => {
@@ -1056,7 +1058,8 @@ export default function MapComponent({
       (err) => {
         setIsLocatingGps(false);
         if (err.code === err.PERMISSION_DENIED) {
-          setGpsToast('คุณปฏิเสธสิทธิ์ Location กรุณาเปิดอนุญาตในการตั้งค่าเบราว์เซอร์');
+          setGpsToast('คุณปิดกั้นการเข้าถึงตำแหน่ง กรุณาเปิดสิทธิ์ที่การตั้งค่าเบราว์เซอร์ (ไอคอนรูปแม่กุญแจบนแถบ URL)');
+          setIsPermissionModalOpen(true);
         } else if (err.code === err.TIMEOUT) {
           setGpsToast('ค้นหาพิกัด GPS เกินเวลา (Timeout 8 วินาที) กรุณากดลองใหม่');
         } else {
@@ -1818,6 +1821,13 @@ export default function MapComponent({
           </div>
         )}
       </div>
+
+      {/* Dedicated GPS Permission Guidance Modal */}
+      <GpsPermissionModal
+        isOpen={isPermissionModalOpen}
+        onClose={() => setIsPermissionModalOpen(false)}
+        onRetry={handleRequestLiveGps}
+      />
 
       {/* Main Map Container with CartoDB Positron */}
       <MapContainer

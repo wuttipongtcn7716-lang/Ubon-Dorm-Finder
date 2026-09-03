@@ -5,10 +5,11 @@ import dynamic from 'next/dynamic';
 import { 
   X, Navigation, Car, Bike,
   AlertCircle, Loader2, ShieldCheck,
-  MapPin, Info, RotateCcw
+  MapPin, Info, RotateCcw, Lock
 } from 'lucide-react';
 import { Dormitory } from '@/types/dormitory';
 import { MapComponentProps } from './MapComponent';
+import GpsPermissionModal from './GpsPermissionModal';
 
 // Dynamically // Import Leaflet Map to ensure 100% SSR safety
 const MapComponent = dynamic<MapComponentProps>(
@@ -37,6 +38,7 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
   const [gpsErrorMessage, setGpsErrorMessage] = useState<string | null>(null);
   const [gpsTimestamp, setGpsTimestamp] = useState<Date | null>(null);
   const [dismissError, setDismissError] = useState(false);
+  const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [travelMode, setTravelMode] = useState<'driving' | 'motorcycle'>('driving');
   const [distanceKm, setDistanceKm] = useState<number | null>(null);
@@ -118,7 +120,8 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
 
           if (err.code === err.PERMISSION_DENIED) {
             setGpsErrorCode('denied');
-            setGpsErrorMessage('คุณได้ปฏิเสธสิทธิ์การเข้าถึงตำแหน่ง (Permission Denied) กรุณาเปิดสิทธิ์ Location ในเบราว์เซอร์');
+            setGpsErrorMessage('คุณปิดกั้นการเข้าถึงตำแหน่ง กรุณาเปิดสิทธิ์การใช้งาน Location ที่การตั้งค่าเบราว์เซอร์ (ไอคอนรูปแม่กุญแจบนแถบ URL)');
+            setIsPermissionModalOpen(true);
           } else if (err.code === err.TIMEOUT) {
             setGpsErrorCode('timeout');
             setGpsErrorMessage('การค้นหาพิกัด GPS ใช้เวลานานเกินกำหนด (Timeout 8 วินาที) กรุณากดปุ่มลองใหม่อีกครั้ง');
@@ -322,22 +325,32 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
             </div>
           )}
 
-          {/* GPS Error Alert Card with Retry Button */}
+          {/* GPS Error Alert Card with Retry Button & Guidance */}
           {gpsStatus === 'error' && !dismissError && (
             <div className="absolute top-4 inset-x-4 sm:inset-x-auto sm:left-4 sm:w-96 z-30 bg-white/95 backdrop-blur-md rounded-2xl border border-rose-200 p-4 shadow-xl space-y-3 animate-in fade-in slide-in-from-top-2">
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <AlertCircle className="w-5 h-5" />
+                  {gpsErrorCode === 'denied' ? <Lock className="w-4 h-4 text-rose-600" /> : <AlertCircle className="w-5 h-5 text-rose-600" />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-                    {gpsErrorCode === 'denied' ? 'ไม่ได้รับสิทธิ์เข้าถึงพิกัด GPS' : 'ไม่สามารถระบุตำแหน่ง GPS ได้'}
+                    {gpsErrorCode === 'denied' ? 'คุณปิดกั้นการเข้าถึงตำแหน่ง' : 'ไม่สามารถระบุตำแหน่ง GPS ได้'}
                   </h4>
                   <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed mt-1">
                     {gpsErrorMessage}
                   </p>
                 </div>
               </div>
+
+              {gpsErrorCode === 'denied' && (
+                <button
+                  onClick={() => setIsPermissionModalOpen(true)}
+                  className="w-full py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs active:scale-98"
+                >
+                  <Lock className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
+                  <span>ดูวิธีเปิดสิทธิ์ที่ไอคอนแม่กุญแจ 🔒</span>
+                </button>
+              )}
 
               <div className="flex items-center gap-2 pt-1">
                 <button
@@ -356,6 +369,13 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
               </div>
             </div>
           )}
+
+          {/* Dedicated GPS Permission Guidance Modal */}
+          <GpsPermissionModal
+            isOpen={isPermissionModalOpen}
+            onClose={() => setIsPermissionModalOpen(false)}
+            onRetry={requestGPS}
+          />
 
           {/* Toast Notification for GPS Feedback */}
           {toastMessage && (

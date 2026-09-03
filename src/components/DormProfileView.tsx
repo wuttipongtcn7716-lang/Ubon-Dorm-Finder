@@ -188,9 +188,9 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
                 </div>
                 <div>
                   <h4 className="font-bold text-sm">ห้องพัดลม</h4>
-                  <p className="text-xs text-slate-500">
-                    {fanPrice !== null ? 'มีห้องว่างพร้อมอยู่' : 'ไม่มีห้องประเภทนี้'}
-                  </p>
+                  {fanPrice === null && (
+                    <p className="text-xs text-slate-400">ไม่มีห้องประเภทนี้</p>
+                  )}
                 </div>
               </div>
               <div className="text-right">
@@ -217,9 +217,9 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
                 </div>
                 <div>
                   <h4 className="font-bold text-sm">ห้องปรับอากาศ (แอร์)</h4>
-                  <p className="text-xs text-slate-500">
-                    {airPrice !== null ? 'มีห้องว่างพร้อมอยู่' : 'ไม่มีห้องประเภทนี้'}
-                  </p>
+                  {airPrice === null && (
+                    <p className="text-xs text-slate-400">ไม่มีห้องประเภทนี้</p>
+                  )}
                 </div>
               </div>
               <div className="text-right">
@@ -468,6 +468,10 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
               </div>
             )}
           </div>
+
+          <p className="text-sm text-gray-500 italic mt-2">
+            หมายเหตุ: ข้อมูลนี้เป็นข้อมูลพื้นฐานเพื่อประกอบการตัดสินใจ โปรดติดต่อสอบถามสถานะห้องว่างและราคาปัจจุบันกับทางหอพักโดยตรง
+          </p>
         </div>
       </main>
 

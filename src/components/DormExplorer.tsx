@@ -174,9 +174,9 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
       {/* Result Count Status Bar */}
       <div className="flex items-center justify-between pt-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-black text-slate-800">
+          <h2 className="text-sm font-black text-slate-800">
             พบหอพักทั้งหมด {filteredDorms.length} แห่ง
-          </span>
+          </h2>
           {filters.onlySavedOnly && (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-bold">
               <Heart className="w-3 h-3 fill-rose-600 text-rose-600" /> ที่บันทึกไว้

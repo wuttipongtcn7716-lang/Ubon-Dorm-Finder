@@ -101,6 +101,17 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
   const [isCriteriaOpen, setIsCriteriaOpen] = useState(false);
   const [activeCriterionId, setActiveCriterionId] = useState<string | null>(null);
   const { isFavorite, toggleFavorite } = useFavorites();
+  const [saveStatusMessage, setSaveStatusMessage] = useState('');
+
+  const handleToggleFavorite = () => {
+    const willBeSaved = !isFavorite(dorm.id);
+    toggleFavorite(dorm.id);
+    if (willBeSaved) {
+      setSaveStatusMessage(`บันทึกแล้ว: บันทึก ${dorm.name} ลงในรายการโปรดเรียบร้อยแล้ว`);
+    } else {
+      setSaveStatusMessage(`ยกเลิกแล้ว: ยกเลิกการบันทึก ${dorm.name}`);
+    }
+  };
 
   const handleShare = () => {
     if (typeof window !== 'undefined') {
@@ -186,6 +197,16 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-36 sm:pb-40">
+      {/* Accessibility M-01 Screen Reader Live Status Announcer */}
+      <div 
+        aria-live="polite" 
+        aria-atomic="true" 
+        className="sr-only" 
+        id="save-status-announcer"
+      >
+        {saveStatusMessage}
+      </div>
+
       {/* Top Header Action Bar (Glassmorphism Style) */}
       <div className="sticky top-0 z-40 bg-[#0a1931]/75 backdrop-blur-xl border-b border-white/10 px-4 py-2.5 sm:py-3 text-white shadow-lg shadow-black/10 transition-all duration-300">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
@@ -201,11 +222,10 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
 
           {/* Right Action Group: Favorite & Share */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Favorite Toggle */}
             {/* Favorite / Bookmark Button */}
             <button
               type="button"
-              onClick={() => toggleFavorite(dorm.id)}
+              onClick={handleToggleFavorite}
               aria-pressed={isFavorite(dorm.id)}
               aria-label={isFavorite(dorm.id) ? `ยกเลิกบันทึกหอพัก ${dorm.name}` : `บันทึกหอพัก ${dorm.name}`}
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all duration-200 border backdrop-blur-md shadow-sm active:scale-95 whitespace-nowrap ${

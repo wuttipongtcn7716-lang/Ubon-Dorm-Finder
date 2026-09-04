@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Dormitory, PriceStructure } from '@/types/dormitory';
 import NavigationModal from '@/components/NavigationModal';
+import ShareButton from '@/components/ShareButton';
 import { getNearbyLandmarks } from '@/data/landmarks';
 import { useFavorites } from '@/hooks/useFavorites';
 
@@ -95,7 +96,6 @@ const WHITE_DORM_CRITERIA = [
 
 export default function DormProfileView({ dorm }: DormProfileViewProps) {
   const [isNavOpen, setIsNavOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   // Default state: Collapsed (hidden) by default
   const [isCriteriaOpen, setIsCriteriaOpen] = useState(false);
@@ -111,14 +111,6 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
       setSaveStatusMessage(`บันทึกแล้ว: บันทึก ${dorm.name} ลงในรายการโปรดเรียบร้อยแล้ว`);
     } else {
       setSaveStatusMessage(`ยกเลิกแล้ว: ยกเลิกการบันทึก ${dorm.name}`);
-    }
-  };
-
-  const handleShare = () => {
-    if (typeof window !== 'undefined') {
-      navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -239,14 +231,13 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
               <span>{isFavorite(dorm.id) ? 'บันทึกแล้ว' : 'บันทึก'}</span>
             </button>
 
-            {/* Share Button */}
-            <button
-              onClick={handleShare}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold text-blue-100 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 transition-all duration-200 active:scale-95 whitespace-nowrap shadow-sm"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>{copied ? 'คัดลอกแล้ว!' : 'แชร์'}</span>
-            </button>
+            {/* Share Button with Full Accessibility M-06 Standards */}
+            <ShareButton
+              title={dorm.name}
+              dormName={dorm.name}
+              text={`ดูข้อมูลและแผนที่หอพัก ${dorm.name} (${dorm.zone}) มหาวิทยาลัยอุบลราชธานี`}
+              variant="glass"
+            />
           </div>
         </div>
       </div>

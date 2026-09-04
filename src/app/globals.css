@@ -50,12 +50,13 @@ body {
 
 @media (max-width: 640px) {
   .map-route-card {
-    bottom: 56px;
-    left: 10px;
+    position: relative;
+    bottom: auto;
+    left: auto;
     padding: 6px 10px;
     border-radius: 12px;
     gap: 8px;
-    max-width: calc(100% - 64px);
+    max-width: calc(100% - 24px);
   }
 }
 

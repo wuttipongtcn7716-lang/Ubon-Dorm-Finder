@@ -11,7 +11,7 @@ import {
   Crosshair, Check, X, Navigation, 
   Car, Bike, MapPin, Compass, Circle, ArrowUpDown,
   ChevronRight, ChevronDown, ShieldCheck, Plus,
-  LocateFixed, Flag, Layers, RotateCcw, Building,
+  LocateFixed, Flag, Layers, RotateCcw, Building, Landmark,
   Search, SlidersHorizontal, Loader2, Info, Edit3,
   ChevronUp, Minus
 } from 'lucide-react';
@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { LAT_OFFSET as DEFAULT_LAT_OFFSET, LNG_OFFSET as DEFAULT_LNG_OFFSET } from '@/config/mapConfig';
 import GpsPermissionModal from './GpsPermissionModal';
 import MapSkeleton from './MapSkeleton';
+import ComparisonPanelSkeleton from './ComparisonPanelSkeleton';
 import MapErrorState from './MapErrorState';
 
 // Dynamically require leaflet.markercluster only in browser
@@ -355,7 +356,9 @@ function MapController({
   const map = useMap();
   useEffect(() => {
     if (targetCenter && !isNaN(targetCenter[0]) && !isNaN(targetCenter[1])) {
-      map.flyTo(targetCenter, zoom || 16, { animate: true, duration: 1.2 });
+      const currentZoom = map.getZoom();
+      const targetZoom = zoom !== undefined ? zoom : (currentZoom > 0 ? currentZoom : 16);
+      map.flyTo(targetCenter, targetZoom, { animate: true, duration: 1.2 });
     }
   }, [targetCenter, zoom, map]);
   return null;
@@ -381,6 +384,8 @@ function UnifiedActionDock({
   onRecenterCampus,
   mapTileStyle,
   onToggleLayer,
+  showPoiMarkers = true,
+  onTogglePoiMarkers,
   gpsToast,
 }: {
   isLocatingGps: boolean;
@@ -388,6 +393,8 @@ function UnifiedActionDock({
   onRecenterCampus: () => void;
   mapTileStyle: 'osm' | 'voyager';
   onToggleLayer: () => void;
+  showPoiMarkers?: boolean;
+  onTogglePoiMarkers?: () => void;
   gpsToast: string | null;
 }) {
   const map = useMap();
@@ -423,7 +430,7 @@ function UnifiedActionDock({
         </span>
       </button>
 
-      {/* 2. Secondary Utility Dock: Unified Card containing Layer Toggle, Campus Re-center, and Zoom In/Out */}
+      {/* 2. Secondary Utility Dock: Unified Card containing Layer Toggle, POI Toggle, Campus Re-center, and Zoom In/Out */}
       <div className="flex flex-col items-center bg-white/95 rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl border border-slate-200/90 backdrop-blur-md overflow-hidden divide-y divide-slate-100">
         {/* Map Layer Switcher */}
         <button
@@ -435,6 +442,23 @@ function UnifiedActionDock({
         >
           <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700" />
         </button>
+
+        {/* POI / Building Labels & Markers Toggle */}
+        {onTogglePoiMarkers && (
+          <button
+            type="button"
+            onClick={onTogglePoiMarkers}
+            className={`w-9 h-8 sm:w-11 sm:h-10 flex items-center justify-center transition cursor-pointer ${
+              showPoiMarkers 
+                ? 'text-indigo-600 bg-indigo-50/70 hover:bg-indigo-100 font-bold' 
+                : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+            }`}
+            title={showPoiMarkers ? "ซ่อนหมุดและป้ายชื่ออาคารรอบ ม. (เพื่อดูเส้นทางชัดเจน)" : "แสดงหมุดและป้ายชื่ออาคารรอบ ม."}
+            aria-label="เปิด-ปิดการแสดงหมุดอาคาร"
+          >
+            <Landmark className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </button>
+        )}
 
         {/* Campus Re-center */}
         <button
@@ -705,6 +729,8 @@ function MultiRoadRoutingLayer({
   const [legs, setLegs] = useState<MultiColorLeg[]>([]);
   const lastFitKeyRef = useRef<string | null>(null);
   const lastDestinationsKeyRef = useRef<string>('');
+  const hasInitialFitRef = useRef<boolean>(false);
+  const lastForceFitKeyRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!map || destinations.length === 0) {
@@ -895,8 +921,12 @@ function MultiRoadRoutingLayer({
         const fitKey = `${destKeys}-${forceFitKey || 0}`;
 
         const isInteracting = (map.dragging as any)?.moving() || (map as any)._animatingZoom;
+        const forceFitTriggered = Boolean(forceFitKey && forceFitKey !== lastForceFitKeyRef.current);
+        const shouldFit = !hasInitialFitRef.current || destsChanged || forceFitTriggered;
 
-        if (allCoords.length > 1 && lastFitKeyRef.current !== fitKey && !isInteracting) {
+        if (allCoords.length > 1 && shouldFit && lastFitKeyRef.current !== fitKey && !isInteracting) {
+          hasInitialFitRef.current = true;
+          if (forceFitKey) lastForceFitKeyRef.current = forceFitKey;
           lastFitKeyRef.current = fitKey;
           const bounds = L.latLngBounds(allCoords);
           map.fitBounds(bounds, { padding: [70, 70], maxZoom: 17 });
@@ -1002,6 +1032,7 @@ export default function MapComponent({
   userLocation,
   showRoute = false,
   travelMode = 'driving',
+  showLandmarks = true,
   onRouteCalculated,
   onSelectDorm,
   onNavigate,
@@ -1111,6 +1142,9 @@ export default function MapComponent({
     };
   });
 
+  // Prevent auto-zoom bug: flag to track whether initial zoom/pan has already occurred
+  const hasInitialZoomedRef = useRef<boolean>(false);
+
   // Auto-update GPS origin when userLocation prop or GPS arrives
   useEffect(() => {
     if (userLocation && !isNaN(userLocation.lat) && !isNaN(userLocation.lng)) {
@@ -1128,7 +1162,12 @@ export default function MapComponent({
         lng: uLng,
         label: 'ตำแหน่ง GPS ของคุณ',
       });
-      setTargetFlyCenter([uLat, uLng]);
+      // Only flyTo/center the camera on the very first time GPS arrives
+      // Subsequent GPS watch updates move the marker smoothly without hijacking the user's pan/zoom
+      if (!hasInitialZoomedRef.current) {
+        hasInitialZoomedRef.current = true;
+        setTargetFlyCenter([uLat, uLng]);
+      }
     }
   }, [userLocation]);
 
@@ -1277,6 +1316,27 @@ export default function MapComponent({
   const [activeCategory, setActiveCategory] = useState<LandmarkGroup>('none');
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // POI / Building labels & markers toggle state (Auto-hides on route active)
+  const [showPoiMarkers, setShowPoiMarkers] = useState<boolean>(showLandmarks !== undefined ? showLandmarks : true);
+  const userManuallyToggledPoiRef = useRef<boolean>(false);
+
+  // Auto-hide building labels/markers when entering comparison/route mode to keep map clear
+  useEffect(() => {
+    if (destinations.length > 0 && !userManuallyToggledPoiRef.current) {
+      setShowPoiMarkers(false);
+    }
+  }, [destinations.length]);
+
+  const handleTogglePoiMarkers = useCallback(() => {
+    userManuallyToggledPoiRef.current = true;
+    setShowPoiMarkers((prev) => {
+      const next = !prev;
+      setGpsToast(next ? '🏛️ แสดงหมุดอาคารและสถานที่รอบ ม.' : '🏛️ ซ่อนหมุดอาคารแล้ว (เห็นเส้นทางชัดเจน)');
+      setTimeout(() => setGpsToast(null), 3000);
+      return next;
+    });
+  }, []);
 
   const [selectedPlace, setSelectedPlace] = useState<SelectedPlaceType | null>(null);
 
@@ -1447,13 +1507,14 @@ export default function MapComponent({
   };
 
   const visibleLandmarks = useMemo(() => {
+    if (!showPoiMarkers) return [];
     if (activeCategory === 'none') return [];
     if (activeCategory === 'all') return landmarksData;
     return landmarksData.filter((lm) => {
       const meta = getLandmarkMeta(lm.category, lm.name);
       return meta.group === activeCategory || lm.category === activeCategory;
     });
-  }, [activeCategory]);
+  }, [activeCategory, showPoiMarkers]);
 
   const handleSelectPlace = useCallback((place: SelectedPlaceType) => {
     setSelectedPlace(place);
@@ -1504,6 +1565,7 @@ export default function MapComponent({
   }, [destinations, vehicleType, onRouteCalculated]);
 
   const activeCategoryMeta = MAIN_CATEGORIES.find((c) => c.id === activeCategory) || MAIN_CATEGORIES[0];
+  const isRouteCalculating = destinations.length > 0 && Object.keys(destinationStats).length === 0;
 
   const availablePoisToAdd = useMemo(() => {
     const currentIds = new Set(destinations.map((d) => d.id));
@@ -1527,32 +1589,69 @@ export default function MapComponent({
   }, [dorms, originSearchTerm]);
 
   return (
-    <div className={`relative w-full h-full flex flex-col overflow-hidden bg-slate-100 ${className}`}>
+    <div className={`relative w-full h-full flex flex-col overflow-hidden bg-gray-100 ${className}`}>
       
-      {/* 1. Multi-Destination Comparison Box: Bottom Sheet on Mobile, Floating Card on Desktop */}
-      <div 
-        className={`pointer-events-auto transition-all duration-300 ${
-          isComparePanelMinimized 
-            ? 'max-md:fixed max-md:bottom-3 max-md:left-3 max-md:w-auto max-md:max-w-[220px] sm:absolute sm:top-3 sm:left-4 sm:bottom-auto sm:w-auto sm:max-w-[220px]' 
-            : 'max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:w-full sm:absolute sm:top-3 sm:left-4 sm:bottom-auto sm:right-auto sm:w-80 md:w-96 sm:max-w-[420px]'
-        } ${isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1050]'}`}
-      >
+      {/* 1. Mobile Vertical Overlay Stack (Route Info Card + Comparison Box with gap-2) */}
+      <div className="max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:flex max-md:flex-col max-md:gap-2 max-md:items-start max-md:z-[1050] max-md:pointer-events-none sm:contents">
+        
+        {/* A. Google Maps Style Route Info Card (Top item in mobile vertical stack, Floating Bottom-Left on Desktop) */}
+        {!selectedPlace && destinations.length > 0 && destinationStats[destinations[0].id] && (
+          <div 
+            id="route-info-card" 
+            className="pointer-events-auto max-md:relative max-md:bottom-auto max-md:left-auto max-md:ml-3 max-md:mb-0 map-route-card animate-in fade-in slide-in-from-bottom-2 duration-200"
+          >
+            <div className="route-icon-box">
+              {vehicleType === 'driving' ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#475569">
+                  <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
+                  <circle cx="7.5" cy="14.5" r="1.5" fill="#475569"/>
+                  <circle cx="16.5" cy="14.5" r="1.5" fill="#475569"/>
+                </svg>
+              ) : (
+                <Bike className="w-5 h-5 text-slate-600" />
+              )}
+            </div>
+            <div className="route-details">
+              <div id="route-time" className="route-time">
+                {vehicleType === 'motorcycle' 
+                  ? Math.max(1, Math.round(destinationStats[destinations[0].id].baseDurationMins * 0.85))
+                  : destinationStats[destinations[0].id].baseDurationMins
+                } นาที
+              </div>
+              <div id="route-distance" className="route-distance">
+                {destinationStats[destinations[0].id].distanceKm} กม. ({destinations[0].name})
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* B. Multi-Destination Comparison Box (Bottom item in mobile vertical stack, Floating Card on Top-Left on Desktop) */}
         <div 
-          className={`bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl flex flex-col font-sans transition-all ${
-            isComparePanelMinimized
-              ? 'rounded-2xl p-2.5 sm:p-3 shadow-lg'
-              : 'max-md:rounded-t-3xl max-md:rounded-b-none max-md:border-t max-md:border-x-0 max-md:border-b-0 max-md:max-h-[75vh] max-md:overflow-y-auto p-3.5 sm:rounded-3xl sm:p-4 sm:max-h-none animate-bottom-sheet'
-          } no-scrollbar`}
-          style={!isComparePanelMinimized ? { paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' } : undefined}
+          className={`pointer-events-auto transition-all duration-300 ${
+            isComparePanelMinimized 
+              ? 'max-md:relative max-md:bottom-auto max-md:left-auto max-md:ml-3 max-md:mb-3 max-md:w-auto max-md:max-w-[220px] sm:absolute sm:top-3 sm:left-4 sm:bottom-auto sm:w-auto sm:max-w-[220px]' 
+              : 'max-md:relative max-md:bottom-auto max-md:left-auto max-md:w-full sm:absolute sm:top-3 sm:left-4 sm:bottom-auto sm:right-auto sm:w-80 md:w-96 sm:max-w-[420px]'
+          } ${isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1050]'}`}
         >
-          {/* Mobile Bottom Sheet Grab Handle */}
-          {!isComparePanelMinimized && (
+          {isRouteCalculating && !isComparePanelMinimized ? (
+            <ComparisonPanelSkeleton className="max-md:rounded-t-3xl max-md:rounded-b-none" />
+          ) : (
             <div 
-              onClick={() => setIsComparePanelMinimized(true)}
-              className="w-12 h-1.5 bg-slate-300 hover:bg-slate-400 rounded-full mx-auto mb-2 md:hidden flex-shrink-0 cursor-pointer transition-colors"
-              title="แตะเพื่อย่อแผงเปรียบเทียบ"
-            />
-          )}
+              className={`bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl flex flex-col font-sans transition-all ${
+                isComparePanelMinimized
+                  ? 'rounded-2xl p-2.5 sm:p-3 shadow-lg'
+                  : 'max-md:rounded-t-3xl max-md:rounded-b-none max-md:border-t max-md:border-x-0 max-md:border-b-0 max-md:max-h-[75vh] max-md:overflow-y-auto p-3.5 sm:rounded-3xl sm:p-4 sm:max-h-none animate-bottom-sheet'
+              } no-scrollbar`}
+              style={!isComparePanelMinimized ? { paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' } : undefined}
+            >
+              {/* Mobile Bottom Sheet Grab Handle */}
+              {!isComparePanelMinimized && (
+                <div 
+                  onClick={() => setIsComparePanelMinimized(true)}
+                  className="w-12 h-1.5 bg-slate-300 hover:bg-slate-400 rounded-full mx-auto mb-2 md:hidden flex-shrink-0 cursor-pointer transition-colors"
+                  title="แตะเพื่อย่อแผงเปรียบเทียบ"
+                />
+              )}
           
           {/* 1. ส่วนหัว */}
           <div className={`flex justify-between items-center select-none ${isComparePanelMinimized ? '' : 'mb-2 sm:mb-3 pb-1.5 sm:pb-2 border-b border-slate-100'}`}>
@@ -1910,6 +2009,8 @@ export default function MapComponent({
             </>
           )}
 
+            </div>
+          )}
         </div>
       </div>
 
@@ -2194,6 +2295,8 @@ export default function MapComponent({
                 return nextStyle;
               });
             }}
+            showPoiMarkers={showPoiMarkers}
+            onTogglePoiMarkers={handleTogglePoiMarkers}
             gpsToast={gpsToast}
           />
 
@@ -2301,33 +2404,7 @@ export default function MapComponent({
       </MapContainer>
       </MapErrorBoundary>
 
-      {/* Google Maps Style Route Info Card (Floating Bottom-Left) */}
-      {!selectedPlace && destinations.length > 0 && destinationStats[destinations[0].id] && (
-        <div id="route-info-card" className={`map-route-card animate-in fade-in slide-in-from-bottom-3 duration-200 ${!isComparePanelMinimized ? 'max-md:hidden' : ''}`}>
-          <div className="route-icon-box">
-            {vehicleType === 'driving' ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#475569">
-                <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
-                <circle cx="7.5" cy="14.5" r="1.5" fill="#475569"/>
-                <circle cx="16.5" cy="14.5" r="1.5" fill="#475569"/>
-              </svg>
-            ) : (
-              <Bike className="w-5 h-5 text-slate-600" />
-            )}
-          </div>
-          <div className="route-details">
-            <div id="route-time" className="route-time">
-              {vehicleType === 'motorcycle' 
-                ? Math.max(1, Math.round(destinationStats[destinations[0].id].baseDurationMins * 0.85))
-                : destinationStats[destinations[0].id].baseDurationMins
-              } นาที
-            </div>
-            <div id="route-distance" className="route-distance">
-              {destinationStats[destinations[0].id].distanceKm} กม. ({destinations[0].name})
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Detail Card Overlay: Bottom Sheet on Mobile, Floating Card on Desktop */}
       {selectedPlace && (

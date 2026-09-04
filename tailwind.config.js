@@ -13,6 +13,16 @@ module.exports = {
           gold: '#eab308',
           green: '#059669',
         }
+      },
+      keyframes: {
+        'progress-loading': {
+          '0%': { transform: 'translateX(-100%)' },
+          '50%': { transform: 'translateX(100%)' },
+          '100%': { transform: 'translateX(300%)' },
+        },
+      },
+      animation: {
+        'progress-loading': 'progress-loading 1.5s ease-in-out infinite',
       }
     },
   },

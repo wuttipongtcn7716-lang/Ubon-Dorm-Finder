@@ -76,6 +76,23 @@ body {
   animation: slideUpBottomSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Continuous Progress Loading Bar Animation for MapSkeleton */
+@keyframes progressLoading {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+.animate-progress-loading {
+  animation: progressLoading 1.5s ease-in-out infinite;
+}
+
 .route-icon-box {
     display: flex;
     align-items: center;

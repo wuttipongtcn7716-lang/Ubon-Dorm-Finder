@@ -10,6 +10,7 @@ import { FilterState } from '@/types/dormitory';
 interface DormFilterProps {
   filters: FilterState;
   onFilterChange: (filters: FilterState) => void;
+  onResetFilters?: () => void;
   zones: string[];
   totalResults: number;
   favoritesCount?: number;
@@ -18,44 +19,70 @@ interface DormFilterProps {
 export default function DormFilter({
   filters,
   onFilterChange,
-  zones,
-  totalResults,
+  onResetFilters,
+  zones = [],
+  totalResults = 0,
   favoritesCount = 0,
 }: DormFilterProps) {
-  const [isOpenAdvanced, setIsOpenAdvanced] = useState(false);
+  const safeFilters = filters || {
+    searchTerm: '',
+    zone: 'all',
+    maxPrice: 10000,
+    genderType: 'all',
+    roomType: 'all',
+    onlyPetAllowed: false,
+    requireParking: false,
+    noFloodRiskOnly: false,
+    isWhiteDormOnly: false,
+    onlySavedOnly: false,
+  };
+
+  const hasAdvancedFilters = (safeFilters.maxPrice ?? 10000) < 10000 || (safeFilters.genderType || 'all') !== 'all';
+  const [isOpenAdvanced, setIsOpenAdvanced] = useState(hasAdvancedFilters);
+
+  // Automatically expand advanced filter accordion if advanced parameters are present (e.g. from URL)
+  React.useEffect(() => {
+    if (hasAdvancedFilters) {
+      setIsOpenAdvanced(true);
+    }
+  }, [hasAdvancedFilters]);
 
   const updateFilter = (key: keyof FilterState, value: any) => {
-    onFilterChange({
-      ...filters,
+    onFilterChange?.({
+      ...safeFilters,
       [key]: value,
     });
   };
 
   const resetFilters = () => {
-    onFilterChange({
-      searchTerm: '',
-      zone: 'all',
-      maxPrice: 10000,
-      genderType: 'all',
-      roomType: 'all',
-      onlyPetAllowed: false,
-      requireParking: false,
-      noFloodRiskOnly: false,
-      isWhiteDormOnly: false,
-      onlySavedOnly: false,
-    });
+    if (onResetFilters) {
+      onResetFilters();
+    } else {
+      onFilterChange?.({
+        searchTerm: '',
+        zone: 'all',
+        maxPrice: 10000,
+        genderType: 'all',
+        roomType: 'all',
+        onlyPetAllowed: false,
+        requireParking: false,
+        noFloodRiskOnly: false,
+        isWhiteDormOnly: false,
+        onlySavedOnly: false,
+      });
+    }
   };
 
   const hasActiveFilters = 
-    filters.searchTerm !== '' ||
-    filters.zone !== 'all' ||
-    filters.onlySavedOnly ||
-    filters.roomType !== 'all' ||
-    filters.genderType !== 'all' ||
-    filters.onlyPetAllowed ||
-    filters.requireParking ||
-    filters.noFloodRiskOnly ||
-    filters.maxPrice < 10000;
+    (safeFilters.searchTerm || '') !== '' ||
+    (safeFilters.zone || 'all') !== 'all' ||
+    Boolean(safeFilters.onlySavedOnly) ||
+    (safeFilters.roomType || 'all') !== 'all' ||
+    (safeFilters.genderType || 'all') !== 'all' ||
+    Boolean(safeFilters.onlyPetAllowed) ||
+    Boolean(safeFilters.requireParking) ||
+    Boolean(safeFilters.noFloodRiskOnly) ||
+    (safeFilters.maxPrice ?? 10000) < 10000;
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-4 sm:p-5 space-y-3.5">
@@ -71,13 +98,13 @@ export default function DormFilter({
             id="dorm-search-input"
             name="searchTerm"
             type="text"
-            value={filters.searchTerm}
+            value={safeFilters.searchTerm}
             onChange={(e) => updateFilter('searchTerm', e.target.value)}
             placeholder="ค้นหาชื่อหอพัก, โซน หรือทำเลใกล้เคียง..."
             aria-label="ค้นหาชื่อหอพัก โซน หรือทำเลใกล้เคียง"
             className="w-full pl-10 pr-9 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white transition"
           />
-          {filters.searchTerm && (
+          {safeFilters.searchTerm && (
             <button
               type="button"
               onClick={() => updateFilter('searchTerm', '')}
@@ -97,7 +124,7 @@ export default function DormFilter({
           <select
             id="dorm-zone-select"
             name="zone"
-            value={filters.zone}
+            value={safeFilters.zone}
             onChange={(e) => updateFilter('zone', e.target.value)}
             aria-label="เลือกโซน"
             className="w-full px-3.5 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-bold text-blue-950 transition"
@@ -132,22 +159,22 @@ export default function DormFilter({
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs scrollbar-none">
         {/* Saved Favorites Filter Chip */}
         <button
-          onClick={() => updateFilter('onlySavedOnly', !filters.onlySavedOnly)}
+          onClick={() => updateFilter('onlySavedOnly', !safeFilters.onlySavedOnly)}
           className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold transition flex-shrink-0 active:scale-95 ${
-            filters.onlySavedOnly
+            safeFilters.onlySavedOnly
               ? 'bg-rose-500 text-white shadow-md shadow-rose-500/25'
               : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/60'
           }`}
         >
-          <Heart className={`w-3.5 h-3.5 ${filters.onlySavedOnly ? 'fill-white' : 'fill-rose-500'}`} />
+          <Heart className={`w-3.5 h-3.5 ${safeFilters.onlySavedOnly ? 'fill-white' : 'fill-rose-500'}`} />
           <span>หอพักที่บันทึกไว้ {favoritesCount > 0 ? `(${favoritesCount})` : ''}</span>
         </button>
 
         {/* Room Type: Air */}
         <button
-          onClick={() => updateFilter('roomType', filters.roomType === 'air' ? 'all' : 'air')}
+          onClick={() => updateFilter('roomType', safeFilters.roomType === 'air' ? 'all' : 'air')}
           className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-semibold transition flex-shrink-0 active:scale-95 ${
-            filters.roomType === 'air'
+            safeFilters.roomType === 'air'
               ? 'bg-blue-900 text-white shadow-xs'
               : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
           }`}
@@ -158,9 +185,9 @@ export default function DormFilter({
 
         {/* Room Type: Fan */}
         <button
-          onClick={() => updateFilter('roomType', filters.roomType === 'fan' ? 'all' : 'fan')}
+          onClick={() => updateFilter('roomType', safeFilters.roomType === 'fan' ? 'all' : 'fan')}
           className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-semibold transition flex-shrink-0 active:scale-95 ${
-            filters.roomType === 'fan'
+            safeFilters.roomType === 'fan'
               ? 'bg-amber-600 text-white shadow-xs'
               : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
           }`}
@@ -171,9 +198,9 @@ export default function DormFilter({
 
         {/* Pet Allowed */}
         <button
-          onClick={() => updateFilter('onlyPetAllowed', !filters.onlyPetAllowed)}
+          onClick={() => updateFilter('onlyPetAllowed', !safeFilters.onlyPetAllowed)}
           className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-semibold transition flex-shrink-0 active:scale-95 ${
-            filters.onlyPetAllowed
+            safeFilters.onlyPetAllowed
               ? 'bg-blue-950 text-amber-300 shadow-xs'
               : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
           }`}
@@ -184,9 +211,9 @@ export default function DormFilter({
 
         {/* Parking */}
         <button
-          onClick={() => updateFilter('requireParking', !filters.requireParking)}
+          onClick={() => updateFilter('requireParking', !safeFilters.requireParking)}
           className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-semibold transition flex-shrink-0 active:scale-95 ${
-            filters.requireParking
+            safeFilters.requireParking
               ? 'bg-blue-950 text-amber-300 shadow-xs'
               : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
           }`}
@@ -197,9 +224,9 @@ export default function DormFilter({
 
         {/* No Flood */}
         <button
-          onClick={() => updateFilter('noFloodRiskOnly', !filters.noFloodRiskOnly)}
+          onClick={() => updateFilter('noFloodRiskOnly', !safeFilters.noFloodRiskOnly)}
           className={`flex items-center gap-1 px-3 py-1.5 rounded-full font-semibold transition flex-shrink-0 active:scale-95 ${
-            filters.noFloodRiskOnly
+            safeFilters.noFloodRiskOnly
               ? 'bg-cyan-700 text-white shadow-xs'
               : 'bg-slate-100 text-slate-700 hover:bg-slate-200/80'
           }`}
@@ -228,7 +255,7 @@ export default function DormFilter({
             <div className="flex justify-between items-center text-slate-700 font-bold">
               <span>งบประมาณสูงสุด / เดือน:</span>
               <span className="text-amber-600 font-black text-sm">
-                {filters.maxPrice >= 10000 ? 'ไม่จำกัด' : `฿${filters.maxPrice.toLocaleString()}`}
+                {(safeFilters.maxPrice ?? 10000) >= 10000 ? 'ไม่จำกัด' : `฿${(safeFilters.maxPrice ?? 10000).toLocaleString()}`}
               </span>
             </div>
             <input
@@ -236,7 +263,7 @@ export default function DormFilter({
               min="1500"
               max="10000"
               step="200"
-              value={filters.maxPrice}
+              value={safeFilters.maxPrice ?? 10000}
               onChange={(e) => updateFilter('maxPrice', parseInt(e.target.value, 10))}
               className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
             />
@@ -257,7 +284,7 @@ export default function DormFilter({
               id="genderFilter"
               name="genderType"
               aria-label="ประเภทผู้พักอาศัย"
-              value={filters.genderType}
+              value={safeFilters.genderType || 'all'}
               onChange={(e) => updateFilter('genderType', e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-semibold text-slate-800"
             >

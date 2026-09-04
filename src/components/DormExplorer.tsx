@@ -9,12 +9,14 @@ import DormEmptyState from './DormEmptyState';
 import NavigationModal from './NavigationModal';
 import { Sparkles, Compass, Heart } from 'lucide-react';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useDormFiltersSync } from '@/hooks/useDormFiltersSync';
 
 interface DormExplorerProps {
   initialDorms: Dormitory[];
 }
 
 export default function DormExplorer({ initialDorms }: DormExplorerProps) {
+  const { filters, setFilters, resetFilters } = useDormFiltersSync();
   const [navigatingDorm, setNavigatingDorm] = useState<Dormitory | null>(null);
   const [isClientLoaded, setIsClientLoaded] = useState(false);
   const { isFavorite, toggleFavorite, count: favoritesCount } = useFavorites();
@@ -28,41 +30,7 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
 
   useEffect(() => {
     setIsClientLoaded(true);
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('white') === 'true' || params.get('whiteOnly') === 'true') {
-        setFilters((prev) => ({ ...prev, isWhiteDormOnly: true }));
-      }
-    }
   }, []);
-
-  const [filters, setFilters] = useState<FilterState>({
-    searchTerm: '',
-    zone: 'all',
-    maxPrice: 10000,
-    genderType: 'all',
-    roomType: 'all',
-    onlyPetAllowed: false,
-    requireParking: false,
-    noFloodRiskOnly: false,
-    isWhiteDormOnly: false,
-    onlySavedOnly: false,
-  });
-
-  const handleResetFilters = () => {
-    setFilters({
-      searchTerm: '',
-      zone: 'all',
-      maxPrice: 10000,
-      genderType: 'all',
-      roomType: 'all',
-      onlyPetAllowed: false,
-      requireParking: false,
-      noFloodRiskOnly: false,
-      isWhiteDormOnly: false,
-      onlySavedOnly: false,
-    });
-  };
 
   const uniqueZones = useMemo(() => {
     const set = new Set<string>();
@@ -73,13 +41,28 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
   }, [initialDorms]);
 
   const filteredDorms = useMemo(() => {
+    if (!initialDorms || !Array.isArray(initialDorms)) return [];
+    const f = filters || {
+      searchTerm: '',
+      zone: 'all',
+      maxPrice: 10000,
+      genderType: 'all',
+      roomType: 'all',
+      onlyPetAllowed: false,
+      requireParking: false,
+      noFloodRiskOnly: false,
+      isWhiteDormOnly: false,
+      onlySavedOnly: false,
+    };
+
     return initialDorms.filter((d) => {
-      if (filters.onlySavedOnly && !isFavorite(d.id)) {
+      if (!d) return false;
+      if (f.onlySavedOnly && !isFavorite(d.id)) {
         return false;
       }
 
-      if (filters.searchTerm) {
-        const query = filters.searchTerm.toLowerCase();
+      if (f.searchTerm) {
+        const query = f.searchTerm.toLowerCase();
         const matchesName = (d.name || '').toLowerCase().includes(query);
         const matchesZone = (d.zone || '').toLowerCase().includes(query);
         const matchesPhone = (d.phone || '').includes(query);
@@ -87,16 +70,16 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
         if (!matchesName && !matchesZone && !matchesPhone && !matchesRemarks) return false;
       }
 
-      if (filters.zone !== 'all' && d.zone !== filters.zone) {
+      if (f.zone !== 'all' && d.zone !== f.zone) {
         return false;
       }
 
       const dormMinPrice = d.minPrice ?? 0;
-      if (dormMinPrice > filters.maxPrice) {
+      if (dormMinPrice > (f.maxPrice ?? 10000)) {
         return false;
       }
 
-      if (filters.genderType !== 'all') {
+      if (f.genderType !== 'all') {
         const rawType = (d.genderType || '').trim();
         let mappedGender = 'mixed';
         if (rawType === 'หอหญิง' || rawType === 'หอพักหญิง' || rawType === 'female') {
@@ -106,21 +89,21 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
         } else if (rawType === 'หอพักรวม' || rawType === 'mixed') {
           mappedGender = 'mixed';
         }
-        if (mappedGender !== filters.genderType) return false;
+        if (mappedGender !== f.genderType) return false;
       }
 
-      if (filters.roomType !== 'all') {
+      if (f.roomType !== 'all') {
         const rType = d.roomType || d.type || '';
-        if (filters.roomType === 'air' && !rType.includes('แอร์')) return false;
-        if (filters.roomType === 'fan' && !rType.includes('พัดลม')) return false;
+        if (f.roomType === 'air' && !rType.includes('แอร์')) return false;
+        if (f.roomType === 'fan' && !rType.includes('พัดลม')) return false;
       }
 
-      if (filters.onlyPetAllowed && !d.allowPet) return false;
-      if (filters.requireParking && !d.parking) return false;
-      if (filters.noFloodRiskOnly && d.floodRisk) return false;
+      if (f.onlyPetAllowed && !d.allowPet) return false;
+      if (f.requireParking && !d.parking) return false;
+      if (f.noFloodRiskOnly && d.floodRisk) return false;
 
       const isWhite = Boolean(d.isWhiteDorm || d.status === 'ผ่าน' || d.evalResult === 'ผ่าน');
-      if (filters.isWhiteDormOnly && !isWhite) return false;
+      if (f.isWhiteDormOnly && !isWhite) return false;
 
       return true;
     });
@@ -154,6 +137,7 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
       <DormFilter
         filters={filters}
         onFilterChange={setFilters}
+        onResetFilters={resetFilters}
         zones={uniqueZones}
         totalResults={filteredDorms.length}
         favoritesCount={favoritesCount}
@@ -194,7 +178,7 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
         </div>
       ) : filteredDorms.length === 0 ? (
         <DormEmptyState
-          onReset={handleResetFilters}
+          onReset={resetFilters}
           searchTerm={filters.searchTerm}
         />
       ) : (

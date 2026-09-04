@@ -327,17 +327,6 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
 
         {/* Fullscreen Map Viewport */}
         <div className="relative flex-1 w-full h-full md:h-full bg-slate-100 flex flex-col justify-between overflow-hidden">
-          {/* Loading Indicator while Connecting GPS */}
-          {isLoadingGPS && (
-            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-white/85 backdrop-blur-sm gap-2.5 animate-in fade-in duration-150 p-6 text-center">
-              <Loader2 className="w-9 h-9 text-blue-900 animate-spin" />
-              <p className="text-sm font-bold text-blue-950">กำลังค้นหาตำแหน่ง GPS สดของคุณ...</p>
-              <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
-                ระบบกำลังเชื่อมต่อพิกัดดาวเทียม (ตัด Timeout ใน 8 วินาที)<br/>
-                กรุณากด <strong>&quot;อนุญาต (Allow)&quot;</strong> หากเบราว์เซอร์แจ้งเตือนขอสิทธิ์ Location
-              </p>
-            </div>
-          )}
 
           {/* GPS Error Alert Card with Retry Button & Guidance */}
           {gpsStatus === 'error' && !dismissError && (

@@ -11,7 +11,7 @@ import {
   Crosshair, Check, X, Navigation, 
   Car, Bike, MapPin, Compass, Circle, ArrowUpDown,
   ChevronRight, ChevronDown, ShieldCheck, Plus,
-  LocateFixed, Flag, Layers, RotateCcw, Building, Landmark,
+  LocateFixed, Flag, Layers, RotateCcw,
   Search, SlidersHorizontal, Loader2, Info, Edit3,
   ChevronUp, Minus
 } from 'lucide-react';
@@ -442,23 +442,6 @@ function UnifiedActionDock({
         >
           <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700" />
         </button>
-
-        {/* POI / Building Labels & Markers Toggle */}
-        {onTogglePoiMarkers && (
-          <button
-            type="button"
-            onClick={onTogglePoiMarkers}
-            className={`w-9 h-8 sm:w-11 sm:h-10 flex items-center justify-center transition cursor-pointer ${
-              showPoiMarkers 
-                ? 'text-indigo-600 bg-indigo-50/70 hover:bg-indigo-100 font-bold' 
-                : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-            }`}
-            title={showPoiMarkers ? "ซ่อนหมุดและป้ายชื่ออาคารรอบ ม. (เพื่อดูเส้นทางชัดเจน)" : "แสดงหมุดและป้ายชื่ออาคารรอบ ม."}
-            aria-label="เปิด-ปิดการแสดงหมุดอาคาร"
-          >
-            <Landmark className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </button>
-        )}
 
         {/* Campus Re-center */}
         <button
@@ -1675,27 +1658,27 @@ export default function MapComponent({
         {!selectedPlace && destinations.length > 0 && destinationStats[destinations[0].id] && (
           <div 
             id="route-info-card" 
-            className="pointer-events-auto max-md:relative max-md:bottom-auto max-md:left-auto max-md:ml-3 max-md:mb-0 map-route-card animate-in fade-in slide-in-from-bottom-2 duration-200"
+            className="pointer-events-auto max-md:relative max-md:bottom-auto max-md:left-auto max-md:ml-3 max-md:mb-0 map-route-card bg-white shadow-md rounded-2xl border border-blue-100/90 animate-in fade-in slide-in-from-bottom-2 duration-200"
           >
             <div className="route-icon-box">
               {vehicleType === 'driving' ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#475569">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#1e3a8a">
                   <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
-                  <circle cx="7.5" cy="14.5" r="1.5" fill="#475569"/>
-                  <circle cx="16.5" cy="14.5" r="1.5" fill="#475569"/>
+                  <circle cx="7.5" cy="14.5" r="1.5" fill="#1e3a8a"/>
+                  <circle cx="16.5" cy="14.5" r="1.5" fill="#1e3a8a"/>
                 </svg>
               ) : (
-                <Bike className="w-5 h-5 text-slate-600" />
+                <Bike className="w-5 h-5 text-blue-900" />
               )}
             </div>
             <div className="route-details">
-              <div id="route-time" className="route-time">
+              <div id="route-time" className="route-time text-slate-900 font-black">
                 {vehicleType === 'motorcycle' 
                   ? Math.max(1, Math.round(destinationStats[destinations[0].id].baseDurationMins * 0.85))
                   : destinationStats[destinations[0].id].baseDurationMins
                 } นาที
               </div>
-              <div id="route-distance" className="route-distance">
+              <div id="route-distance" className="route-distance text-slate-500 font-semibold">
                 {destinationStats[destinations[0].id].distanceKm} กม. ({destinations[0].name})
               </div>
             </div>
@@ -1715,7 +1698,7 @@ export default function MapComponent({
             <button
               type="button"
               onClick={() => setIsComparePanelMinimized(false)}
-              className="group flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl bg-white/95 hover:bg-white text-slate-800 shadow-xl shadow-blue-950/20 border-2 border-blue-500/30 backdrop-blur-xl transition-all duration-200 active:scale-95 hover:scale-[1.02] cursor-pointer ring-4 ring-blue-500/15 hover:ring-blue-500/30 select-none animate-in fade-in slide-in-from-bottom-2"
+              className="group flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl bg-blue-100 hover:bg-blue-200/90 text-blue-950 shadow-md border border-blue-300 backdrop-blur-xl transition-all duration-200 active:scale-95 hover:scale-[1.02] cursor-pointer ring-2 ring-blue-400/20 hover:ring-blue-400/40 select-none animate-in fade-in slide-in-from-bottom-2"
               title="แตะเพื่อเปิดแผงเปรียบเทียบระยะทาง"
               aria-label="เปิดแผงเปรียบเทียบระยะทาง"
             >
@@ -1725,15 +1708,15 @@ export default function MapComponent({
               </div>
               
               <div className="flex items-center gap-1.5 font-sans">
-                <span className="text-xs sm:text-sm font-black text-blue-950 group-hover:text-blue-600 transition-colors">
+                <span className="text-xs sm:text-sm font-black text-blue-950 group-hover:text-blue-800 transition-colors">
                   เปรียบเทียบ
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] sm:text-xs font-black border border-blue-200/80">
+                <span className="px-2 py-0.5 rounded-full bg-blue-200/80 text-blue-950 text-[10px] sm:text-xs font-black border border-blue-300/70">
                   {destinations.length}/4
                 </span>
               </div>
 
-              <div className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 group-hover:bg-blue-600 text-blue-700 group-hover:text-white transition-all ml-0.5 flex-shrink-0">
+              <div className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-200/70 group-hover:bg-blue-700 text-blue-900 group-hover:text-white transition-all ml-0.5 flex-shrink-0">
                 <ChevronUp className="w-3.5 h-3.5 transition-transform group-hover:-translate-y-0.5" />
               </div>
             </button>
@@ -1755,7 +1738,7 @@ export default function MapComponent({
               <div className="flex justify-between items-center select-none mb-2 sm:mb-3 pb-1.5 sm:pb-2 border-b border-slate-100">
                 <div 
                   onClick={() => setIsComparePanelMinimized(true)}
-                  className="flex items-center text-blue-600 font-extrabold text-[11px] xs:text-xs sm:text-sm cursor-pointer hover:opacity-85 select-none flex-1 min-w-0 mr-1"
+                  className="flex items-center text-blue-950 font-extrabold text-[11px] xs:text-xs sm:text-sm cursor-pointer hover:text-blue-800 select-none flex-1 min-w-0 mr-1"
                   title="คลิกเพื่อย่อแถบเปรียบเทียบ"
                 >
                   <div className="w-2 h-2 bg-blue-600 rounded-full mr-1.5 flex-shrink-0 animate-pulse"></div>

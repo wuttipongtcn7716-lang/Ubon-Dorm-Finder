@@ -40,12 +40,12 @@ body {
     background: #ffffff;
     padding: 10px 16px;
     border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.22);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
     display: flex;
     align-items: center;
     gap: 12px;
     z-index: 1000;
-    border: 1px solid rgba(226, 232, 240, 0.8);
+    border: 1px solid rgba(219, 234, 254, 0.9);
 }
 
 @media (max-width: 768px) {
@@ -53,9 +53,9 @@ body {
     position: relative;
     bottom: auto;
     left: auto;
-    padding: 6px 10px;
-    border-radius: 12px;
-    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 16px;
+    gap: 10px;
     max-width: calc(100% - 24px);
   }
 }
@@ -80,9 +80,10 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f1f3f4;
+    background: #eff6ff;
     padding: 8px;
     border-radius: 50%;
+    border: 1px solid rgba(219, 234, 254, 0.8);
 }
 
 .route-time {

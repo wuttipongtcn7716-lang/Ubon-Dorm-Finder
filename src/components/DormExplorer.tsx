@@ -109,6 +109,17 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
     });
   }, [initialDorms, filters, isFavorite]);
 
+  const [visibleCount, setVisibleCount] = useState(12);
+
+  // รีเซ็ตการแบ่งหน้าเมื่อมีการเปลี่ยนเงื่อนไขตัวกรอง
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [filters]);
+
+  const displayedDorms = useMemo(() => {
+    return filteredDorms.slice(0, visibleCount);
+  }, [filteredDorms, visibleCount]);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Hero Search & Top Banner */}
@@ -182,16 +193,34 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
           searchTerm={filters.searchTerm}
         />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 animate-in fade-in duration-200">
-          {filteredDorms.map((dorm) => (
-            <DormCard
-              key={dorm.id}
-              dorm={dorm}
-              onNavigate={(d) => setNavigatingDorm(d)}
-              isFavorite={isFavorite(dorm.id)}
-              onToggleFavorite={handleToggleFavorite}
-            />
-          ))}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 animate-in fade-in duration-200">
+            {displayedDorms.map((dorm) => (
+              <DormCard
+                key={dorm.id}
+                dorm={dorm}
+                onNavigate={(d) => setNavigatingDorm(d)}
+                isFavorite={isFavorite(dorm.id)}
+                onToggleFavorite={handleToggleFavorite}
+              />
+            ))}
+          </div>
+
+          {/* ปุ่มโหลดเพิ่มเติมเพื่อลดภาระ Network Request ภาพพร้อมกัน 60 แห่ง */}
+          {filteredDorms.length > visibleCount && (
+            <div className="flex flex-col items-center justify-center pt-4 pb-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setVisibleCount((prev) => Math.min(prev + 12, filteredDorms.length))}
+                className="px-6 py-3 rounded-2xl bg-blue-950 hover:bg-blue-900 text-white font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 border border-blue-800/60 active:scale-95 cursor-pointer"
+              >
+                <span>แสดงหอพักเพิ่มเติม (เหลืออีก {filteredDorms.length - visibleCount} แห่ง)</span>
+              </button>
+              <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                กำลังแสดง {displayedDorms.length} จากทั้งหมด {filteredDorms.length} แห่ง
+              </p>
+            </div>
+          )}
         </div>
       )}
 

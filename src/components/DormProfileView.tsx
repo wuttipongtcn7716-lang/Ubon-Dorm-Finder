@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { 
   MapPin, Phone, MessageCircle, ShieldCheck, 
@@ -96,7 +96,48 @@ const WHITE_DORM_CRITERIA = [
 
 export default function DormProfileView({ dorm }: DormProfileViewProps) {
   const [isNavOpen, setIsNavOpen] = useState(false);
+  
+  // จัดการ State โหลดรูปภาพอย่างปลอดภัย ป้องกันปัญหาค้างถาวร
+  const initialImageSrc = encodeURI((dorm.images && dorm.images[0]) || dorm.image || '/Picture/default-dorm.jpg');
+  const [currentImgSrc, setCurrentImgSrc] = useState(initialImageSrc);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [imageHasError, setImageHasError] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // ตรวจสอบสถานะการโหลดและแก้ไข Race Condition กรณีที่เบราว์เซอร์แคชรูปภาพไว้แล้วก่อน React Mount
+  useEffect(() => {
+    const targetSrc = encodeURI((dorm.images && dorm.images[0]) || dorm.image || '/Picture/default-dorm.jpg');
+    setCurrentImgSrc(targetSrc);
+    setImageHasError(false);
+
+    // 1. ตรวจสอบว่าภาพถูกโหลดเสร็จจาก Cache ของเบราว์เซอร์ไปก่อนหน้านี้แล้วหรือไม่ (img.complete)
+    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      setIsImageLoaded(true);
+    } else {
+      setIsImageLoaded(false);
+    }
+
+    // 2. Failsafe Timeout: หากผ่านไป 3.5 วินาทีแล้วไม่มี Event ตอบสนอง ให้ปลดล็อกแสดงผลอัตโนมัติ ไม่ค้างจอโหลด
+    const failsafeTimer = setTimeout(() => {
+      setIsImageLoaded(true);
+    }, 3500);
+
+    return () => clearTimeout(failsafeTimer);
+  }, [dorm.id, dorm.image, dorm.images]);
+
+  const handleImageLoad = useCallback(() => {
+    setIsImageLoaded(true);
+  }, []);
+
+  const handleImageError = useCallback(() => {
+    if (!imageHasError) {
+      setImageHasError(true);
+      setCurrentImgSrc('/Picture/default-dorm.jpg');
+    }
+    // ปลดล็อกการโหลดเสมอแม้รูปจะเสีย เพื่อให้แสดงภาพ Default แทนการค้าง Skeleton
+    setIsImageLoaded(true);
+  }, [imageHasError]);
+
   // Default state: Collapsed (hidden) by default
   const [isCriteriaOpen, setIsCriteriaOpen] = useState(false);
   const [activeCriterionId, setActiveCriterionId] = useState<string | null>(null);
@@ -254,16 +295,16 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
           )}
 
           <img 
-            src={(dorm.images && dorm.images[0]) || dorm.image || '/Picture/default-dorm.jpg'} 
+            ref={imgRef}
+            src={currentImgSrc} 
             alt={dorm.name}
+            fetchPriority="high"
+            decoding="async"
             className={`w-full h-full object-cover transition-opacity duration-300 relative z-10 ${
               isImageLoaded ? 'opacity-100' : 'opacity-0'
             }`}
-            onLoad={() => setIsImageLoaded(true)}
-            onError={(e) => {
-              e.currentTarget.src = '/Picture/default-dorm.jpg';
-              setIsImageLoaded(true);
-            }}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
           />
 
           {/* Minimalist White Dormitory Badge on Image */}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { 
   ShieldCheck, MapPin, Wind, Wifi, Car, Key, 
@@ -23,9 +23,46 @@ export default function DormCard({
   isFavorite = false,
   onToggleFavorite
 }: DormCardProps) {
+  const initialRawImage = (dorm.images && dorm.images[0]) || dorm.image || '/Picture/default-dorm.jpg';
+  const initialCoverImage = encodeURI(initialRawImage);
+
+  const [currentImgSrc, setCurrentImgSrc] = useState(initialCoverImage);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [imageHasError, setImageHasError] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // ตรวจสอบสถานะการโหลดและแก้ไข Race Condition กรณีภาพถูกแคชแล้ว
+  useEffect(() => {
+    const targetSrc = encodeURI((dorm.images && dorm.images[0]) || dorm.image || '/Picture/default-dorm.jpg');
+    setCurrentImgSrc(targetSrc);
+    setImageHasError(false);
+
+    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      setIsImageLoaded(true);
+    } else {
+      setIsImageLoaded(false);
+    }
+
+    const failsafeTimer = setTimeout(() => {
+      setIsImageLoaded(true);
+    }, 3500);
+
+    return () => clearTimeout(failsafeTimer);
+  }, [dorm.id, dorm.image, dorm.images]);
+
+  const handleImageLoad = useCallback(() => {
+    setIsImageLoaded(true);
+  }, []);
+
+  const handleImageError = useCallback(() => {
+    if (!imageHasError) {
+      setImageHasError(true);
+      setCurrentImgSrc('/Picture/default-dorm.jpg');
+    }
+    setIsImageLoaded(true);
+  }, [imageHasError]);
+
   const isWhite = Boolean(dorm.isWhiteDorm || dorm.status === 'ผ่าน' || dorm.evalResult === 'ผ่าน');
-  const coverImage = (dorm.images && dorm.images[0]) || dorm.image || '/Picture/default-dorm.jpg';
   
   // Structured price resolution
   const priceObj: PriceStructure | null = 
@@ -147,17 +184,16 @@ export default function DormCard({
           )}
 
           <img 
-            src={coverImage} 
+            ref={imgRef}
+            src={currentImgSrc} 
             alt={dorm.name || 'หอพัก'}
             className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-300 relative z-10 ${
               isImageLoaded ? 'opacity-100' : 'opacity-0'
             }`}
             loading="lazy"
-            onLoad={() => setIsImageLoaded(true)}
-            onError={(e) => {
-              e.currentTarget.src = '/Picture/default-dorm.jpg';
-              setIsImageLoaded(true);
-            }}
+            decoding="async"
+            onLoad={handleImageLoad}
+            onError={handleImageError}
           />
 
           {/* White Dormitory Badge */}

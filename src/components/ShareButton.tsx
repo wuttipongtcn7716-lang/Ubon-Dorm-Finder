@@ -55,16 +55,28 @@ export default function ShareButton({
     e.preventDefault();
     e.stopPropagation();
 
-    const shareUrl = url || (typeof window !== 'undefined' ? window.location.href : '');
+    // ป้องกันปัญหา Mobile Search: สร้าง Absolute URL ที่ถูกต้องและมี Scheme (http/https) เสมอ
+    let shareUrl = url || '';
+    if (typeof window !== 'undefined') {
+      if (!shareUrl) {
+        shareUrl = window.location.href;
+      } else if (shareUrl.startsWith('/')) {
+        shareUrl = `${window.location.origin}${shareUrl}`;
+      } else if (!/^https?:\/\//i.test(shareUrl)) {
+        shareUrl = `${window.location.protocol}//${shareUrl}`;
+      }
+    }
+    shareUrl = encodeURI(shareUrl.trim());
+
     const shareTitle = `${displayName} | Dormie UBU`;
-    const shareText = text || `ดูข้อมูลและเส้นทางไปหอพัก ${displayName} มหาวิทยาลัยอุบลราชธานี`;
 
     // 1. ตรวจสอบว่าเบราว์เซอร์รองรับ Web Share API หรือไม่ (สำหรับ Mobile Safari / Android Chrome)
+    // หมายเหตุ: ส่งเฉพาะ title และ url (ละเว้น text) เพื่อป้องกันไม่ให้ Android Share Sheet 
+    // นำข้อความภาษาไทยไปต่อท้ายลิงก์เวลาผู้ใช้กด "คัดลอกลิงก์" ซึ่งจะทำให้ Mobile Browser มองเป็นคำค้นหา Google
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try {
         await navigator.share({
           title: shareTitle,
-          text: shareText,
           url: shareUrl,
         });
         const msg = `แชร์ข้อมูลหอพัก ${displayName} สำเร็จแล้ว`;
@@ -79,7 +91,7 @@ export default function ShareButton({
       }
     }
 
-    // 2. Fallback: คัดลอกลิงก์ลง Clipboard
+    // 2. Fallback: คัดลอกเฉพาะ URL ลง Clipboard (ห้ามต่อข้อความภาษาไทยปนลงในคลิปบอร์ดเด็ดขาด)
     let copySuccess = false;
     if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
       try {

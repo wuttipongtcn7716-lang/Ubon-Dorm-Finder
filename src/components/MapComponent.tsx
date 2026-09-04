@@ -1370,8 +1370,23 @@ export default function MapComponent({
   const [forceFitKey, setForceFitKey] = useState<number>(0);
   const [destinationStats, setDestinationStats] = useState<Record<string | number, { distanceKm: number; baseDurationMins: number; distanceMeters: number }>>({});
 
-  // Minimize/maximize comparison panel
-  const [isComparePanelMinimized, setIsComparePanelMinimized] = useState(false);
+  // Minimize/maximize comparison panel: default collapsed on mobile (< 768px), expanded on desktop (>= 768px)
+  const [isComparePanelMinimized, setIsComparePanelMinimized] = useState<boolean>(true);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsComparePanelMinimized(false);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth >= 768) {
+        setIsComparePanelMinimized(false);
+      }
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
 
   // Highlight/active destination route leg ID
   const [activeDestId, setActiveDestId] = useState<string | number | null>(null);
@@ -1687,95 +1702,106 @@ export default function MapComponent({
           </div>
         )}
 
-        {/* B. Multi-Destination Comparison Box (Bottom item in mobile vertical stack, Floating Card on Top-Left on Desktop) */}
+        {/* B. Multi-Destination Comparison Box / Collapsed Action Pill */}
         <div 
           className={`pointer-events-auto transition-all duration-300 ${
             isComparePanelMinimized 
-              ? 'max-md:relative max-md:bottom-auto max-md:left-auto max-md:ml-3 max-md:mb-3 max-md:w-auto max-md:max-w-[220px] sm:absolute sm:top-3 sm:left-4 sm:bottom-auto sm:w-auto sm:max-w-[220px]' 
+              ? 'max-md:relative max-md:bottom-auto max-md:left-auto max-md:ml-3 max-md:mb-3 max-md:w-auto sm:absolute sm:top-3 sm:left-4 sm:bottom-auto sm:w-auto' 
               : 'max-md:relative max-md:bottom-auto max-md:left-auto max-md:w-full sm:absolute sm:top-3 sm:left-4 sm:bottom-auto sm:right-auto sm:w-80 md:w-96 sm:max-w-[420px]'
           } ${isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1050]'}`}
         >
-          {isRouteCalculating && !isComparePanelMinimized ? (
+          {isComparePanelMinimized ? (
+            /* Collapsed Call-to-Action Pill: Eye-catching, prominent, inviting to click */
+            <button
+              type="button"
+              onClick={() => setIsComparePanelMinimized(false)}
+              className="group flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl bg-white/95 hover:bg-white text-slate-800 shadow-xl shadow-blue-950/20 border-2 border-blue-500/30 backdrop-blur-xl transition-all duration-200 active:scale-95 hover:scale-[1.02] cursor-pointer ring-4 ring-blue-500/15 hover:ring-blue-500/30 select-none animate-in fade-in slide-in-from-bottom-2"
+              title="แตะเพื่อเปิดแผงเปรียบเทียบระยะทาง"
+              aria-label="เปิดแผงเปรียบเทียบระยะทาง"
+            >
+              <div className="relative flex items-center justify-center flex-shrink-0">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping absolute opacity-75" />
+                <span className="w-2 h-2 rounded-full bg-blue-600 relative" />
+              </div>
+              
+              <div className="flex items-center gap-1.5 font-sans">
+                <span className="text-xs sm:text-sm font-black text-blue-950 group-hover:text-blue-600 transition-colors">
+                  เปรียบเทียบ
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] sm:text-xs font-black border border-blue-200/80">
+                  {destinations.length}/4
+                </span>
+              </div>
+
+              <div className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 group-hover:bg-blue-600 text-blue-700 group-hover:text-white transition-all ml-0.5 flex-shrink-0">
+                <ChevronUp className="w-3.5 h-3.5 transition-transform group-hover:-translate-y-0.5" />
+              </div>
+            </button>
+          ) : isRouteCalculating ? (
             <ComparisonPanelSkeleton className="max-md:rounded-t-3xl max-md:rounded-b-none" />
           ) : (
             <div 
-              className={`bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl flex flex-col font-sans transition-all ${
-                isComparePanelMinimized
-                  ? 'rounded-2xl p-2.5 sm:p-3 shadow-lg'
-                  : 'max-md:rounded-t-3xl max-md:rounded-b-none max-md:border-t max-md:border-x-0 max-md:border-b-0 max-md:max-h-[75vh] max-md:overflow-y-auto p-3.5 sm:rounded-3xl sm:p-4 sm:max-h-none animate-bottom-sheet'
-              } no-scrollbar`}
-              style={!isComparePanelMinimized ? { paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' } : undefined}
+              className="bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl flex flex-col font-sans transition-all max-md:rounded-t-3xl max-md:rounded-b-none max-md:border-t max-md:border-x-0 max-md:border-b-0 max-md:max-h-[75vh] max-md:overflow-y-auto p-3.5 sm:rounded-3xl sm:p-4 sm:max-h-none animate-bottom-sheet no-scrollbar"
+              style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
             >
               {/* Mobile Bottom Sheet Grab Handle */}
-              {!isComparePanelMinimized && (
+              <div 
+                onClick={() => setIsComparePanelMinimized(true)}
+                className="w-12 h-1.5 bg-slate-300 hover:bg-slate-400 rounded-full mx-auto mb-2 md:hidden flex-shrink-0 cursor-pointer transition-colors"
+                title="แตะเพื่อย่อแผงเปรียบเทียบ"
+              />
+          
+              {/* 1. ส่วนหัว */}
+              <div className="flex justify-between items-center select-none mb-2 sm:mb-3 pb-1.5 sm:pb-2 border-b border-slate-100">
                 <div 
                   onClick={() => setIsComparePanelMinimized(true)}
-                  className="w-12 h-1.5 bg-slate-300 hover:bg-slate-400 rounded-full mx-auto mb-2 md:hidden flex-shrink-0 cursor-pointer transition-colors"
-                  title="แตะเพื่อย่อแผงเปรียบเทียบ"
-                />
-              )}
-          
-          {/* 1. ส่วนหัว */}
-          <div className={`flex justify-between items-center select-none ${isComparePanelMinimized ? '' : 'mb-2 sm:mb-3 pb-1.5 sm:pb-2 border-b border-slate-100'}`}>
-            <div 
-              onClick={() => setIsComparePanelMinimized(!isComparePanelMinimized)}
-              className="flex items-center text-blue-600 font-extrabold text-[11px] xs:text-xs sm:text-sm cursor-pointer hover:opacity-85 select-none flex-1 min-w-0 mr-1"
-              title={isComparePanelMinimized ? "คลิกเพื่อขยายแถบเปรียบเทียบ" : "คลิกเพื่อย่อแถบเปรียบเทียบ"}
-            >
-              <div className="w-2 h-2 bg-blue-600 rounded-full mr-1.5 flex-shrink-0 animate-pulse"></div>
-              <span className="truncate">เปรียบเทียบ ({destinations.length}/4)</span>
-            </div>
-            
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              {/* ปุ่มเลือกโหมดเดินทาง */}
-              {!isComparePanelMinimized && (
-                <div className="flex bg-gray-100 rounded-full p-0.5 select-none">
-                  <button 
+                  className="flex items-center text-blue-600 font-extrabold text-[11px] xs:text-xs sm:text-sm cursor-pointer hover:opacity-85 select-none flex-1 min-w-0 mr-1"
+                  title="คลิกเพื่อย่อแถบเปรียบเทียบ"
+                >
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mr-1.5 flex-shrink-0 animate-pulse"></div>
+                  <span className="truncate">เปรียบเทียบ ({destinations.length}/4)</span>
+                </div>
+                
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {/* ปุ่มเลือกโหมดเดินทาง */}
+                  <div className="flex bg-gray-100 rounded-full p-0.5 select-none">
+                    <button 
+                      type="button"
+                      onClick={() => setVehicleType('driving')}
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5 transition cursor-pointer ${
+                        vehicleType === 'driving' 
+                          ? 'bg-slate-900 text-yellow-400 shadow-xs' 
+                          : 'text-gray-400 hover:text-gray-700'
+                      }`}
+                    >
+                      <span>🚗</span>
+                      <span className="hidden xs:inline">รถยนต์</span>
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setVehicleType('motorcycle')}
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5 transition cursor-pointer ${
+                        vehicleType === 'motorcycle' 
+                          ? 'bg-slate-900 text-yellow-400 shadow-xs' 
+                          : 'text-gray-400 hover:text-gray-700'
+                      }`}
+                    >
+                      <span>🚲</span>
+                      <span className="hidden xs:inline">มอเตอร์ไซค์</span>
+                    </button>
+                  </div>
+
+                  {/* ปุ่มย่อ (Minimize to collapsed pill) */}
+                  <button
                     type="button"
-                    onClick={() => setVehicleType('driving')}
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5 transition cursor-pointer ${
-                      vehicleType === 'driving' 
-                        ? 'bg-slate-900 text-yellow-400 shadow-xs' 
-                        : 'text-gray-400 hover:text-gray-700'
-                    }`}
+                    onClick={() => setIsComparePanelMinimized(true)}
+                    className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition flex items-center justify-center cursor-pointer flex-shrink-0"
+                    title="ย่อแถบเปรียบเทียบ"
                   >
-                    <span>🚗</span>
-                    <span className="hidden xs:inline">รถยนต์</span>
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => setVehicleType('motorcycle')}
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-0.5 transition cursor-pointer ${
-                      vehicleType === 'motorcycle' 
-                        ? 'bg-slate-900 text-yellow-400 shadow-xs' 
-                        : 'text-gray-400 hover:text-gray-700'
-                    }`}
-                  >
-                    <span>🚲</span>
-                    <span className="hidden xs:inline">มอเตอร์ไซค์</span>
+                    <ChevronDown className="w-4 h-4" />
                   </button>
                 </div>
-              )}
-
-              {/* ปุ่มย่อ/ขยาย (Minimize/Maximize) */}
-              <button
-                type="button"
-                onClick={() => setIsComparePanelMinimized(!isComparePanelMinimized)}
-                className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition flex items-center justify-center cursor-pointer flex-shrink-0"
-                title={isComparePanelMinimized ? "ขยายเนื้อหา" : "ย่อเนื้อหา"}
-              >
-                {isComparePanelMinimized ? (
-                  <ChevronDown className="w-4 h-4" />
-                ) : (
-                  <ChevronUp className="w-4 h-4" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* ซ่อน/แสดง เนื้อหาของกล่องเปรียบเทียบตามสถานะย่อขยาย */}
-          {!isComparePanelMinimized && (
-            <>
+              </div>
               {/* 2. จุดเริ่มต้น (Origin) */}
               <div className="relative mb-1.5 sm:mb-2">
                 <div className="flex items-center justify-between border border-blue-200 bg-blue-50 rounded-xl p-2 sm:p-2.5 shadow-2xs">
@@ -2073,9 +2099,6 @@ export default function MapComponent({
                   )}
                 </div>
               )}
-            </>
-          )}
-
             </div>
           )}
         </div>

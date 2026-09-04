@@ -186,9 +186,9 @@ export default function DormCard({
                   ? 'bg-rose-500 text-white shadow-rose-500/30'
                   : 'bg-white/90 text-slate-400 hover:text-rose-500 hover:bg-white'
               }`}
-              aria-label={isFavorite ? `ยกเลิกบันทึกหอพัก ${dorm.name}` : `บันทึกหอพัก ${dorm.name} เป็นหอพักที่ถูกใจ`}
+              aria-label="บันทึกการ์ด"
               aria-pressed={isFavorite}
-              title={isFavorite ? 'ยกเลิกบันทึก' : 'บันทึกเป็นหอพักที่ถูกใจ'}
+              title={isFavorite ? 'ยกเลิกบันทึกการ์ด' : 'บันทึกการ์ด'}
             >
               <Heart className={`w-4 h-4 ${isFavorite ? 'fill-white' : ''}`} aria-hidden="true" />
             </button>

@@ -92,14 +92,14 @@ export default function DormFilter({
         {/* Zone Dropdown with Accessibility M-01 Standards */}
         <div className="w-full sm:w-52">
           <label htmlFor="dorm-zone-select" className="sr-only">
-            เลือกโซนรอบ ม.อุบลฯ
+            เลือกโซน
           </label>
           <select
             id="dorm-zone-select"
             name="zone"
             value={filters.zone}
             onChange={(e) => updateFilter('zone', e.target.value)}
-            aria-label="เลือกโซนรอบ ม.อุบลฯ"
+            aria-label="เลือกโซน"
             className="w-full px-3.5 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-bold text-blue-950 transition"
           >
             <option value="all">📍 ทุกโซนรอบ ม.อุบลฯ</option>

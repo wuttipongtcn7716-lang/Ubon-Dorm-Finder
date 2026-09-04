@@ -18,6 +18,17 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
   const [navigatingDorm, setNavigatingDorm] = useState<Dormitory | null>(null);
   const [isClientLoaded, setIsClientLoaded] = useState(false);
   const { isFavorite, toggleFavorite, count: favoritesCount } = useFavorites();
+  const [saveStatusAnnouncement, setSaveStatusAnnouncement] = useState('');
+
+  const handleToggleFavorite = (dormId: number) => {
+    const isNowSaved = !isFavorite(dormId);
+    toggleFavorite(dormId);
+    if (isNowSaved) {
+      setSaveStatusAnnouncement('บันทึกการ์ดเรียบร้อยแล้ว');
+    } else {
+      setSaveStatusAnnouncement('ยกเลิกบันทึกการ์ดเรียบร้อยแล้ว');
+    }
+  };
 
   useEffect(() => {
     setIsClientLoaded(true);
@@ -198,7 +209,7 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
               dorm={dorm}
               onNavigate={(d) => setNavigatingDorm(d)}
               isFavorite={isFavorite(dorm.id)}
-              onToggleFavorite={toggleFavorite}
+              onToggleFavorite={handleToggleFavorite}
             />
           ))}
         </div>
@@ -211,6 +222,14 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
           onClose={() => setNavigatingDorm(null)}
         />
       )}
+
+      {/* Screen Reader Announcement Region for Accessibility M-01 (Do not touch __next-route-announcer__) */}
+      <div 
+        aria-live="polite" 
+        className="sr-only"
+      >
+        {saveStatusAnnouncement}
+      </div>
     </div>
   );
 }

@@ -91,11 +91,11 @@ export const landmarksData: LandmarkItem[] = [
   { name: "GOLDEN HOUR COFFEE", lat: 15.117062, lng: 104.912894, category: "Cafe" },
   { name: "Inthanin Coffee - มหาวิทยาลัยอุบลราชธานี", lat: 15.120174, lng: 104.911261, category: "Cafe" },
 
-  // สนามกีฬา / สถานที่สำคัญใน ม.
-  { name: "สนามกีฬากลาง (มหาวิทยาลัยอุบลราชธานี)", lat: 15.126596, lng: 104.917202, category: "landmark" },
-  { name: "โรงพละศึกษาอเนกประสงค์ (มหาวิทยาลัยอุบลราชธานี)", lat: 15.128172, lng: 104.916537, category: "landmark" },
-  { name: "ศูนย์กีฬาอเนกประสงค์ (มหาวิทยาลัยอุบลราชธานี)", lat: 15.128077, lng: 104.914734, category: "landmark" },
-  { name: "สระว่ายน้ำยอดเศรณี (มหาวิทยาลัยอุบลราชธานี)", lat: 15.126979, lng: 104.914863, category: "landmark" },
+  // สนามกีฬา / ฟิตเนส (Stadium)
+  { name: "สนามกีฬากลาง (มหาวิทยาลัยอุบลราชธานี)", lat: 15.126596, lng: 104.917202, category: "stadium" },
+  { name: "โรงพละศึกษาอเนกประสงค์ (มหาวิทยาลัยอุบลราชธานี)", lat: 15.128172, lng: 104.916537, category: "stadium" },
+  { name: "ศูนย์กีฬาอเนกประสงค์ (มหาวิทยาลัยอุบลราชธานี)", lat: 15.128077, lng: 104.914734, category: "stadium" },
+  { name: "สระว่ายน้ำยอดเศรณี (มหาวิทยาลัยอุบลราชธานี)", lat: 15.126979, lng: 104.914863, category: "stadium" },
 
   // ธนาคาร (Bank)
   { name: "ธนาคารไทยพาณิชย์ (สาขามหาวิทยาลัยอุบลราชธานี)", lat: 15.117302, lng: 104.902729, category: "Bank" },
@@ -110,6 +110,7 @@ export type LandmarkGroup =
   | 'all'
   | 'building'
   | 'landmark'
+  | 'stadium'
   | 'gas'
   | 'official'
   | 'food'
@@ -122,7 +123,6 @@ export type LandmarkGroup =
   | 'hospital'
   | 'hangout'
   | 'park'
-  | 'stadium'
   | 'bank';
 
 export const MAIN_CATEGORIES: { id: LandmarkGroup; label: string; icon: string }[] = [
@@ -130,6 +130,7 @@ export const MAIN_CATEGORIES: { id: LandmarkGroup; label: string; icon: string }
   { id: 'all', label: 'แสดงทุกหมวดหมู่', icon: '📍' },
   { id: 'building', label: 'อาคารเรียนรวม', icon: '🏫' },
   { id: 'landmark', label: 'จุดสำคัญ / สถานที่ใน ม.', icon: '🏛️' },
+  { id: 'stadium', label: 'สนามกีฬา / ฟิตเนส', icon: '⚽' },
   { id: 'gas', label: 'ปั๊มน้ำมัน', icon: '⛽' },
   { id: 'official', label: 'สถานที่ราชการ / บริการสาธารณะ', icon: '🏢' },
   { id: 'food', label: 'ร้านอาหาร / โรงอาหาร', icon: '🍜' },
@@ -139,7 +140,6 @@ export const MAIN_CATEGORIES: { id: LandmarkGroup; label: string; icon: string }
   { id: 'hospital', label: 'สุขภาพ / คลินิก / รพ.', icon: '🏥' },
   { id: 'hangout', label: 'แฮงค์เอาท์ / บาร์', icon: '🍻' },
   { id: 'park', label: 'สวนสาธารณะ / พักผ่อน', icon: '🌳' },
-  { id: 'stadium', label: 'สนามกีฬา / ฟิตเนส', icon: '⚽' },
   { id: 'bank', label: 'ธนาคาร / การเงิน', icon: '💵' },
 ];
 
@@ -149,24 +149,29 @@ export const getLandmarkMeta = (category: string, name?: string) => {
     return { icon: '⛽', label: 'ปั๊มน้ำมัน / สถานีบริการ', color: '#059669', group: 'gas' };
   }
 
-  // 2. Campus Gates
+  // 2. Strict Sports Trap: Sports facilities always stay in 'stadium', never leak into landmark or building
+  if (category === 'stadium' || category === 'Stadium' || (name && (name.includes('กีฬา') || name.includes('พละ') || name.includes('สระว่ายน้ำ') || name.includes('ฟิตเนส')))) {
+    return { icon: '⚽', label: 'สนามกีฬา / ฟิตเนส', color: '#EA580C', group: 'stadium' };
+  }
+
+  // 3. Campus Gates
   if (name && (name.startsWith('ประตู') || name.includes('ประตู ม.'))) {
     return { icon: '🏛️', label: 'ประตู ม.อุบลฯ', color: '#4F46E5', group: 'landmark' };
   }
 
-  // 3. ATMs
+  // 4. ATMs
   const isAtm = name && (name.startsWith('ATM') || name.startsWith('เอทีเอ็ม') || name.includes('ATM'));
   if (isAtm) {
     return { icon: '🏧', label: 'ตู้ ATM / การเงิน', color: '#0284C7', group: 'bank' };
   }
 
-  // 4. Internet Games
+  // 5. Internet Games
   const isGame = name && name.includes('Internet&Games');
   if (isGame) {
     return { icon: '🎮', label: 'ร้านอินเทอร์เน็ต / เกม', color: '#6366F1', group: 'service' };
   }
 
-  // 5. Special Landmarks inside University
+  // 6. Special Landmarks inside University
   if (name) {
     if (name.includes('หอสมุด')) {
       return { icon: '📚', label: 'หอสมุดกลาง ม.อุบลฯ', color: '#2563EB', group: 'landmark' };
@@ -179,9 +184,6 @@ export const getLandmarkMeta = (category: string, name?: string) => {
     }
     if (name.includes('เฉลิมพระเกียรติ')) {
       return { icon: '🏛️', label: 'หอประชุม / ศูนย์ประชุม', color: '#2563EB', group: 'landmark' };
-    }
-    if (name.includes('กีฬา') || name.includes('พละ') || name.includes('สระว่ายน้ำ')) {
-      return { icon: '⚽', label: 'สนามกีฬา / ฟิตเนส ม.อุบลฯ', color: '#EA580C', group: 'landmark' };
     }
   }
 

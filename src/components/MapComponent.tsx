@@ -91,11 +91,11 @@ export interface DestinationItem {
 
 // Approved major campus landmarks used as default origin points
 export const OFFICIAL_CAMPUS_GATES = [
-  { id: 'CLB3', name: 'อาคารเรียนรวม 3 (CLB3)', lat: 15.117810, lng: 104.907578, icon: '🏛️', category: 'building' },
-  { id: 'CLB4', name: 'อาคารเรียนรวม 4 (CLB4)', lat: 15.120793, lng: 104.908469, icon: '🏛️', category: 'building' },
-  { id: 'CLB5', name: 'อาคารเรียนรวม 5 (CLB5)', lat: 15.120244, lng: 104.909043, icon: '🏛️', category: 'building' },
-  { id: 'ODL', name: 'หอสมุดกลาง (ODL)', lat: 15.118783, lng: 104.907804, icon: '📚', category: 'building' },
-  { id: 'OFFICE', name: 'สำนักงานอธิการบดี', lat: 15.117253, lng: 104.903069, icon: '🏢', category: 'building' },
+  { id: 'CLB3', name: 'อาคารเรียนรวม 3 (CLB3)', lat: 15.117810, lng: 104.907578, icon: '🏫', category: 'building' },
+  { id: 'CLB4', name: 'อาคารเรียนรวม 4 (CLB4)', lat: 15.120793, lng: 104.908469, icon: '🏫', category: 'building' },
+  { id: 'CLB5', name: 'อาคารเรียนรวม 5 (CLB5)', lat: 15.120244, lng: 104.909043, icon: '🏫', category: 'building' },
+  { id: 'ODL', name: 'หอสมุดกลาง (ODL)', lat: 15.118783, lng: 104.907804, icon: '📚', category: 'landmark' },
+  { id: 'OFFICE', name: 'สำนักงานอธิการบดี', lat: 15.117253, lng: 104.903069, icon: '🏛️', category: 'landmark' },
 ];
 
 const defaultCenter: [number, number] = [15.1186, 104.9150];
@@ -2032,7 +2032,7 @@ export default function MapComponent({
                       </div>
 
                       <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[10px] no-scrollbar">
-                        {['all', 'building', 'official', 'food', 'cafe', 'store', 'hospital', 'service', 'hangout', 'park', 'stadium', 'bank'].map((cat) => (
+                        {['all', 'building', 'landmark', 'stadium', 'gas', 'official', 'food', 'cafe', 'store', 'hospital', 'service', 'hangout', 'park', 'bank'].map((cat) => (
                           <button
                             key={cat}
                             onClick={() => setPoiFilterCategory(cat)}
@@ -2042,7 +2042,20 @@ export default function MapComponent({
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             }`}
                           >
-                            {cat === 'all' ? 'ทั้งหมด' : cat === 'building' ? '🏛️ ประตู/อาคาร' : cat === 'official' ? '🏛️ ราชการ' : cat === 'food' ? '🍜 อาหาร' : cat === 'cafe' ? '☕ คาเฟ่' : cat === 'store' ? '🏪 ร้านค้า' : cat === 'hospital' ? '🏥 สุขภาพ' : cat === 'service' ? '✂️ บริการ' : cat === 'park' ? '🌳 สวนสาธารณะ' : cat === 'stadium' ? '⚽ สนามกีฬา' : cat === 'bank' ? '💵 ธนาคาร' : '🍻 แฮงค์เอาท์'}
+                            {cat === 'all' ? 'ทั้งหมด' 
+                              : cat === 'building' ? '🏫 อาคารเรียนรวม' 
+                              : cat === 'landmark' ? '🏛️ จุดสำคัญใน ม.' 
+                              : cat === 'stadium' ? '⚽ สนามกีฬา / ฟิตเนส' 
+                              : cat === 'gas' ? '⛽ ปั๊มน้ำมัน'
+                              : cat === 'official' ? '🏢 ราชการ' 
+                              : cat === 'food' ? '🍜 อาหาร' 
+                              : cat === 'cafe' ? '☕ คาเฟ่' 
+                              : cat === 'store' ? '🏪 ร้านค้า' 
+                              : cat === 'hospital' ? '🏥 สุขภาพ' 
+                              : cat === 'service' ? '✂️ บริการ' 
+                              : cat === 'park' ? '🌳 สวนสาธารณะ' 
+                              : cat === 'bank' ? '💵 ธนาคาร' 
+                              : '🍻 แฮงค์เอาท์'}
                           </button>
                         ))}
                       </div>

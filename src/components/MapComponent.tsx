@@ -393,9 +393,9 @@ function UnifiedActionDock({
   const map = useMap();
 
   return (
-    <div className="absolute bottom-6 right-3 sm:right-4 z-[1000] flex flex-col items-end gap-2.5 pointer-events-auto select-none">
+    <div className="absolute bottom-3 right-2.5 sm:bottom-6 sm:right-4 z-[1000] flex flex-col items-end gap-1.5 sm:gap-2.5 pointer-events-auto select-none">
       {gpsToast && (
-        <div className="bg-slate-900/95 text-white text-[11px] font-bold px-3.5 py-2 rounded-2xl shadow-2xl border border-blue-400/40 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200 max-w-[260px] text-right">
+        <div className="bg-slate-900/95 text-white text-[10px] sm:text-[11px] font-bold px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl shadow-2xl border border-blue-400/40 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200 max-w-[200px] sm:max-w-[260px] text-right">
           {gpsToast}
         </div>
       )}
@@ -405,68 +405,68 @@ function UnifiedActionDock({
         type="button"
         onClick={onLocateGps}
         disabled={isLocatingGps}
-        className="group relative flex items-center justify-center gap-2.5 min-h-[48px] px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm shadow-2xl shadow-blue-600/40 border-2 border-blue-300/40 ring-4 ring-blue-500/25 backdrop-blur-md active:scale-95 hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 cursor-pointer"
+        className="group relative flex items-center justify-center gap-1.5 sm:gap-2.5 min-h-[40px] sm:min-h-[48px] px-3 py-2 sm:px-5 sm:py-3.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm shadow-xl sm:shadow-2xl shadow-blue-600/30 border border-blue-300/40 sm:border-2 ring-2 sm:ring-4 ring-blue-500/20 backdrop-blur-md active:scale-95 hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 cursor-pointer"
         title="ค้นหาตำแหน่ง GPS สดของคุณ (ปุ่มหลัก)"
         aria-label="ค้นหาตำแหน่ง GPS สดของคุณ"
       >
         {isLocatingGps ? (
-          <Loader2 className="w-5 h-5 text-white animate-spin flex-shrink-0" />
+          <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 text-white animate-spin flex-shrink-0" />
         ) : (
           <div className="relative flex items-center justify-center flex-shrink-0">
             <span className="absolute -inset-1 rounded-full bg-amber-400/40 animate-ping opacity-75" />
-            <LocateFixed className="relative w-5 h-5 text-amber-300 group-hover:rotate-45 transition-transform" />
+            <LocateFixed className="relative w-4 h-4 sm:w-5 sm:h-5 text-amber-300 group-hover:rotate-45 transition-transform" />
           </div>
         )}
-        <span className="tracking-wide">
+        <span className="tracking-wide text-[11px] sm:text-sm">
           <span className="inline sm:hidden">ตำแหน่ง GPS</span>
           <span className="hidden sm:inline">ตำแหน่งของฉัน (GPS)</span>
         </span>
       </button>
 
       {/* 2. Secondary Utility Dock: Unified Card containing Layer Toggle, Campus Re-center, and Zoom In/Out */}
-      <div className="flex flex-col items-center bg-white/95 rounded-2xl shadow-xl border border-slate-200/90 backdrop-blur-md overflow-hidden divide-y divide-slate-100">
+      <div className="flex flex-col items-center bg-white/95 rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl border border-slate-200/90 backdrop-blur-md overflow-hidden divide-y divide-slate-100">
         {/* Map Layer Switcher */}
         <button
           type="button"
           onClick={onToggleLayer}
-          className="w-11 h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition cursor-pointer"
+          className="w-9 h-8 sm:w-11 sm:h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition cursor-pointer"
           title={`เปลี่ยนรูปแบบแผนที่ (ปัจจุบัน: ${mapTileStyle === 'osm' ? 'OSM มาตรฐาน' : 'CartoDB สบายตา'})`}
           aria-label="เปลี่ยนเลเยอร์แผนที่"
         >
-          <Layers className="w-4 h-4 text-slate-700" />
+          <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700" />
         </button>
 
         {/* Campus Re-center */}
         <button
           type="button"
           onClick={onRecenterCampus}
-          className="w-11 h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition cursor-pointer"
+          className="w-9 h-8 sm:w-11 sm:h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition cursor-pointer"
           title="กลับสู่มุมมอง ม.อุบลฯ (Campus Overview)"
           aria-label="มุมมอง ม.อุบลฯ"
         >
-          <Compass className="w-4 h-4 text-blue-900" />
+          <Compass className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-900" />
         </button>
 
         {/* Zoom In (+) */}
         <button
           type="button"
           onClick={() => map.zoomIn()}
-          className="w-11 h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition font-black text-base cursor-pointer select-none"
+          className="w-9 h-8 sm:w-11 sm:h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition font-black text-xs sm:text-base cursor-pointer select-none"
           title="ซูมเข้า (+)"
           aria-label="ซูมเข้า"
         >
-          <Plus className="w-4 h-4 text-slate-700" />
+          <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700" />
         </button>
 
         {/* Zoom Out (−) */}
         <button
           type="button"
           onClick={() => map.zoomOut()}
-          className="w-11 h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition font-black text-base cursor-pointer select-none"
+          className="w-9 h-8 sm:w-11 sm:h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition font-black text-xs sm:text-base cursor-pointer select-none"
           title="ซูมออก (-)"
           aria-label="ซูมออก"
         >
-          <Minus className="w-4 h-4 text-slate-700" />
+          <Minus className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700" />
         </button>
       </div>
     </div>
@@ -1527,11 +1527,11 @@ export default function MapComponent({
     <div className={`relative w-full h-full flex flex-col overflow-hidden bg-slate-100 ${className}`}>
       
       {/* 1. Google Maps Style Multi-Destination Comparison Box (Floating Card on Top-Left) */}
-      <div className={`absolute top-3 left-3 sm:left-4 pointer-events-auto transition-all duration-300 ${isComparePanelMinimized ? 'w-auto max-w-[220px]' : 'w-[calc(100%-76px)] sm:w-80 md:w-96 max-w-[420px]'} ${isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1000]'}`}>
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-slate-200/90 p-3.5 sm:p-4 flex flex-col font-sans transition-all">
+      <div className={`absolute top-2.5 left-2.5 sm:top-3 sm:left-4 pointer-events-auto transition-all duration-300 ${isComparePanelMinimized ? 'w-auto max-w-[200px] sm:max-w-[220px]' : 'w-[calc(100%-76px)] sm:w-80 md:w-96 max-w-[420px]'} ${isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1000]'}`}>
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-xl border border-slate-200/90 p-2.5 sm:p-4 flex flex-col font-sans transition-all max-md:max-h-[50vh] max-md:overflow-y-auto no-scrollbar">
           
           {/* 1. ส่วนหัว */}
-          <div className={`flex justify-between items-center select-none ${isComparePanelMinimized ? '' : 'mb-3 pb-2 border-b border-slate-100'}`}>
+          <div className={`flex justify-between items-center select-none ${isComparePanelMinimized ? '' : 'mb-2 sm:mb-3 pb-1.5 sm:pb-2 border-b border-slate-100'}`}>
             <div 
               onClick={() => setIsComparePanelMinimized(!isComparePanelMinimized)}
               className="flex items-center text-blue-600 font-extrabold text-[11px] xs:text-xs sm:text-sm cursor-pointer hover:opacity-85 select-none flex-1 min-w-0 mr-1"
@@ -1592,8 +1592,8 @@ export default function MapComponent({
           {!isComparePanelMinimized && (
             <>
               {/* 2. จุดเริ่มต้น (Origin) */}
-              <div className="relative mb-2">
-                <div className="flex items-center justify-between border border-blue-200 bg-blue-50 rounded-xl p-2.5 shadow-2xs">
+              <div className="relative mb-1.5 sm:mb-2">
+                <div className="flex items-center justify-between border border-blue-200 bg-blue-50 rounded-xl p-2 sm:p-2.5 shadow-2xs">
                   <div className="flex items-center text-slate-800 font-bold text-xs sm:text-sm truncate mr-2">
                     <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 border-blue-600 p-0.5 mr-2 flex-shrink-0">
                       <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
@@ -1726,7 +1726,7 @@ export default function MapComponent({
               </div>
 
               {/* 3. จุดหมาย (Destinations List with Interactive Search & Metrics) */}
-              <div className="flex flex-col gap-2 mb-3 max-h-48 overflow-y-auto pr-1 no-scrollbar">
+              <div className="flex flex-col gap-1.5 sm:gap-2 mb-2 sm:mb-3 max-h-32 sm:max-h-48 overflow-y-auto pr-1 no-scrollbar">
                 {destinations.map((dest, idx) => {
                   const colorMeta = ROUTE_COLORS[idx % ROUTE_COLORS.length];
                   const stats = destinationStats[dest.id];
@@ -1740,7 +1740,7 @@ export default function MapComponent({
                       onMouseEnter={() => setActiveDestId(dest.id)}
                       onMouseLeave={() => setActiveDestId(null)}
                       onClick={() => setActiveDestId(dest.id)}
-                      className={`flex items-center justify-between border rounded-xl p-2 focus-within:ring-2 focus-within:ring-blue-400 transition cursor-pointer select-none ${
+                      className={`flex items-center justify-between border rounded-xl p-1.5 sm:p-2 focus-within:ring-2 focus-within:ring-blue-400 transition cursor-pointer select-none ${
                         activeDestId === dest.id 
                           ? 'border-indigo-400 bg-indigo-50/70 ring-2 ring-indigo-400 shadow-xs' 
                           : 'border-blue-200 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-300'
@@ -2308,8 +2308,8 @@ export default function MapComponent({
       {/* Detail Card Overlay */}
       {selectedPlace && (
         <div 
-          className="absolute bottom-3 left-3 right-16 sm:left-4 sm:right-auto sm:w-[380px] z-[1000] bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl rounded-3xl pt-4 px-4 pb-4 animate-in slide-in-from-bottom-4 duration-300 max-h-[calc(100dvh-8rem)] overflow-y-auto no-scrollbar"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
+          className="absolute bottom-2.5 left-2.5 right-14 sm:bottom-3 sm:left-4 sm:right-auto sm:w-[380px] z-[1000] bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl rounded-2xl sm:rounded-3xl p-3 sm:p-4 animate-in slide-in-from-bottom-4 duration-300 max-h-[45vh] sm:max-h-[calc(100dvh-8rem)] overflow-y-auto no-scrollbar"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
         >
           {selectedPlace.type === 'dorm' ? (
             (() => {

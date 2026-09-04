@@ -18,16 +18,12 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
   const [navigatingDorm, setNavigatingDorm] = useState<Dormitory | null>(null);
   const [isClientLoaded, setIsClientLoaded] = useState(false);
   const { isFavorite, toggleFavorite, count: favoritesCount } = useFavorites();
-  const [saveStatusAnnouncement, setSaveStatusAnnouncement] = useState('');
+  const [isSaved, setIsSaved] = useState<boolean | null>(null);
 
   const handleToggleFavorite = (dormId: number) => {
     const isNowSaved = !isFavorite(dormId);
     toggleFavorite(dormId);
-    if (isNowSaved) {
-      setSaveStatusAnnouncement('บันทึกการ์ดเรียบร้อยแล้ว');
-    } else {
-      setSaveStatusAnnouncement('ยกเลิกบันทึกการ์ดเรียบร้อยแล้ว');
-    }
+    setIsSaved(isNowSaved);
   };
 
   useEffect(() => {
@@ -223,12 +219,9 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
         />
       )}
 
-      {/* Screen Reader Announcement Region for Accessibility M-01 (Do not touch __next-route-announcer__) */}
-      <div 
-        aria-live="polite" 
-        className="sr-only"
-      >
-        {saveStatusAnnouncement}
+      {/* Screen Reader Announcement Region for Accessibility M-01 */}
+      <div aria-live="polite" className="sr-only">
+        {isSaved ? 'บันทึกการ์ดเรียบร้อยแล้ว' : 'ยกเลิกการบันทึกการ์ดแล้ว'}
       </div>
     </div>
   );

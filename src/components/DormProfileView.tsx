@@ -101,6 +101,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
   const [isCriteriaOpen, setIsCriteriaOpen] = useState(false);
   const [activeCriterionId, setActiveCriterionId] = useState<string | null>(null);
   const { isFavorite, toggleFavorite } = useFavorites();
+  const isSaved = isFavorite(dorm.id);
   const [saveStatusMessage, setSaveStatusMessage] = useState('');
 
   const handleToggleFavorite = () => {
@@ -778,6 +779,11 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
           onClose={() => setIsNavOpen(false)}
         />
       )}
+
+      {/* Screen Reader Announcement for Accessibility Test Case M-01 */}
+      <div aria-live="polite" className="sr-only">
+        {isSaved ? 'บันทึกการ์ดเรียบร้อยแล้ว' : 'ยกเลิกการบันทึกการ์ดแล้ว'}
+      </div>
     </div>
   );
 }

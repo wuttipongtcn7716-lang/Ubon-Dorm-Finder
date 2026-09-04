@@ -50,13 +50,29 @@ body {
 
 @media (max-width: 640px) {
   .map-route-card {
-    bottom: 12px;
+    bottom: 56px;
     left: 10px;
     padding: 6px 10px;
     border-radius: 12px;
     gap: 8px;
     max-width: calc(100% - 64px);
   }
+}
+
+/* Mobile Bottom Sheet Slide-Up Animation */
+@keyframes slideUpBottomSheet {
+  from {
+    transform: translateY(100%);
+    opacity: 0.85;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-bottom-sheet {
+  animation: slideUpBottomSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .route-icon-box {

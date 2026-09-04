@@ -1457,6 +1457,9 @@ export default function MapComponent({
 
   const handleSelectPlace = useCallback((place: SelectedPlaceType) => {
     setSelectedPlace(place);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setIsComparePanelMinimized(true);
+    }
     if (place.type === 'dorm' && onSelectDorm) {
       onSelectDorm(place.dorm);
     }
@@ -1526,9 +1529,30 @@ export default function MapComponent({
   return (
     <div className={`relative w-full h-full flex flex-col overflow-hidden bg-slate-100 ${className}`}>
       
-      {/* 1. Google Maps Style Multi-Destination Comparison Box (Floating Card on Top-Left) */}
-      <div className={`absolute top-2.5 left-2.5 sm:top-3 sm:left-4 pointer-events-auto transition-all duration-300 ${isComparePanelMinimized ? 'w-auto max-w-[200px] sm:max-w-[220px]' : 'w-[calc(100%-76px)] sm:w-80 md:w-96 max-w-[420px]'} ${isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1000]'}`}>
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-xl border border-slate-200/90 p-2.5 sm:p-4 flex flex-col font-sans transition-all max-md:max-h-[50vh] max-md:overflow-y-auto no-scrollbar">
+      {/* 1. Multi-Destination Comparison Box: Bottom Sheet on Mobile, Floating Card on Desktop */}
+      <div 
+        className={`pointer-events-auto transition-all duration-300 ${
+          isComparePanelMinimized 
+            ? 'max-md:fixed max-md:bottom-3 max-md:left-3 max-md:w-auto max-md:max-w-[220px] sm:absolute sm:top-3 sm:left-4 sm:bottom-auto sm:w-auto sm:max-w-[220px]' 
+            : 'max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:w-full sm:absolute sm:top-3 sm:left-4 sm:bottom-auto sm:right-auto sm:w-80 md:w-96 sm:max-w-[420px]'
+        } ${isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1050]'}`}
+      >
+        <div 
+          className={`bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl flex flex-col font-sans transition-all ${
+            isComparePanelMinimized
+              ? 'rounded-2xl p-2.5 sm:p-3 shadow-lg'
+              : 'max-md:rounded-t-3xl max-md:rounded-b-none max-md:border-t max-md:border-x-0 max-md:border-b-0 max-md:max-h-[75vh] max-md:overflow-y-auto p-3.5 sm:rounded-3xl sm:p-4 sm:max-h-none animate-bottom-sheet'
+          } no-scrollbar`}
+          style={!isComparePanelMinimized ? { paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' } : undefined}
+        >
+          {/* Mobile Bottom Sheet Grab Handle */}
+          {!isComparePanelMinimized && (
+            <div 
+              onClick={() => setIsComparePanelMinimized(true)}
+              className="w-12 h-1.5 bg-slate-300 hover:bg-slate-400 rounded-full mx-auto mb-2 md:hidden flex-shrink-0 cursor-pointer transition-colors"
+              title="แตะเพื่อย่อแผงเปรียบเทียบ"
+            />
+          )}
           
           {/* 1. ส่วนหัว */}
           <div className={`flex justify-between items-center select-none ${isComparePanelMinimized ? '' : 'mb-2 sm:mb-3 pb-1.5 sm:pb-2 border-b border-slate-100'}`}>
@@ -1616,7 +1640,7 @@ export default function MapComponent({
                 {isOriginModalOpen && (
                   <div 
                     ref={originModalRef}
-                    className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-84 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150"
+                    className="max-md:relative max-md:mt-2 max-md:w-full sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-84 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150"
                   >
                     <div className="flex items-center justify-between pb-1 border-b border-slate-100 text-[11px] font-extrabold text-[#0a1931]">
                       <span>เลือกจุดเริ่มต้น (Origin)</span>
@@ -1809,7 +1833,7 @@ export default function MapComponent({
 
                   {/* Add POI Dropdown Menu - z-[9999] to prevent overlapping */}
                   {isAddPoiDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-64 sm:max-h-80 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="max-md:relative max-md:mt-2 max-md:w-full sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-64 sm:max-h-80 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150">
                       <div className="flex items-center justify-between pb-1 border-b border-slate-100 text-[11px] font-extrabold text-slate-700">
                         <span>เลือกสถานที่ปลายทาง ({availablePoisToAdd.length} แห่ง)</span>
                         <button 
@@ -1889,8 +1913,8 @@ export default function MapComponent({
         </div>
       </div>
 
-      {/* 2. Top-Right Category Dropdown Filter */}
-      <div className={`absolute top-3 right-3 sm:right-4 flex items-center gap-2 pointer-events-auto transition-all duration-300 ${(isCategoryDropdownOpen || showOffsetControls) ? 'z-[9999]' : 'z-[1000]'}`}>
+      {/* 2. Top-Right Category Dropdown Filter (High z-index to always remain clickable above overlays) */}
+      <div className={`absolute top-3 right-3 sm:right-4 flex items-center gap-2 pointer-events-auto transition-all duration-300 ${(isCategoryDropdownOpen || showOffsetControls) ? 'z-[9999]' : 'z-[1200]'}`}>
 
         <div ref={dropdownRef} className="relative">
           <button
@@ -2279,7 +2303,7 @@ export default function MapComponent({
 
       {/* Google Maps Style Route Info Card (Floating Bottom-Left) */}
       {!selectedPlace && destinations.length > 0 && destinationStats[destinations[0].id] && (
-        <div id="route-info-card" className="map-route-card animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div id="route-info-card" className={`map-route-card animate-in fade-in slide-in-from-bottom-3 duration-200 ${!isComparePanelMinimized ? 'max-md:hidden' : ''}`}>
           <div className="route-icon-box">
             {vehicleType === 'driving' ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="#475569">
@@ -2305,12 +2329,18 @@ export default function MapComponent({
         </div>
       )}
 
-      {/* Detail Card Overlay */}
+      {/* Detail Card Overlay: Bottom Sheet on Mobile, Floating Card on Desktop */}
       {selectedPlace && (
         <div 
-          className="absolute bottom-2.5 left-2.5 right-14 sm:bottom-3 sm:left-4 sm:right-auto sm:w-[380px] z-[1000] bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl rounded-2xl sm:rounded-3xl p-3 sm:p-4 animate-in slide-in-from-bottom-4 duration-300 max-h-[45vh] sm:max-h-[calc(100dvh-8rem)] overflow-y-auto no-scrollbar"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+          className="max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:w-full max-md:rounded-t-3xl max-md:rounded-b-none max-md:border-t max-md:border-x-0 max-md:border-b-0 max-md:shadow-2xl max-md:max-h-[75vh] max-md:overflow-y-auto sm:absolute sm:bottom-3 sm:left-4 sm:right-auto sm:w-[380px] sm:rounded-3xl sm:max-h-[calc(100dvh-8rem)] z-[1100] bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl p-3.5 sm:p-4 animate-bottom-sheet no-scrollbar"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
         >
+          {/* Mobile Bottom Sheet Grab Handle */}
+          <div 
+            onClick={() => setSelectedPlace(null)}
+            className="w-12 h-1.5 bg-slate-300 hover:bg-slate-400 rounded-full mx-auto mb-2.5 md:hidden flex-shrink-0 cursor-pointer transition-colors"
+            title="แตะเพื่อปิด"
+          />
           {selectedPlace.type === 'dorm' ? (
             (() => {
               const dorm = selectedPlace.dorm;

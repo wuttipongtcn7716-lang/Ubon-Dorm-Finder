@@ -61,31 +61,45 @@ export default function DormFilter({
     <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-4 sm:p-5 space-y-3.5">
       {/* Top Search Bar & Zone Select */}
       <div className="flex flex-col sm:flex-row gap-2.5">
-        {/* Search input */}
+        {/* Search input with Accessibility M-01 Standards */}
         <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <label htmlFor="dorm-search-input" className="sr-only">
+            ค้นหาชื่อหอพัก โซน หรือทำเลใกล้เคียง
+          </label>
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
           <input
+            id="dorm-search-input"
+            name="searchTerm"
             type="text"
             value={filters.searchTerm}
             onChange={(e) => updateFilter('searchTerm', e.target.value)}
             placeholder="ค้นหาชื่อหอพัก, โซน หรือทำเลใกล้เคียง..."
+            aria-label="ค้นหาชื่อหอพัก โซน หรือทำเลใกล้เคียง"
             className="w-full pl-10 pr-9 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white transition"
           />
           {filters.searchTerm && (
             <button
+              type="button"
               onClick={() => updateFilter('searchTerm', '')}
+              aria-label="ล้างคำค้นหา"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
         </div>
 
-        {/* Zone Dropdown */}
+        {/* Zone Dropdown with Accessibility M-01 Standards */}
         <div className="w-full sm:w-52">
+          <label htmlFor="dorm-zone-select" className="sr-only">
+            เลือกโซนรอบ ม.อุบลฯ
+          </label>
           <select
+            id="dorm-zone-select"
+            name="zone"
             value={filters.zone}
             onChange={(e) => updateFilter('zone', e.target.value)}
+            aria-label="เลือกโซนรอบ ม.อุบลฯ"
             className="w-full px-3.5 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-bold text-blue-950 transition"
           >
             <option value="all">📍 ทุกโซนรอบ ม.อุบลฯ</option>

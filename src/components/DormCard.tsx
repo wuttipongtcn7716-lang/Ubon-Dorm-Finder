@@ -172,9 +172,10 @@ export default function DormCard({
             </div>
           )}
 
-          {/* Favorite Heart Toggle Button */}
+          {/* Favorite Bookmark Button with Accessibility M-01 Standards */}
           {onToggleFavorite && (
             <button
+              type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -185,9 +186,11 @@ export default function DormCard({
                   ? 'bg-rose-500 text-white shadow-rose-500/30'
                   : 'bg-white/90 text-slate-400 hover:text-rose-500 hover:bg-white'
               }`}
+              aria-label={isFavorite ? `ยกเลิกบันทึกหอพัก ${dorm.name}` : `บันทึกหอพัก ${dorm.name} เป็นหอพักที่ถูกใจ`}
+              aria-pressed={isFavorite}
               title={isFavorite ? 'ยกเลิกบันทึก' : 'บันทึกเป็นหอพักที่ถูกใจ'}
             >
-              <Heart className={`w-4 h-4 ${isFavorite ? 'fill-white' : ''}`} />
+              <Heart className={`w-4 h-4 ${isFavorite ? 'fill-white' : ''}`} aria-hidden="true" />
             </button>
           )}
 

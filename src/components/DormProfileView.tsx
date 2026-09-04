@@ -202,15 +202,19 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
           {/* Right Action Group: Favorite & Share */}
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Favorite Toggle */}
+            {/* Favorite / Bookmark Button */}
             <button
+              type="button"
               onClick={() => toggleFavorite(dorm.id)}
+              aria-pressed={isFavorite(dorm.id)}
+              aria-label={isFavorite(dorm.id) ? `ยกเลิกบันทึกหอพัก ${dorm.name}` : `บันทึกหอพัก ${dorm.name}`}
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all duration-200 border backdrop-blur-md shadow-sm active:scale-95 whitespace-nowrap ${
                 isFavorite(dorm.id)
                   ? 'bg-rose-500/90 text-white border-rose-400/80 shadow-rose-500/25'
                   : 'bg-white/10 text-blue-100 hover:text-rose-300 hover:bg-white/20 border-white/15'
               }`}
             >
-              <Heart className={`w-3.5 h-3.5 ${isFavorite(dorm.id) ? 'fill-white' : ''}`} />
+              <Heart className={`w-3.5 h-3.5 ${isFavorite(dorm.id) ? 'fill-white' : ''}`} aria-hidden="true" />
               <span>{isFavorite(dorm.id) ? 'บันทึกแล้ว' : 'บันทึก'}</span>
             </button>
 

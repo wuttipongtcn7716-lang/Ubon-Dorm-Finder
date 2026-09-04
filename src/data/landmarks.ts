@@ -3,38 +3,41 @@ export interface LandmarkItem {
   name: string;
   lat: number;
   lng: number;
-  category: 'food' | 'shabu' | 'streetfood' | 'cafe' | 'store' | 'faculty' | 'hospital' | 'building' | 'service' | 'hangout' | 'market' | 'gas' | 'official place' | string;
+  category: 'food' | 'shabu' | 'streetfood' | 'cafe' | 'store' | 'faculty' | 'hospital' | 'building' | 'landmark' | 'service' | 'hangout' | 'market' | 'gas' | 'official place' | string;
 }
 
 export const landmarksData: LandmarkItem[] = [
-  // สถานีใน ม.อุบล
+  // สถานีใน ม.อุบล (อาคารเรียนรวม & คณะ)
   { name: "โรงอาหารกลาง ๑", lat: 15.119555, lng: 104.905864, category: "food" },
   { name: "โรงอาหารกลาง ๒ (ม.อุบลฯ)", lat: 15.119374, lng: 104.906403, category: "food" },
   { name: "ศูนย์อาหารหอใน (FOOD CENTER)", lat: 15.131921, lng: 104.908099, category: "food" },
-  { name: "คณะบริหารศาสตร์", lat: 15.119319, lng: 104.903491, category: "faculty" },
-  { name: "คณะบริหารศาสตร์ (หลังใหม่)", lat: 15.119319, lng: 104.903491, category: "faculty" },
-  { name: "คณะวิศวกรรมศาสตร์", lat: 15.119938, lng: 104.904966, category: "faculty" },
-  { name: "คณะนิติศาสตร์ CLB2", lat: 15.120262, lng: 104.905980, category: "faculty" },
-  { name: "คณะรัฐศาสตร์", lat: 15.120413, lng: 104.910188, category: "faculty" },
-  { name: "คณะวิทยาศาสตร์", lat: 15.122469, lng: 104.906575, category: "faculty" },
-  { name: "คณะเกษตรศาสตร์", lat: 15.121958, lng: 104.908394, category: "faculty" },
-  { name: "คณะเภสัชศาสตร์ (หลังเดิม)", lat: 15.119446, lng: 104.910950, category: "faculty" },
-  { name: "คณะเภสัชศาสตร์ (หลังใหม่)", lat: 15.120446, lng: 104.910888, category: "faculty" },
-  { name: "คณะศิลปประยุกต์และสถาปัตยกรรมศาสตร์", lat: 15.118228, lng: 104.905647, category: "faculty" },
-  { name: "คณะศิลปศาสตร์", lat: 15.116815, lng: 104.908793, category: "faculty" },
-  { name: "คณะพยาบาลศาสตร์", lat: 15.115246, lng: 104.906468, category: "faculty" },
-  { name: "วิทยาลัยแพทยศาสตร์และการสาธารณสุข", lat: 15.115360, lng: 104.905213, category: "faculty" },
-  { name: "อาคารเฉลิมพระเกียรติ 7 รอบพระชนมพรรษาฯ", lat: 15.114791, lng: 104.901412, category: "building" },
-  { name: "หอสมุดกลาง (ODL)", lat: 15.118783, lng: 104.907804, category: "building" },
-  { name: "สำนักงานอธิการบดี", lat: 15.117253, lng: 104.903069, category: "building" },
-  { name: "สำนักคอมพิวเตอร์และเครือข่าย มหาวิทยาลัยอุบลราชธานี", lat: 15.120090, lng: 104.907353, category: "building" },
+  { name: "คณะบริหารศาสตร์", lat: 15.119319, lng: 104.903491, category: "building" },
+  { name: "คณะบริหารศาสตร์ (หลังใหม่)", lat: 15.119319, lng: 104.903491, category: "building" },
+  { name: "คณะวิศวกรรมศาสตร์", lat: 15.119938, lng: 104.904966, category: "building" },
+  { name: "คณะนิติศาสตร์ CLB2", lat: 15.120262, lng: 104.905980, category: "building" },
+  { name: "คณะรัฐศาสตร์", lat: 15.120413, lng: 104.910188, category: "building" },
+  { name: "คณะวิทยาศาสตร์", lat: 15.122469, lng: 104.906575, category: "building" },
+  { name: "คณะเกษตรศาสตร์", lat: 15.121958, lng: 104.908394, category: "building" },
+  { name: "คณะเภสัชศาสตร์ (หลังเดิม)", lat: 15.119446, lng: 104.910950, category: "building" },
+  { name: "คณะเภสัชศาสตร์ (หลังใหม่)", lat: 15.120446, lng: 104.910888, category: "building" },
+  { name: "คณะศิลปประยุกต์และสถาปัตยกรรมศาสตร์", lat: 15.118228, lng: 104.905647, category: "building" },
+  { name: "คณะศิลปศาสตร์", lat: 15.116815, lng: 104.908793, category: "building" },
+  { name: "คณะพยาบาลศาสตร์", lat: 15.115246, lng: 104.906468, category: "building" },
+  { name: "วิทยาลัยแพทยศาสตร์และการสาธารณสุข", lat: 15.115360, lng: 104.905213, category: "building" },
   { name: "อาคารเรียนรวม 3 (CLB3)", lat: 15.117810, lng: 104.907578, category: "building" },
   { name: "อาคารเรียนรวม 4 (CLB4)", lat: 15.120793, lng: 104.908469, category: "building" },
   { name: "อาคารเรียนรวม 5 (CLB5)", lat: 15.120244, lng: 104.909043, category: "building" },
+
+  // จุดสำคัญ / สถานที่ใน ม.
+  { name: "อาคารเฉลิมพระเกียรติ 7 รอบพระชนมพรรษาฯ", lat: 15.114791, lng: 104.901412, category: "landmark" },
+  { name: "หอสมุดกลาง (ODL)", lat: 15.118783, lng: 104.907804, category: "landmark" },
+  { name: "สำนักงานอธิการบดี", lat: 15.117253, lng: 104.903069, category: "landmark" },
+  { name: "สำนักคอมพิวเตอร์และเครือข่าย มหาวิทยาลัยอุบลราชธานี", lat: 15.120090, lng: 104.907353, category: "landmark" },
   { name: "โรงพยาบาลมหาวิทยาลัยอุบลราชธานี", lat: 15.113859, lng: 104.903260, category: "hospital" },
 
-  // ปั๊ม
+  // ปั๊มน้ำมัน
   { name: "ปั๊ม ปตท. หน้า ม.อุบลฯ", lat: 15.112752, lng: 104.900948, category: "gas" },
+  { name: "ปั้มน้ำมันPT", lat: 15.133483, lng: 104.895884, category: "gas" },
 
   // ร้านอาหาร
   { name: "ครัวพนิตา", lat: 15.112426, lng: 104.902072, category: "food" },
@@ -49,6 +52,7 @@ export const landmarksData: LandmarkItem[] = [
   // คาเฟ่
   { name: "NAM NOM", lat: 15.112266, lng: 104.901549, category: "cafe" },
   { name: "นมละมุน (Nom la Moon)", lat: 15.112600, lng: 104.895787, category: "cafe" },
+  { name: "คาเฟ่ อเมซอน สาขา ปตท. มหาวิทยาลัยอุบลราชธานี", lat: 15.112514, lng: 104.901288, category: "cafe" },
 
   // ตลาด
   { name: "ตลาดบังเอิญ", lat: 15.116176, lng: 104.898075, category: "market" },
@@ -59,13 +63,11 @@ export const landmarksData: LandmarkItem[] = [
   { name: "OPEN BAR", lat: 15.124244, lng: 104.898520, category: "hangout" },
   { name: "Lang Ban Camp", lat: 15.113030, lng: 104.911851, category: "hangout" },
 
-  // Store
+  // ร้านสะดวกซื้อ / Store
   { name: "7-Eleven สาขา หน้า ม.อุบล 2", lat: 15.116443, lng: 104.899542, category: "store" },
+  { name: "7-Eleven สาขา PTTOR ม.อุบล (07074)", lat: 15.112535, lng: 104.900948, category: "store" },
   { name: "โลตัส โกเฟรช ม.อุบลฯ", lat: 15.120265, lng: 104.899220, category: "store" },
   { name: "Big C mini ชุมชนศรีไค", lat: 15.108641, lng: 104.904244, category: "store" },
-
-  // ปั๊มน้ำมัน (เพิ่มเติม)
-  { name: "ปั้มน้ำมันPT", lat: 15.133483, lng: 104.895884, category: "gas" },
 
   // สุขภาพ/คลินิก/รพ.
   { name: "โรงพยาบาลส่งเสริมสุขภาพตำบลเมืองศรีไค", lat: 15.111414, lng: 104.900119, category: "hospital" },
@@ -89,11 +91,11 @@ export const landmarksData: LandmarkItem[] = [
   { name: "GOLDEN HOUR COFFEE", lat: 15.117062, lng: 104.912894, category: "Cafe" },
   { name: "Inthanin Coffee - มหาวิทยาลัยอุบลราชธานี", lat: 15.120174, lng: 104.911261, category: "Cafe" },
 
-  // สนามกีฬา (Stadium)
-  { name: "สนามกีฬากลาง (มหาวิทยาลัยอุบลราชธานี)", lat: 15.126596, lng: 104.917202, category: "Stadium" },
-  { name: "โรงพละศึกษาอเนกประสงค์ (มหาวิทยาลัยอุบลราชธานี)", lat: 15.128172, lng: 104.916537, category: "Stadium" },
-  { name: "ศูนย์กีฬาอเนกประสงค์ (มหาวิทยาลัยอุบลราชธานี)", lat: 15.128077, lng: 104.914734, category: "Stadium" },
-  { name: "สระว่ายน้ำยอดเศรณี (มหาวิทยาลัยอุบลราชธานี)", lat: 15.126979, lng: 104.914863, category: "Stadium" },
+  // สนามกีฬา / สถานที่สำคัญใน ม.
+  { name: "สนามกีฬากลาง (มหาวิทยาลัยอุบลราชธานี)", lat: 15.126596, lng: 104.917202, category: "landmark" },
+  { name: "โรงพละศึกษาอเนกประสงค์ (มหาวิทยาลัยอุบลราชธานี)", lat: 15.128172, lng: 104.916537, category: "landmark" },
+  { name: "ศูนย์กีฬาอเนกประสงค์ (มหาวิทยาลัยอุบลราชธานี)", lat: 15.128077, lng: 104.914734, category: "landmark" },
+  { name: "สระว่ายน้ำยอดเศรณี (มหาวิทยาลัยอุบลราชธานี)", lat: 15.126979, lng: 104.914863, category: "landmark" },
 
   // ธนาคาร (Bank)
   { name: "ธนาคารไทยพาณิชย์ (สาขามหาวิทยาลัยอุบลราชธานี)", lat: 15.117302, lng: 104.902729, category: "Bank" },
@@ -107,6 +109,9 @@ export type LandmarkGroup =
   | 'none'
   | 'all'
   | 'building'
+  | 'landmark'
+  | 'gas'
+  | 'official'
   | 'food'
   | 'shabu'
   | 'streetfood'
@@ -116,7 +121,6 @@ export type LandmarkGroup =
   | 'service'
   | 'hospital'
   | 'hangout'
-  | 'official'
   | 'park'
   | 'stadium'
   | 'bank';
@@ -124,36 +128,72 @@ export type LandmarkGroup =
 export const MAIN_CATEGORIES: { id: LandmarkGroup; label: string; icon: string }[] = [
   { id: 'none', label: 'ซ่อนสถานที่รอบข้าง', icon: '🚫' },
   { id: 'all', label: 'แสดงทุกหมวดหมู่', icon: '📍' },
-  { id: 'building', label: 'อาคารเรียนรวม / จุดสำคัญ', icon: '🏛️' },
-  { id: 'official', label: 'สถานที่ราชการ / บริการสาธารณะ', icon: '🏛️' },
+  { id: 'building', label: 'อาคารเรียนรวม', icon: '🏫' },
+  { id: 'landmark', label: 'จุดสำคัญ / สถานที่ใน ม.', icon: '🏛️' },
+  { id: 'gas', label: 'ปั๊มน้ำมัน', icon: '⛽' },
+  { id: 'official', label: 'สถานที่ราชการ / บริการสาธารณะ', icon: '🏢' },
   { id: 'food', label: 'ร้านอาหาร / โรงอาหาร', icon: '🍜' },
   { id: 'streetfood', label: 'ของกินเล่น / ตลาด', icon: '🍢' },
   { id: 'cafe', label: 'คาเฟ่ / กาแฟ', icon: '☕' },
   { id: 'store', label: 'ร้านสะดวกซื้อ / มินิมาร์ท', icon: '🏪' },
   { id: 'hospital', label: 'สุขภาพ / คลินิก / รพ.', icon: '🏥' },
   { id: 'hangout', label: 'แฮงค์เอาท์ / บาร์', icon: '🍻' },
-  { id: 'faculty', label: 'คณะต่างๆ ม.อุบลฯ', icon: '🎓' },
   { id: 'park', label: 'สวนสาธารณะ / พักผ่อน', icon: '🌳' },
   { id: 'stadium', label: 'สนามกีฬา / ฟิตเนส', icon: '⚽' },
   { id: 'bank', label: 'ธนาคาร / การเงิน', icon: '💵' },
 ];
 
 export const getLandmarkMeta = (category: string, name?: string) => {
-  if (name && (name.startsWith('ประตู') || name.includes('ประตู ม.'))) {
-    return { icon: '🏛️', label: 'ประตู ม.อุบลฯ', color: '#4F46E5', group: 'building' };
+  // 1. Strict Gas Trap: Gas stations always stay in 'gas', never leak into building or landmark
+  if (category === 'gas' || (name && (name.includes('ปั๊ม') || name.includes('ปั้ม')))) {
+    return { icon: '⛽', label: 'ปั๊มน้ำมัน / สถานีบริการ', color: '#059669', group: 'gas' };
   }
 
+  // 2. Campus Gates
+  if (name && (name.startsWith('ประตู') || name.includes('ประตู ม.'))) {
+    return { icon: '🏛️', label: 'ประตู ม.อุบลฯ', color: '#4F46E5', group: 'landmark' };
+  }
+
+  // 3. ATMs
   const isAtm = name && (name.startsWith('ATM') || name.startsWith('เอทีเอ็ม') || name.includes('ATM'));
   if (isAtm) {
-    return { icon: '🏧', label: 'ตู้ ATM / การเงิน', color: '#0284C7', group: 'building' };
+    return { icon: '🏧', label: 'ตู้ ATM / การเงิน', color: '#0284C7', group: 'bank' };
   }
 
+  // 4. Internet Games
   const isGame = name && name.includes('Internet&Games');
   if (isGame) {
     return { icon: '🎮', label: 'ร้านอินเทอร์เน็ต / เกม', color: '#6366F1', group: 'service' };
   }
 
+  // 5. Special Landmarks inside University
+  if (name) {
+    if (name.includes('หอสมุด')) {
+      return { icon: '📚', label: 'หอสมุดกลาง ม.อุบลฯ', color: '#2563EB', group: 'landmark' };
+    }
+    if (name.includes('สำนักงานอธิการบดี')) {
+      return { icon: '🏛️', label: 'สำนักงานอธิการบดี', color: '#2563EB', group: 'landmark' };
+    }
+    if (name.includes('สำนักคอมพิวเตอร์')) {
+      return { icon: '💻', label: 'สำนักคอมพิวเตอร์และเครือข่าย', color: '#2563EB', group: 'landmark' };
+    }
+    if (name.includes('เฉลิมพระเกียรติ')) {
+      return { icon: '🏛️', label: 'หอประชุม / ศูนย์ประชุม', color: '#2563EB', group: 'landmark' };
+    }
+    if (name.includes('กีฬา') || name.includes('พละ') || name.includes('สระว่ายน้ำ')) {
+      return { icon: '⚽', label: 'สนามกีฬา / ฟิตเนส ม.อุบลฯ', color: '#EA580C', group: 'landmark' };
+    }
+  }
+
   switch (category) {
+    case 'building':
+      return { icon: '🏫', label: 'อาคารเรียนรวม / บรรยาย', color: '#4F46E5', group: 'building' };
+    case 'faculty':
+      return { icon: '🎓', label: 'คณะ / อาคารเรียน', color: '#4F46E5', group: 'building' };
+    case 'landmark':
+      return { icon: '🏛️', label: 'จุดสำคัญ / สถานที่ใน ม.', color: '#2563EB', group: 'landmark' };
+    case 'gas':
+      return { icon: '⛽', label: 'ปั๊มน้ำมัน / สถานีบริการ', color: '#059669', group: 'gas' };
     case 'food':
       return { icon: '🍜', label: 'ร้านอาหาร / โรงอาหาร', color: '#EA580C', group: 'food' };
     case 'shabu':
@@ -165,22 +205,16 @@ export const getLandmarkMeta = (category: string, name?: string) => {
       return { icon: '☕', label: 'คาเฟ่ / กาแฟ / ขนมหวาน', color: '#D97706', group: 'cafe' };
     case 'store':
       return { icon: '🏪', label: 'ร้านสะดวกซื้อ / มินิมาร์ท / ชุมชน', color: '#059669', group: 'store' };
-    case 'building':
-      return { icon: '🏛️', label: 'อาคาร / ประตู ม. / จุดสำคัญ', color: '#4F46E5', group: 'building' };
     case 'service':
       return { icon: '✂️', label: 'บริการ / ซักอบ / เสริมสวย / ถ่ายเอกสาร', color: '#8B5CF6', group: 'service' };
     case 'hangout':
       return { icon: '🍻', label: 'แฮงค์เอาท์ / บาร์ / ดนตรี', color: '#EC4899', group: 'hangout' };
-    case 'faculty':
-      return { icon: '🎓', label: 'คณะ / อาคารเรียน / หอสมุด', color: '#2563EB', group: 'faculty' };
     case 'hospital':
       return { icon: '🏥', label: 'สุขภาพ / คลินิก / รพ.สต. / ร้านยา', color: '#0284C7', group: 'hospital' };
-    case 'gas':
-      return { icon: '⛽', label: 'ปั๊มน้ำมัน / สถานีบริการ', color: '#059669', group: 'building' };
     case 'market':
       return { icon: '🛒', label: 'ตลาด / แหล่งช้อปปิ้ง', color: '#E11D48', group: 'streetfood' };
     case 'official place':
-      return { icon: '🏛️', label: 'สถานที่ราชการ / บริการสาธารณะ', color: '#4F46E5', group: 'official' };
+      return { icon: '🏢', label: 'สถานที่ราชการ / บริการสาธารณะ', color: '#4F46E5', group: 'official' };
     case 'Park':
     case 'park':
       return { icon: '🌳', label: 'สวนสาธารณะ / พักผ่อน', color: '#16A34A', group: 'park' };
@@ -191,7 +225,7 @@ export const getLandmarkMeta = (category: string, name?: string) => {
     case 'bank':
       return { icon: '💵', label: 'ธนาคาร / การเงิน', color: '#0284C7', group: 'bank' };
     default:
-      return { icon: '📍', label: 'สถานที่สำคัญ', color: '#64748B', group: 'building' };
+      return { icon: '📍', label: 'สถานที่สำคัญ', color: '#64748B', group: 'landmark' };
   }
 };
 

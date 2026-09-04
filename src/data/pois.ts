@@ -18,12 +18,14 @@ export const poiData: POIItem[] = landmarksData.map((item, idx) => {
   else if (item.category === 'market') { type = 'market'; icon = '🛒'; }
   else if (item.category === 'hangout') { type = 'cafe'; icon = '🍻'; }
   else if (item.category === 'store') { type = 'market'; icon = '🏪'; }
-  else if (item.category === 'gas') { type = 'university'; icon = '⛽'; }
+  else if (item.category === 'gas') { type = 'gas'; icon = '⛽'; }
   else if (item.category === 'hospital') { type = 'hospital'; icon = '🏥'; }
-  else if (item.category === 'official place') { type = 'official'; icon = '🏛️'; }
+  else if (item.category === 'official place') { type = 'official'; icon = '🏢'; }
   else if (item.category === 'Park' || item.category === 'park') { type = 'park'; icon = '🌳'; }
   else if (item.category === 'Stadium' || item.category === 'stadium') { type = 'stadium'; icon = '⚽'; }
   else if (item.category === 'Bank' || item.category === 'bank') { type = 'bank'; icon = '💵'; }
+  else if (item.category === 'building') { type = 'classroom'; icon = '🏫'; }
+  else if (item.category === 'landmark') { type = 'landmark'; icon = '🏛️'; }
 
   return {
     id: idx + 1,
@@ -45,6 +47,12 @@ export const getPOITypeLabel = (type: string) => {
       return 'ศูนย์อาหาร / ร้านอาหาร';
     case 'park':
       return 'สวนสาธารณะ / พักผ่อน';
+    case 'classroom':
+      return 'อาคารเรียนรวม';
+    case 'landmark':
+      return 'จุดสำคัญ / สถานที่ใน ม.';
+    case 'gas':
+      return 'ปั๊มน้ำมัน / สถานีบริการ';
     case 'university':
       return 'สถาบันการศึกษา / จุดสำคัญ';
     case 'hospital':
@@ -70,6 +78,12 @@ export const getPOITypeColor = (type: string) => {
       return '#EA580C'; // Orange
     case 'park':
       return '#059669'; // Emerald green
+    case 'classroom':
+      return '#4F46E5'; // Indigo
+    case 'landmark':
+      return '#2563EB'; // Royal blue
+    case 'gas':
+      return '#059669'; // Green
     case 'university':
       return '#2563EB'; // Royal blue
     case 'hospital':

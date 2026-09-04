@@ -539,25 +539,21 @@ class MapErrorBoundary extends React.Component<MapErrorBoundaryProps, MapErrorBo
   }
 }
 
-function MarkerClusterGroupLayer({
+// Dedicated Dormitory Marker Cluster Layer
+function DormClusterLayer({
   dorms,
   selectedDormId,
-  selectedLandmarkName,
-  visibleLandmarks,
   onSelectPlace,
   adjustLatLng,
 }: {
   dorms: Dormitory[];
   selectedDormId?: string | number | null;
-  selectedLandmarkName?: string | null;
-  visibleLandmarks: LandmarkItem[];
   onSelectPlace: (place: SelectedPlaceType) => void;
   adjustLatLng: (lat: number, lng: number) => [number, number];
 }) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | L.LayerGroup | null>(null);
   const dormMarkersMapRef = useRef<Map<string | number, L.Marker>>(new Map());
-  const landmarkMarkersMapRef = useRef<Map<string, L.Marker>>(new Map());
 
   useEffect(() => {
     if (!map) return;
@@ -645,14 +641,48 @@ function MarkerClusterGroupLayer({
     });
   }, [dorms, selectedDormId, onSelectPlace, adjustLatLng]);
 
+  return null;
+}
+
+// Dedicated Landmark LayerGroup for University buildings & POIs (Toggled via categories)
+function LandmarksLayerGroup({
+  visibleLandmarks,
+  selectedLandmarkName,
+  onSelectPlace,
+  adjustLatLng,
+}: {
+  visibleLandmarks: LandmarkItem[];
+  selectedLandmarkName?: string | null;
+  onSelectPlace: (place: SelectedPlaceType) => void;
+  adjustLatLng: (lat: number, lng: number) => [number, number];
+}) {
+  const map = useMap();
+  const layerGroupRef = useRef<L.LayerGroup | null>(null);
+
   useEffect(() => {
-    const group = clusterGroupRef.current;
+    if (!map) return;
+
+    const group = L.layerGroup();
+    layerGroupRef.current = group;
+    map.addLayer(group);
+
+    return () => {
+      if (layerGroupRef.current) {
+        map.removeLayer(layerGroupRef.current);
+        layerGroupRef.current = null;
+      }
+    };
+  }, [map]);
+
+  useEffect(() => {
+    const group = layerGroupRef.current;
     if (!group) return;
 
-    landmarkMarkersMapRef.current.forEach((marker) => {
-      group.removeLayer(marker);
-    });
-    landmarkMarkersMapRef.current.clear();
+    group.clearLayers();
+
+    if (!visibleLandmarks || visibleLandmarks.length === 0) {
+      return;
+    }
 
     visibleLandmarks.forEach((landmark) => {
       const rawLat = Number(landmark.lat);
@@ -660,7 +690,6 @@ function MarkerClusterGroupLayer({
       if (!rawLat || !rawLng || isNaN(rawLat) || isNaN(rawLng)) return;
 
       const [lLat, lLng] = adjustLatLng(rawLat, rawLng);
-
       const isSelected = selectedLandmarkName === landmark.name;
 
       const marker = L.marker([lLat, lLng], {
@@ -675,7 +704,6 @@ function MarkerClusterGroupLayer({
       });
 
       group.addLayer(marker);
-      landmarkMarkersMapRef.current.set(landmark.name, marker);
     });
   }, [visibleLandmarks, selectedLandmarkName, onSelectPlace, adjustLatLng]);
 
@@ -1032,7 +1060,7 @@ export default function MapComponent({
   userLocation,
   showRoute = false,
   travelMode = 'driving',
-  showLandmarks = true,
+  showLandmarks = false,
   onRouteCalculated,
   onSelectDorm,
   onNavigate,
@@ -1247,7 +1275,7 @@ export default function MapComponent({
   const [isPickingManualOrigin, setIsPickingManualOrigin] = useState(false);
   const originModalRef = useRef<HTMLDivElement>(null);
 
-  // Multi-Destination Comparison State
+  // Multi-Destination Comparison State: Default to empty array if no dorm selected (clean initial map)
   const [destinations, setDestinations] = useState<DestinationItem[]>(() => {
     if (selectedDorm) {
       let dLat = Number(selectedDorm.lat ?? selectedDorm.latitude);
@@ -1267,16 +1295,7 @@ export default function MapComponent({
         category: 'หอพักเป้าหมาย',
       }];
     }
-    const defaultGate = OFFICIAL_CAMPUS_GATES[0];
-    return [{
-      id: defaultGate.name,
-      name: defaultGate.name,
-      lat: defaultGate.lat,
-      lng: defaultGate.lng,
-      colorIndex: 0,
-      icon: defaultGate.icon,
-      category: defaultGate.category,
-    }];
+    return [];
   });
 
   // Sync destination 1 when selectedDorm changes
@@ -1313,12 +1332,13 @@ export default function MapComponent({
   const [poiFilterCategory, setPoiFilterCategory] = useState<string>('all');
   const addPoiDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [activeCategory, setActiveCategory] = useState<LandmarkGroup>('none');
+  // Category filter state: Default to 'none' (hidden) unless showLandmarks is explicitly requested
+  const [activeCategory, setActiveCategory] = useState<LandmarkGroup>(showLandmarks ? 'building' : 'none');
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // POI / Building labels & markers toggle state (Auto-hides on route active)
-  const [showPoiMarkers, setShowPoiMarkers] = useState<boolean>(showLandmarks !== undefined ? showLandmarks : true);
+  // POI / Building labels & markers toggle state (Default hidden to keep initial view clean)
+  const [showPoiMarkers, setShowPoiMarkers] = useState<boolean>(showLandmarks ?? false);
   const userManuallyToggledPoiRef = useRef<boolean>(false);
 
   // Auto-hide building labels/markers when entering comparison/route mode to keep map clear
@@ -1332,11 +1352,18 @@ export default function MapComponent({
     userManuallyToggledPoiRef.current = true;
     setShowPoiMarkers((prev) => {
       const next = !prev;
-      setGpsToast(next ? '🏛️ แสดงหมุดอาคารและสถานที่รอบ ม.' : '🏛️ ซ่อนหมุดอาคารแล้ว (เห็นเส้นทางชัดเจน)');
+      if (next) {
+        if (activeCategory === 'none') {
+          setActiveCategory('building');
+        }
+        setGpsToast('🏛️ แสดงหมุดอาคารและสถานที่สำคัญ ม.อุบลฯ');
+      } else {
+        setGpsToast('🏛️ ซ่อนหมุดอาคารแล้ว (เพื่อมุมมองแผนที่สะอาดตา)');
+      }
       setTimeout(() => setGpsToast(null), 3000);
       return next;
     });
-  }, []);
+  }, [activeCategory]);
 
   const [selectedPlace, setSelectedPlace] = useState<SelectedPlaceType | null>(null);
 
@@ -1509,12 +1536,22 @@ export default function MapComponent({
   const visibleLandmarks = useMemo(() => {
     if (!showPoiMarkers) return [];
     if (activeCategory === 'none') return [];
-    if (activeCategory === 'all') return landmarksData;
-    return landmarksData.filter((lm) => {
-      const meta = getLandmarkMeta(lm.category, lm.name);
-      return meta.group === activeCategory || lm.category === activeCategory;
-    });
-  }, [activeCategory, showPoiMarkers]);
+
+    // Don't show landmarks that are already selected as origin or destination
+    const selectedNames = new Set<string>();
+    if (originPoint.label) selectedNames.add(originPoint.label);
+    destinations.forEach((d) => selectedNames.add(d.name));
+
+    let list = landmarksData;
+    if (activeCategory !== 'all') {
+      list = landmarksData.filter((lm) => {
+        const meta = getLandmarkMeta(lm.category, lm.name);
+        return meta.group === activeCategory || lm.category === activeCategory;
+      });
+    }
+
+    return list.filter((lm) => !selectedNames.has(lm.name));
+  }, [activeCategory, showPoiMarkers, originPoint.label, destinations]);
 
   const handleSelectPlace = useCallback((place: SelectedPlaceType) => {
     setSelectedPlace(place);
@@ -1525,6 +1562,31 @@ export default function MapComponent({
       onSelectDorm(place.dorm);
     }
   }, [onSelectDorm]);
+
+  const handleAddDormDestination = useCallback((dorm: Dormitory) => {
+    let dLat = Number(dorm.lat ?? dorm.latitude);
+    let dLng = Number(dorm.lng ?? dorm.longitude);
+    if (dLat > 50 && dLng < 30) {
+      const temp = dLat;
+      dLat = dLng;
+      dLng = temp;
+    }
+    setDestinations((prev) => {
+      if (prev.some((d) => d.id === dorm.id || d.name === dorm.name)) return prev;
+      if (prev.length >= 4) return prev;
+      const newDest: DestinationItem = {
+        id: dorm.id,
+        name: dorm.name,
+        lat: dLat,
+        lng: dLng,
+        colorIndex: prev.length,
+        icon: '🏠',
+        category: 'หอพักเป้าหมาย',
+      };
+      return [...prev, newDest];
+    });
+    setForceFitKey(Date.now());
+  }, []);
 
   const handleAddPoiDestination = (poi: LandmarkItem) => {
     const meta = getLandmarkMeta(poi.category, poi.name);
@@ -1850,56 +1912,61 @@ export default function MapComponent({
 
               {/* 3. จุดหมาย (Destinations List with Interactive Search & Metrics) */}
               <div className="flex flex-col gap-1.5 sm:gap-2 mb-2 sm:mb-3 max-h-32 sm:max-h-48 overflow-y-auto pr-1 no-scrollbar">
-                {destinations.map((dest, idx) => {
-                  const colorMeta = ROUTE_COLORS[idx % ROUTE_COLORS.length];
-                  const stats = destinationStats[dest.id];
-                  const effectiveMins = stats 
-                    ? (vehicleType === 'motorcycle' ? Math.max(1, Math.round(stats.baseDurationMins * 0.85)) : stats.baseDurationMins)
-                    : null;
+                {destinations.length === 0 ? (
+                  <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center select-none">
+                    <p className="text-xs text-slate-600 font-bold">ยังไม่ได้เลือกจุดหมายปลายทาง</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">แตะหมุดหอพักบนแผนที่ หรือกดปุ่มเพิ่มสถานที่ด้านล่าง</p>
+                  </div>
+                ) : (
+                  destinations.map((dest, idx) => {
+                    const colorMeta = ROUTE_COLORS[idx % ROUTE_COLORS.length];
+                    const stats = destinationStats[dest.id];
+                    const effectiveMins = stats 
+                      ? (vehicleType === 'motorcycle' ? Math.max(1, Math.round(stats.baseDurationMins * 0.85)) : stats.baseDurationMins)
+                      : null;
 
-                  return (
-                    <div 
-                      key={dest.id}
-                      onMouseEnter={() => setActiveDestId(dest.id)}
-                      onMouseLeave={() => setActiveDestId(null)}
-                      onClick={() => setActiveDestId(dest.id)}
-                      className={`flex items-center justify-between border rounded-xl p-1.5 sm:p-2 focus-within:ring-2 focus-within:ring-blue-400 transition cursor-pointer select-none ${
-                        activeDestId === dest.id 
-                          ? 'border-indigo-400 bg-indigo-50/70 ring-2 ring-indigo-400 shadow-xs' 
-                          : 'border-blue-200 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-300'
-                      }`}
-                    >
-                      <div className="flex items-center flex-grow min-w-0 pr-2">
-                        {/* วงกลมหมายเลข */}
-                        <div 
-                          className="flex items-center justify-center w-6 h-6 rounded-full text-white font-bold mr-2 text-xs flex-shrink-0 shadow-2xs"
-                          style={{ backgroundColor: colorMeta.color }}
-                        >
-                          {idx + 1}
-                        </div>
-                        <span className="mr-1 text-sm flex-shrink-0">{dest.icon || '🏠'}</span>
-                        
-                        {/* ช่องกรอกข้อความ / แสดงชื่อ */}
-                        <input 
-                          type="text" 
-                          value={dest.name} 
-                          readOnly
-                          className="ml-1 bg-transparent border-none outline-none text-slate-800 font-bold w-full text-xs sm:text-sm truncate cursor-default" 
-                          placeholder="ค้นหาหอพัก..." 
-                        />
-                      </div>
-
-                      {/* ป้ายระยะทาง & เวลา */}
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <div className="bg-white border border-gray-200 text-indigo-700 px-2 py-1 rounded-lg text-xs font-bold whitespace-nowrap shadow-sm">
-                          {stats && effectiveMins !== null ? (
-                            <span>{vehicleType === 'driving' ? '🚗' : '🚲'} {stats.distanceKm} กม. (~{effectiveMins} น.)</span>
-                          ) : (
-                            <span className="text-slate-400 text-[10px] animate-pulse">คำนวณ...</span>
-                          )}
+                    return (
+                      <div 
+                        key={dest.id}
+                        onMouseEnter={() => setActiveDestId(dest.id)}
+                        onMouseLeave={() => setActiveDestId(null)}
+                        onClick={() => setActiveDestId(dest.id)}
+                        className={`flex items-center justify-between border rounded-xl p-1.5 sm:p-2 focus-within:ring-2 focus-within:ring-blue-400 transition cursor-pointer select-none ${
+                          activeDestId === dest.id 
+                            ? 'border-indigo-400 bg-indigo-50/70 ring-2 ring-indigo-400 shadow-xs' 
+                            : 'border-blue-200 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-300'
+                        }`}
+                      >
+                        <div className="flex items-center flex-grow min-w-0 pr-2">
+                          {/* วงกลมหมายเลข */}
+                          <div 
+                            className="flex items-center justify-center w-6 h-6 rounded-full text-white font-bold mr-2 text-xs flex-shrink-0 shadow-2xs"
+                            style={{ backgroundColor: colorMeta.color }}
+                          >
+                            {idx + 1}
+                          </div>
+                          <span className="mr-1 text-sm flex-shrink-0">{dest.icon || '🏠'}</span>
+                          
+                          {/* ช่องกรอกข้อความ / แสดงชื่อ */}
+                          <input 
+                            type="text" 
+                            value={dest.name} 
+                            readOnly
+                            className="ml-1 bg-transparent border-none outline-none text-slate-800 font-bold w-full text-xs sm:text-sm truncate cursor-default" 
+                            placeholder="ค้นหาหอพัก..." 
+                          />
                         </div>
 
-                        {destinations.length > 1 && (
+                        {/* ป้ายระยะทาง & เวลา */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <div className="bg-white border border-gray-200 text-indigo-700 px-2 py-1 rounded-lg text-xs font-bold whitespace-nowrap shadow-sm">
+                            {stats && effectiveMins !== null ? (
+                              <span>{vehicleType === 'driving' ? '🚗' : '🚲'} {stats.distanceKm} กม. (~{effectiveMins} น.)</span>
+                            ) : (
+                              <span className="text-slate-400 text-[10px] animate-pulse">คำนวณ...</span>
+                            )}
+                          </div>
+
                           <button
                             type="button"
                             onClick={(e) => {
@@ -1911,11 +1978,11 @@ export default function MapComponent({
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
 
               {/* 4. ปุ่มเพิ่มสถานที่เปรียบเทียบ */}
@@ -2039,7 +2106,16 @@ export default function MapComponent({
                     <button
                       key={cat.id}
                       onClick={() => {
+                        userManuallyToggledPoiRef.current = true;
                         setActiveCategory(cat.id);
+                        if (cat.id === 'none') {
+                          setShowPoiMarkers(false);
+                          setGpsToast('🚫 ซ่อนสถานที่รอบข้างแล้ว');
+                        } else {
+                          setShowPoiMarkers(true);
+                          setGpsToast(`📍 แสดงหมวดหมู่: ${cat.label}`);
+                        }
+                        setTimeout(() => setGpsToast(null), 3000);
                         setIsCategoryDropdownOpen(false);
                       }}
                       className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-bold transition text-left cursor-pointer ${
@@ -2334,35 +2410,6 @@ export default function MapComponent({
           );
         })()}
 
-        
-        {/* Official Campus Gates Markers */}
-        {OFFICIAL_CAMPUS_GATES.map((gate) => {
-          const isSelectedAsDest = destinations.some((d) => d.name === gate.name);
-          const isSelectedAsOrigin = originPoint.label === gate.name;
-          if (isSelectedAsDest || isSelectedAsOrigin) return null;
-
-          const [gateLat, gateLng] = adjustLatLng(gate.lat, gate.lng);
-
-          return (
-            <Marker
-              key={gate.id}
-              position={[gateLat, gateLng]}
-              icon={createCampusGateMarker(gate.name)}
-              draggable={false}
-              eventHandlers={{
-                click: () => {
-                  handleAddPoiDestination({
-                    name: gate.name,
-                    lat: gate.lat,
-                    lng: gate.lng,
-                    category: gate.category,
-                  });
-                }
-              }}
-            />
-          );
-        })}
-
         {destinations.map((p, idx) => {
           const [destLat, destLng] = adjustLatLng(p.lat, p.lng);
           return (
@@ -2392,12 +2439,18 @@ export default function MapComponent({
           adjustLatLng={adjustLatLng}
         />
 
-        {/* Marker Clustering Layer for other dorms & landmarks */}
-        <MarkerClusterGroupLayer
+        {/* Dormitory Marker Clustering Layer */}
+        <DormClusterLayer
           dorms={dorms}
           selectedDormId={originPoint.mode === 'dorm' ? originPoint.dormId : null}
-          selectedLandmarkName={selectedPlace?.type === 'landmark' ? selectedPlace.landmark.name : null}
+          onSelectPlace={handleSelectPlace}
+          adjustLatLng={adjustLatLng}
+        />
+
+        {/* Dedicated Landmark LayerGroup (Toggled via Categories or Action Dock) */}
+        <LandmarksLayerGroup
           visibleLandmarks={visibleLandmarks}
+          selectedLandmarkName={selectedPlace?.type === 'landmark' ? selectedPlace.landmark.name : null}
           onSelectPlace={handleSelectPlace}
           adjustLatLng={adjustLatLng}
         />
@@ -2488,21 +2541,32 @@ export default function MapComponent({
                   </div>
 
                   {/* Actions */}
-                  <div className="pt-1 flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        handleSetOriginToDorm(dorm);
-                        setSelectedPlace(null);
-                      }}
-                      className="flex-1 py-2.5 px-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs transition active:scale-95 text-center shadow-md cursor-pointer"
-                    >
-                      ตั้งเป็นจุดเริ่มต้น (A)
-                    </button>
+                  <div className="pt-1 flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          handleSetOriginToDorm(dorm);
+                          setSelectedPlace(null);
+                        }}
+                        className="flex-1 py-2.5 px-2 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-extrabold text-xs transition active:scale-95 text-center cursor-pointer"
+                      >
+                        🚩 จุดเริ่มต้น (A)
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleAddDormDestination(dorm);
+                          setSelectedPlace(null);
+                        }}
+                        className="flex-1 py-2.5 px-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs transition active:scale-95 text-center shadow-md cursor-pointer"
+                      >
+                        🧭 นำทาง / ปลายทาง
+                      </button>
+                    </div>
                     <Link
                       href={`/dorm/${dorm.id}`}
-                      className="flex-1 flex items-center justify-center gap-1 py-2.5 px-3 rounded-2xl bg-[#0a1931] hover:bg-blue-950 text-amber-300 font-black text-xs transition active:scale-95 border border-amber-400/40 text-center shadow-md"
+                      className="w-full flex items-center justify-center gap-1 py-2.5 px-3 rounded-2xl bg-[#0a1931] hover:bg-blue-950 text-amber-300 font-black text-xs transition active:scale-95 border border-amber-400/40 text-center shadow-md"
                     >
-                      <span>ดูรายละเอียด</span>
+                      <span>ดูรายละเอียดหอพักนี้</span>
                       <ChevronRight className="w-3.5 h-3.5 text-amber-300" />
                     </Link>
                   </div>

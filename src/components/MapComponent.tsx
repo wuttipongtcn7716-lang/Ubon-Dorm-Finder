@@ -82,6 +82,8 @@ export interface DestinationItem {
   name: string;
   lat: number;
   lng: number;
+  routingLat?: number;
+  routingLng?: number;
   colorIndex: number;
   icon?: string;
   category?: string;
@@ -774,9 +776,26 @@ function MultiRoadRoutingLayer({
 
     // Apply offset adjustment to origin if it's a database/stored point
     const originNeedsOffset = originLocation.mode !== 'gps' && originLocation.mode !== 'custom';
-    const [startLat, startLng] = originNeedsOffset
+    const [origPinLat, origPinLng] = originNeedsOffset
       ? adjustLatLng(cleanStartLat, cleanStartLng)
       : [cleanStartLat, cleanStartLng];
+
+    // Check if origin landmark has a designated road access point (Road Snap)
+    let originRouteLat = cleanStartLat;
+    let originRouteLng = cleanStartLng;
+    if (originLocation.mode === 'gate') {
+      const matchingOriginLandmark = landmarksData.find(
+        (lm) => lm.name === originLocation.label
+      );
+      if (matchingOriginLandmark?.routingLat && matchingOriginLandmark?.routingLng) {
+        originRouteLat = matchingOriginLandmark.routingLat;
+        originRouteLng = matchingOriginLandmark.routingLng;
+      }
+    }
+
+    const [startLat, startLng] = originNeedsOffset
+      ? adjustLatLng(originRouteLat, originRouteLng)
+      : [originRouteLat, originRouteLng];
 
     if (isNaN(startLat) || isNaN(startLng)) return;
 
@@ -801,6 +820,32 @@ function MultiRoadRoutingLayer({
         const [adjLat, adjLng] = adjustLatLng(rawDLat, rawDLng);
         if (isNaN(adjLat) || isNaN(adjLng)) return Promise.resolve(null);
 
+        // Road Snap / Access Point: Check if destination has designated road coordinates
+        let rawRLat = Number(d.routingLat ?? (d as any).routingLat);
+        let rawRLng = Number(d.routingLng ?? (d as any).routingLng);
+
+        // If not directly on d, auto-lookup in landmarksData by name or ID
+        if (isNaN(rawRLat) || isNaN(rawRLng) || rawRLat === 0 || rawRLng === 0) {
+          const matchingLandmark = landmarksData.find(
+            (lm) => lm.name === d.name || (d.id && String(lm.id) === String(d.id))
+          );
+          if (matchingLandmark?.routingLat && matchingLandmark?.routingLng) {
+            rawRLat = matchingLandmark.routingLat;
+            rawRLng = matchingLandmark.routingLng;
+          }
+        }
+
+        if (rawRLat > 50 && rawRLng < 30) {
+          const temp = rawRLat;
+          rawRLat = rawRLng;
+          rawRLng = temp;
+        }
+
+        const hasRoutingPoint = !isNaN(rawRLat) && !isNaN(rawRLng) && rawRLat !== 0 && rawRLng !== 0;
+        const [targetLat, targetLng] = hasRoutingPoint
+          ? adjustLatLng(rawRLat, rawRLng)
+          : [adjLat, adjLng];
+
         const colorMeta = ROUTE_COLORS[idx % ROUTE_COLORS.length];
 
         // Calculate straight-line Haversine distance in meters
@@ -815,17 +860,22 @@ function MultiRoadRoutingLayer({
         const straightMeters = R_EARTH * 2 * Math.atan2(Math.sqrt(aDist), Math.sqrt(1 - aDist));
 
         // Note: OSRM strictly expects coordinates in [longitude, latitude] order:
-        // Format: /route/v1/{profile}/{startLng},{startLat};{destLng},{destLat}?radiuses=unlimited;unlimited
-        const primaryDrivingUrl = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${adjLng},${adjLat}?overview=full&geometries=geojson&steps=false&continue_straight=false&radiuses=unlimited;unlimited`;
-        const backupBicycleUrl = `https://router.project-osrm.org/route/v1/bicycle/${startLng},${startLat};${adjLng},${adjLat}?overview=full&geometries=geojson&steps=false&continue_straight=false&radiuses=unlimited;unlimited`;
+        // Format: /route/v1/{profile}/{startLng},{startLat};{targetLng},{targetLat}
+        // Parameters:
+        // - continue_straight=true: Avoids sudden U-turns and dead-end looping
+        // - alternatives=true: Evaluates candidate routes to guarantee shortest distance
+        // - radiuses=unlimited;unlimited: Snaps to nearest accessible road
+        const primaryDrivingUrl = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${targetLng},${targetLat}?overview=full&geometries=geojson&steps=false&continue_straight=true&alternatives=true&radiuses=unlimited;unlimited`;
+        const backupBicycleUrl = `https://router.project-osrm.org/route/v1/bicycle/${startLng},${startLat};${targetLng},${targetLat}?overview=full&geometries=geojson&steps=false&continue_straight=true&alternatives=true&radiuses=unlimited;unlimited`;
 
         const fetchRouteData = async () => {
-          // 1. Primary: Try Driving Profile with unlimited snapping radius
+          // 1. Primary: Try Driving Profile with unlimited snapping radius & alternative shortest path selection
           try {
             const res = await fetch(primaryDrivingUrl);
             const data = await res.json();
-            if (data.code === 'Ok' && data.routes && data.routes[0]) {
-              return data.routes[0];
+            if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+              const sortedRoutes = [...data.routes].sort((a: any, b: any) => a.distance - b.distance);
+              return sortedRoutes[0];
             }
           } catch (e) {
             // Driving failed or blocked, proceed to bicycle fallback
@@ -835,8 +885,9 @@ function MultiRoadRoutingLayer({
           try {
             const resBackup = await fetch(backupBicycleUrl);
             const dataBackup = await resBackup.json();
-            if (dataBackup.code === 'Ok' && dataBackup.routes && dataBackup.routes[0]) {
-              return dataBackup.routes[0];
+            if (dataBackup.code === 'Ok' && dataBackup.routes && dataBackup.routes.length > 0) {
+              const sortedBackup = [...dataBackup.routes].sort((a: any, b: any) => a.distance - b.distance);
+              return sortedBackup[0];
             }
           } catch (e) {}
 
@@ -856,7 +907,7 @@ function MultiRoadRoutingLayer({
               const coords: [number, number][] = [];
 
               // 1. Prepend exact Origin Pin coordinate (eliminates start gap)
-              coords.push([startLat, startLng]);
+              coords.push([origPinLat, origPinLng]);
 
               // 2. Add OSRM intermediate road waypoints [latitude, longitude]
               r.geometry.coordinates.forEach(([lon, lat]: [number, number]) => {
@@ -1620,6 +1671,8 @@ export default function MapComponent({
         name: poi.name,
         lat: poi.lat,
         lng: poi.lng,
+        routingLat: poi.routingLat,
+        routingLng: poi.routingLng,
         colorIndex: prev.length,
         icon: meta.icon,
         category: meta.label,

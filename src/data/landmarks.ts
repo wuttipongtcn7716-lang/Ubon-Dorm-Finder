@@ -4,6 +4,8 @@ export interface LandmarkItem {
   lat: number;
   lng: number;
   category: 'food' | 'shabu' | 'streetfood' | 'cafe' | 'store' | 'faculty' | 'hospital' | 'building' | 'landmark' | 'service' | 'hangout' | 'market' | 'gas' | 'official place' | string;
+  routingLat?: number;
+  routingLng?: number;
 }
 
 export const landmarksData: LandmarkItem[] = [
@@ -16,9 +18,9 @@ export const landmarksData: LandmarkItem[] = [
   { name: "คณะวิศวกรรมศาสตร์", lat: 15.119938, lng: 104.904966, category: "building" },
   { name: "คณะนิติศาสตร์ CLB2", lat: 15.120262, lng: 104.905980, category: "building" },
   { name: "คณะรัฐศาสตร์", lat: 15.120413, lng: 104.910188, category: "building" },
-  { name: "คณะวิทยาศาสตร์", lat: 15.122469, lng: 104.906575, category: "building" },
+  { name: "คณะวิทยาศาสตร์", lat: 15.122469, lng: 104.906575, category: "building", routingLat: 15.123078, routingLng: 104.907399 },
   { name: "คณะเกษตรศาสตร์", lat: 15.121958, lng: 104.908394, category: "building" },
-  { name: "คณะเภสัชศาสตร์ (หลังเดิม)", lat: 15.119446, lng: 104.910950, category: "building" },
+  { name: "คณะเภสัชศาสตร์ (หลังเดิม)", lat: 15.119446, lng: 104.910950, category: "building", routingLat: 15.120611, routingLng: 104.910887 },
   { name: "คณะเภสัชศาสตร์ (หลังใหม่)", lat: 15.120446, lng: 104.910888, category: "building" },
   { name: "คณะศิลปประยุกต์และสถาปัตยกรรมศาสตร์", lat: 15.118228, lng: 104.905647, category: "building" },
   { name: "คณะศิลปศาสตร์", lat: 15.116815, lng: 104.908793, category: "building" },
@@ -89,7 +91,7 @@ export const landmarksData: LandmarkItem[] = [
   { name: "เฮือนกำนันคาเฟ่ (Huankamnan Cafe)", lat: 15.122857, lng: 104.913619, category: "Cafe" },
   { name: "Blue Cabin Coffee", lat: 15.117867, lng: 104.916381, category: "Cafe" },
   { name: "GOLDEN HOUR COFFEE", lat: 15.117062, lng: 104.912894, category: "Cafe" },
-  { name: "Inthanin Coffee - มหาวิทยาลัยอุบลราชธานี", lat: 15.120174, lng: 104.911261, category: "Cafe" },
+  { name: "Inthanin Coffee - มหาวิทยาลัยอุบลราชธานี", lat: 15.120174, lng: 104.911261, category: "Cafe", routingLat: 15.120611, routingLng: 104.910887 },
 
   // สนามกีฬา / ฟิตเนส (Stadium)
   { name: "สนามกีฬากลาง (มหาวิทยาลัยอุบลราชธานี)", lat: 15.126596, lng: 104.917202, category: "stadium" },

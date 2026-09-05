@@ -3,7 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>UBU Multi-Color Routing - เส้นทางแยกสีแต่ละช่วง (สูงสุด 4 จุดหมาย)</title>
+    <title>Dormie UBU | ค้นหาหอพักรอบ ม.อุบลฯ มาตรฐานหอพักสีขาว พร้อมระบบนำทาง GPS</title>
+    
+    <!-- SEO Standard Meta Tags -->
+    <meta name="description" content="แอปพลิเคชันค้นหาหอพักรอบมหาวิทยาลัยอุบลราชธานี 60 แห่ง ตรวจสอบมาตรฐานหอพักสีขาวประจำปี 2569 เช็คราคา สิ่งอำนวยความสะดวก พร้อมระบบแผนที่นำทาง GPS แบบเรียลไทม์">
+    <meta name="keywords" content="หอพัก ม.อุบล, หอพัก มหาวิทยาลัยอุบลราชธานี, หอพักสีขาว ม.อุบล, ค้นหาหอพัก อุบล, Dormie UBU, หอพักวารินชำราบ">
+    <meta name="author" content="มหาวิทยาลัยอุบลราชธานี">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <link rel="canonical" href="https://ubon-dorm-finder.vercel.app/">
+
+    <!-- Open Graph (Facebook, LINE, Social Media) -->
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="th_TH">
+    <meta property="og:site_name" content="Dormie UBU - ค้นหาหอพัก ม.อุบลฯ">
+    <meta property="og:title" content="Dormie UBU | ค้นหาหอพักรอบ ม.อุบลฯ มาตรฐานหอพักสีขาว พร้อมระบบนำทาง GPS">
+    <meta property="og:description" content="สำรวจหอพัก 60 แห่งรอบรั้ว ม.อุบลฯ ตรวจสอบมาตรฐานหอพักสีขาว ค่าเช่า สิ่งอำนวยความสะดวก และเส้นทางนำทางแบบเรียลไทม์">
+    <meta property="og:url" content="https://ubon-dorm-finder.vercel.app/">
+    <meta property="og:image" content="https://ubon-dorm-finder.vercel.app/Picture/default-dorm.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Dormie UBU แพลตฟอร์มค้นหาหอพัก ม.อุบลฯ">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Dormie UBU | รวมหอพักสีขาว ม.อุบลฯ 60 แห่ง">
+    <meta name="twitter:description" content="สำรวจหอพักรอบ ม.อุบลฯ ตรวจสอบเกณฑ์หอพักสีขาวและระบบ GPS นำทาง">
+    <meta name="twitter:image" content="https://ubon-dorm-finder.vercel.app/Picture/default-dorm.jpg">
+
+    <!-- Schema.org JSON-LD Structured Data for Google Rich Snippets -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Dormie UBU",
+      "alternateName": "ระบบค้นหาหอพัก มหาวิทยาลัยอุบลราชธานี",
+      "url": "https://ubon-dorm-finder.vercel.app",
+      "description": "แอปพลิเคชันค้นหาหอพักรอบมหาวิทยาลัยอุบลราชธานี ตรวจสอบมาตรฐานหอพักสีขาวและระบบนำทาง",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://ubon-dorm-finder.vercel.app/?search={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
     
     <!-- 1. Leaflet CSS & Tailwind CDN & Fonts -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />

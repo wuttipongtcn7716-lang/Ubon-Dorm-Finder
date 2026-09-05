@@ -54,7 +54,7 @@ const WHITE_DORM_CRITERIA = [
   {
     id: 'facilities',
     number: 3,
-    title: 'สิ่งอำนวยความสะดวก & การเรียนรู้',
+    title: 'สิ่งอำนวยความสะดวก',
     icon: BookOpen,
     summary: 'มีสถานที่ทบทวนตำรา อินเทอร์เน็ต (Wi-Fi) และระบบสาธารณูปโภคปลอดภัย',
     details: [
@@ -68,7 +68,7 @@ const WHITE_DORM_CRITERIA = [
   {
     id: 'care24h',
     number: 4,
-    title: 'อุ่นใจ 24 ชั่วโมง & ช่วยเหลือฉุกเฉิน',
+    title: 'อุ่นใจดูแลฉุกเฉิน 24 ชม.',
     icon: Clock4,
     summary: 'มีผู้ดูแลหรือช่องทางติดต่อเพื่อช่วยเหลือฉุกเฉินตลอด 24 ชม.',
     details: [
@@ -81,7 +81,7 @@ const WHITE_DORM_CRITERIA = [
   {
     id: 'building',
     number: 5,
-    title: 'มาตรฐานอาคาร & ป้องกันอัคคีภัย',
+    title: 'มาตรฐานอาคาร & อัคคีภัย',
     icon: Building,
     summary: 'มีระเบียบประกาศชัดเจน มีอุปกรณ์ดับเพลิง และมีแผนผัง/ป้ายทางหนีไฟที่ได้มาตรฐาน',
     details: [
@@ -93,6 +93,12 @@ const WHITE_DORM_CRITERIA = [
     tags: ['ถังดับเพลิงทุกชั้น', 'ป้ายทางหนีไฟ', 'ระเบียบชัดเจน'],
   },
 ];
+
+// Helper: แปลงรูปแบบวันที่ตัดเครื่องหมายขีด - ออกทั้งหมด เช่น "5-พ.ค.-69" เป็น "5 พ.ค. 69"
+const formatThaiEvalDate = (rawDate?: string | null) => {
+  if (!rawDate) return '';
+  return rawDate.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+};
 
 export default function DormProfileView({ dorm }: DormProfileViewProps) {
   const router = useRouter();
@@ -174,7 +180,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
   };
 
   const isWhite = Boolean(dorm.isWhiteDorm || dorm.status === 'ผ่าน' || dorm.evalResult === 'ผ่าน');
-  const evaluationDate = dorm.evaluationDate || dorm.evalDate;
+  const evaluationDate = formatThaiEvalDate(dorm.evaluationDate || dorm.evalDate);
 
   // Structured price resolution
   const priceObj: PriceStructure | null = 
@@ -321,21 +327,13 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
 
           {/* Minimalist White Dormitory Badge on Image */}
           {isWhite ? (
-            <div className="absolute top-4 left-4 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 bg-blue-950/95 backdrop-blur-md text-amber-300 px-3.5 py-1.5 rounded-2xl sm:rounded-full shadow-lg text-xs sm:text-sm font-black border border-amber-400/40 z-20">
-              <div className="flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-amber-400" />
-                <span>หอพักสีขาว ม.อุบลฯ</span>
-              </div>
-              {evaluationDate && (
-                <span className="text-[11px] text-amber-200/90 font-medium sm:border-l sm:border-amber-400/30 sm:pl-2">
-                  ตรวจเมื่อ: {evaluationDate}
-                </span>
-              )}
+            <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-blue-950/95 backdrop-blur-md text-amber-300 px-3.5 py-1.5 rounded-full shadow-lg text-xs sm:text-sm font-black border border-amber-400/40 z-20">
+              <ShieldCheck className="w-4 h-4 text-amber-400" />
+              <span>หอพักสีขาว ม.อุบลฯ</span>
             </div>
           ) : (
             <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs font-medium z-20 flex items-center gap-1.5">
               <span>ผลประเมิน: {dorm.status || dorm.evalResult || 'หอพักทั่วไป'}</span>
-              {evaluationDate && <span className="text-slate-300">({evaluationDate})</span>}
             </div>
           )}
 
@@ -361,12 +359,6 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
                   <span>{dorm.zone || 'รอบ ม.อุบลฯ'}</span>
                 </span>
                 {dorm.nearMainRoad && <span>• {dorm.nearMainRoad}</span>}
-                {evaluationDate && (
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-900 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-lg shadow-2xs">
-                    <Calendar className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
-                    <span>วันที่ประเมิน: {evaluationDate}</span>
-                  </span>
-                )}
               </div>
             </div>
 
@@ -520,21 +512,6 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
               <Waves className="w-4 h-4 text-cyan-600 flex-shrink-0" />
               <span>{!dorm.floodRisk ? 'พื้นที่ไม่เสี่ยงน้ำท่วม' : 'พื้นที่เสี่ยงน้ำท่วม'}</span>
             </div>
-
-            {/* White Dorm Status */}
-            <div className={`p-3 rounded-2xl border flex items-center justify-between font-bold ${
-              isWhite ? 'bg-amber-50 text-amber-900 border-amber-200/80 shadow-xs' : 'bg-slate-50 text-slate-500 border-slate-100'
-            }`}>
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck className={`w-4 h-4 flex-shrink-0 ${isWhite ? 'text-amber-600' : 'text-slate-400'}`} />
-                <span>{isWhite ? 'ผ่านเกณฑ์หอพักสีขาว' : 'หอพักทั่วไป'}</span>
-              </div>
-              {evaluationDate && (
-                <span className="text-[10px] font-normal text-amber-900/80 bg-amber-100/80 border border-amber-300/60 px-2 py-0.5 rounded-lg shadow-2xs">
-                  {evaluationDate}
-                </span>
-              )}
-            </div>
           </div>
         </div>
 
@@ -602,23 +579,23 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
                       {/* Topic Trigger Button */}
                       <button
                         onClick={() => setActiveCriterionId(isItemExpanded ? null : criterion.id)}
-                        className="w-full p-3.5 sm:p-4 flex items-center justify-between text-left gap-3 select-none cursor-pointer transition-colors"
+                        className="w-full px-3 py-3 sm:p-4 flex items-center justify-between text-left gap-2 sm:gap-3 select-none cursor-pointer transition-colors"
                         aria-expanded={isItemExpanded}
                       >
-                        <div className="flex items-start gap-3 min-w-0 flex-1">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${
+                        <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
+                          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${
                             isItemExpanded
                               ? 'bg-amber-500 text-white shadow-xs'
                               : 'bg-amber-100/80 text-amber-700'
                           }`}>
-                            <IconComponent className="w-4 h-4" />
+                            <IconComponent className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-extrabold text-amber-700 bg-amber-100/80 px-1.5 py-0.5 rounded-md">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                              <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded-md flex-shrink-0 whitespace-nowrap">
                                 ด้านที่ {criterion.number}
                               </span>
-                              <h4 className="font-bold text-blue-950 text-xs sm:text-sm truncate">
+                              <h4 className="font-bold text-blue-950 text-xs sm:text-sm leading-snug break-words">
                                 {criterion.title}
                               </h4>
                             </div>
@@ -628,7 +605,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
                           </div>
                         </div>
 
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-slate-400 transition-transform duration-300 flex-shrink-0 ${
+                        <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-slate-400 transition-transform duration-300 flex-shrink-0 ${
                           isItemExpanded ? 'rotate-180 text-amber-700 bg-amber-100' : ''
                         }`}>
                           <ChevronDown className="w-3.5 h-3.5" />

@@ -32,20 +32,21 @@ body {
   display: none !important;
 }
 
-/* CSS: จัดแต่งทรงกล่องข้อมูลเส้นทางสไตล์ Google Maps */
+/* CSS: จัดแต่งทรงกล่องข้อมูลเส้นทางสไตล์ Google Maps ให้มีขนาดกะทัดรัด ไม่บังแผนที่ (Item 3) */
 .map-route-card {
     position: absolute;
-    bottom: 24px;
+    bottom: 20px;
     left: 16px;
     background: #ffffff;
-    padding: 10px 16px;
-    border-radius: 16px;
-    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+    padding: 6px 12px;
+    border-radius: 14px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     z-index: 1000;
     border: 1px solid rgba(219, 234, 254, 0.9);
+    max-width: 220px;
 }
 
 @media (max-width: 768px) {
@@ -53,10 +54,10 @@ body {
     position: relative;
     bottom: auto;
     left: auto;
-    padding: 7px 14px;
-    border-radius: 16px;
-    gap: 10px;
-    max-width: calc(100% - 24px);
+    padding: 4px 10px;
+    border-radius: 12px;
+    gap: 7px;
+    max-width: 190px;
   }
 }
 
@@ -98,22 +99,27 @@ body {
     align-items: center;
     justify-content: center;
     background: #eff6ff;
-    padding: 8px;
+    padding: 5px;
     border-radius: 50%;
     border: 1px solid rgba(219, 234, 254, 0.8);
+    flex-shrink: 0;
 }
 
 .route-time {
-    font-size: 17px;
+    font-size: 13px;
     font-weight: 800;
-    color: #1e293b;
+    color: #0f172a;
     line-height: 1.2;
 }
 
 .route-distance {
-    font-size: 12px;
+    font-size: 10.5px;
     color: #64748b;
     font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
 }
 
 /* Hide scrollbar for Chrome, Safari, Edge, Opera, and Firefox (Item 8) */

@@ -930,8 +930,8 @@ function MultiRoadRoutingLayer({
 
         const isInteracting = (map.dragging as any)?.moving() || (map as any)._animatingZoom;
         const forceFitTriggered = Boolean(forceFitKey && forceFitKey !== lastForceFitKeyRef.current);
-        // Item 10: ยกเลิกการสั่ง fitBounds หรือ Zoom อัตโนมัติเมื่อมีการเพิ่ม/ลบหอพักในรายการเปรียบเทียบ
-        const shouldFit = !hasInitialFitRef.current || forceFitTriggered;
+        // Item 4: ปิดการซูมแผนที่อัตโนมัติเมื่อมีการเพิ่ม/ลบสถานที่เปรียบเทียบ ให้คงระยะซูมเดิมไว้เสมอ
+        const shouldFit = !hasInitialFitRef.current;
 
         if (allCoords.length > 1 && shouldFit && lastFitKeyRef.current !== fitKey && !isInteracting) {
           hasInitialFitRef.current = true;
@@ -1581,7 +1581,6 @@ export default function MapComponent({
       };
       return [...prev, newDest];
     });
-    setForceFitKey(Date.now());
   }, []);
 
   const handleAddPoiDestination = (poi: LandmarkItem) => {
@@ -1602,7 +1601,7 @@ export default function MapComponent({
     });
     setIsAddPoiDropdownOpen(false);
     setPoiSearchTerm('');
-    setForceFitKey(Date.now());
+    // Item 4: ปิดการซูมแผนที่อัตโนมัติเมื่อกดเพิ่มสถานที่ เพื่อคงระยะซูมเดิมไว้เสมอ
   };
 
   const handleRemoveDestination = (idToRemove: string | number) => {
@@ -1610,7 +1609,6 @@ export default function MapComponent({
       const filtered = prev.filter((d) => d.id !== idToRemove);
       return filtered.map((d, idx) => ({ ...d, colorIndex: idx }));
     });
-    setForceFitKey(Date.now());
   };
 
   const handleStatsUpdated = useCallback((statsMap: Record<string | number, { distanceKm: number; baseDurationMins: number; distanceMeters: number }>) => {
@@ -1656,17 +1654,17 @@ export default function MapComponent({
         {!selectedPlace && isComparePanelMinimized && destinations.length > 0 && destinationStats[destinations[0].id] && (
           <div 
             id="route-info-card" 
-            className="pointer-events-auto max-md:relative max-md:bottom-auto max-md:left-auto max-md:ml-3 max-md:mb-0 map-route-card bg-white shadow-md rounded-2xl border border-blue-100/90 animate-in fade-in slide-in-from-bottom-2 duration-200"
+            className="pointer-events-auto max-md:relative max-md:bottom-auto max-md:left-auto max-md:ml-3 max-md:mb-0 map-route-card bg-white shadow-sm rounded-xl border border-blue-100/90 animate-in fade-in slide-in-from-bottom-2 duration-200"
           >
             <div className="route-icon-box">
               {vehicleType === 'driving' ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#1e3a8a">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="#1e3a8a">
                   <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
                   <circle cx="7.5" cy="14.5" r="1.5" fill="#1e3a8a"/>
                   <circle cx="16.5" cy="14.5" r="1.5" fill="#1e3a8a"/>
                 </svg>
               ) : (
-                <Bike className="w-5 h-5 text-blue-900" />
+                <Bike className="w-3.5 h-3.5 text-blue-900" />
               )}
             </div>
             <div className="route-details">

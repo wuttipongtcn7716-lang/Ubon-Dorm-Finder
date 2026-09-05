@@ -254,16 +254,11 @@ export default function DormCard({
         {/* Card Content */}
         <div className="p-4 sm:p-5 space-y-3">
           <div>
-            <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+            <div className="flex items-center text-slate-400 text-xs mb-1">
               <div className="flex items-center gap-1 min-w-0">
                 <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-amber-500" />
                 <span className="truncate">{dorm.zone || 'รอบ ม.อุบลฯ'}</span>
               </div>
-              {(dorm.evaluationDate || dorm.evalDate) && (
-                <span className="text-[10px] text-slate-600 bg-slate-100 border border-slate-200/80 px-1.5 py-0.5 rounded-md font-medium flex-shrink-0" title="วันที่ตรวจประเมิน">
-                  {dorm.evaluationDate || dorm.evalDate}
-                </span>
-              )}
             </div>
             <h3 className="font-extrabold text-blue-950 text-base group-hover:text-amber-600 transition truncate">
               {dorm.name}

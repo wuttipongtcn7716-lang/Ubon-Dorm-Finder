@@ -1656,7 +1656,7 @@ export default function MapComponent({
       {!selectedPlace && isComparePanelMinimized && destinations.length > 0 && destinationStats[destinations[0].id] && (
         <div 
           id="route-info-card" 
-          className="hidden md:flex pointer-events-auto map-route-card bg-white shadow-sm rounded-xl border border-blue-100/90 animate-in fade-in slide-in-from-bottom-2 duration-200"
+          className="hidden md:flex max-md:!hidden pointer-events-auto map-route-card bg-white shadow-sm rounded-xl border border-blue-100/90 animate-in fade-in slide-in-from-bottom-2 duration-200"
         >
           <div className="route-icon-box">
             {vehicleType === 'driving' ? (
@@ -1685,7 +1685,7 @@ export default function MapComponent({
 
       {/* 2. Desktop Collapsed Action Pill (Floating Top-Left) */}
       {isComparePanelMinimized && (
-        <div className="hidden md:block absolute top-3 left-4 z-[1050] pointer-events-auto">
+        <div className="hidden md:block max-md:!hidden absolute top-3 left-4 z-[1050] pointer-events-auto">
           <button
             type="button"
             onClick={() => setIsComparePanelMinimized(false)}

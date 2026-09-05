@@ -1971,7 +1971,7 @@ export default function MapComponent({
 
                   {/* Add POI Dropdown Menu - z-[9999] to prevent overlapping */}
                   {isAddPoiDropdownOpen && (
-                    <div className="max-md:relative max-md:mt-2 max-md:w-full sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-64 sm:max-h-80 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150 overflow-x-hidden">
+                    <div className="max-md:relative max-md:mt-2 max-md:w-full sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-72 sm:max-h-84 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150 overflow-x-hidden">
                       <div className="flex items-center justify-between pb-1 border-b border-slate-100 text-[11px] font-extrabold text-slate-700">
                         <span>เลือกสถานที่ปลายทาง ({availablePoisToAdd.length} แห่ง)</span>
                         <button 
@@ -1994,17 +1994,24 @@ export default function MapComponent({
                         />
                       </div>
 
+                      {/* แถบหมวดหมู่ตัวเลือกสถานที่ (Horizontal Scrollable Categories - รองรับทุกอุปกรณ์และ PC Mouse Wheel) */}
                       <div 
-                        className="flex items-center gap-1 overflow-x-auto pb-1 text-[10px] no-scrollbar"
+                        onWheel={(e) => {
+                          if (e.deltaY !== 0) {
+                            e.currentTarget.scrollLeft += e.deltaY;
+                          }
+                        }}
+                        className="flex items-center gap-1.5 overflow-x-auto py-1.5 px-0.5 pr-4 text-xs w-full min-w-0 flex-nowrap flex-shrink-0 scroll-smooth touch-pan-x overscroll-x-contain scrollbar-none no-scrollbar [&::-webkit-scrollbar]:hidden"
                         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                       >
                         {['all', 'building', 'landmark', 'stadium', 'gas', 'official', 'food', 'cafe', 'store', 'hospital', 'service', 'hangout', 'park', 'bank'].map((cat) => (
                           <button
                             key={cat}
+                            type="button"
                             onClick={() => setPoiFilterCategory(cat)}
-                            className={`px-2 py-0.5 rounded-lg whitespace-nowrap font-bold transition ${
+                            className={`px-3 py-1.5 rounded-xl whitespace-nowrap font-bold text-xs flex-shrink-0 transition active:scale-95 cursor-pointer select-none leading-normal ${
                               poiFilterCategory === cat
-                                ? 'bg-[#0a1931] text-amber-300'
+                                ? 'bg-[#0a1931] text-amber-300 shadow-sm ring-1 ring-amber-400/30'
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             }`}
                           >
@@ -2012,7 +2019,7 @@ export default function MapComponent({
                               : cat === 'building' ? '🏫 อาคารเรียนรวม' 
                               : cat === 'landmark' ? '🏛️ จุดสำคัญใน ม.' 
                               : cat === 'stadium' ? '⚽ สนามกีฬา / ฟิตเนส' 
-                              : cat === 'gas' ? '⛽ ปั๊มน้ำมัน'
+                              : cat === 'gas' ? '⛽ ปั๊มน้ำมัน' 
                               : cat === 'official' ? '🏢 ราชการ' 
                               : cat === 'food' ? '🍜 อาหาร' 
                               : cat === 'cafe' ? '☕ คาเฟ่' 
@@ -2024,6 +2031,8 @@ export default function MapComponent({
                               : '🍻 แฮงค์เอาท์'}
                           </button>
                         ))}
+                        {/* Spacer สำหรับระยะขอบด้านขวา ไม่ให้ปุ่มสุดท้ายชิดขอบ */}
+                        <div className="w-3 flex-shrink-0" aria-hidden="true" />
                       </div>
 
                       <div 

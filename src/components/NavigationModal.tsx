@@ -219,7 +219,7 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
   }, [baseDurationSeconds, distanceKm, travelMode]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-stretch justify-center bg-black/70 backdrop-blur-sm p-0 md:p-0 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[2000] flex items-end md:items-stretch justify-center bg-black/70 backdrop-blur-sm p-0 md:p-0 animate-in fade-in duration-200">
       {/* Fullscreen Responsive Modal Container (Full Width & Height on iPad / PC) */}
       <div className="bg-white w-full h-[92dvh] md:h-[100dvh] md:w-screen md:max-w-none rounded-t-3xl md:rounded-none flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300 border-none">
         

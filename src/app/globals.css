@@ -116,10 +116,16 @@ body {
     font-weight: 600;
 }
 
-/* 3D Perspective Tilt for Leaflet Map */
+/* Hide scrollbar for Chrome, Safari, Edge, Opera, and Firefox (Item 8) */
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
 
-
-
-
-
-
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}

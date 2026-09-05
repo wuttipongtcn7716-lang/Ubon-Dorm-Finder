@@ -5,7 +5,7 @@ import { ShieldCheck, Sparkles, Building2, Heart } from 'lucide-react';
 
 export default function Navbar() {
   return (
-    <header className="sticky top-0 z-40 bg-[#0a1931]/95 backdrop-blur-md border-b border-blue-900/50 shadow-md">
+    <header className="sticky top-0 z-50 bg-[#0a1931]/95 backdrop-blur-md border-b border-blue-900/50 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-2.5 sm:py-3.5 flex items-center justify-between">
         {/* Brand Logo & Name (Click Disabled) */}
         <div className="flex items-center gap-2.5 select-none cursor-default">

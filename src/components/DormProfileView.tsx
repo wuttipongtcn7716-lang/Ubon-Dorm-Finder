@@ -252,8 +252,8 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
         {saveStatusMessage}
       </div>
 
-      {/* Top Header Action Bar (Glassmorphism Style) */}
-      <div className="sticky top-0 z-40 bg-[#0a1931]/75 backdrop-blur-xl border-b border-white/10 px-4 py-2.5 sm:py-3 text-white shadow-lg shadow-black/10 transition-all duration-300">
+      {/* Top Header Action Bar (Glassmorphism Style) - Positioned below Navbar to avoid collision */}
+      <div className="sticky top-[57px] sm:top-[65px] z-30 bg-[#0a1931]/90 backdrop-blur-xl border-b border-white/10 px-4 py-2.5 sm:py-3 text-white shadow-lg shadow-black/10 transition-all duration-300">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           {/* Back Button: Glassmorphic Icon Button */}
           <button

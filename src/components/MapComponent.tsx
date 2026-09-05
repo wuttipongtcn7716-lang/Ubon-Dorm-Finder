@@ -387,7 +387,7 @@ function UnifiedActionDock({
   showPoiMarkers = true,
   onTogglePoiMarkers,
   gpsToast,
-  dockBottomClass = 'max-md:bottom-20 bottom-3 sm:bottom-6',
+  dockBottomClass = 'max-md:bottom-28 bottom-4 sm:bottom-6',
 }: {
   isLocatingGps: boolean;
   onLocateGps: () => void;
@@ -1349,23 +1349,8 @@ export default function MapComponent({
   const [forceFitKey, setForceFitKey] = useState<number>(0);
   const [destinationStats, setDestinationStats] = useState<Record<string | number, { distanceKm: number; baseDurationMins: number; distanceMeters: number }>>({});
 
-  // Minimize/maximize comparison panel: default collapsed on mobile (< 768px), expanded on desktop (>= 768px)
-  const [isComparePanelMinimized, setIsComparePanelMinimized] = useState<boolean>(true);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        setIsComparePanelMinimized(false);
-      }
-    };
-    if (typeof window !== 'undefined') {
-      if (window.innerWidth >= 768) {
-        setIsComparePanelMinimized(false);
-      }
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-    }
-  }, []);
+  // Minimize/maximize comparison panel: default expanded (false) on all screens so users see destinations & "+ เพิ่มสถานที่เปรียบเทียบ" immediately
+  const [isComparePanelMinimized, setIsComparePanelMinimized] = useState<boolean>(false);
 
   // Mobile swipe gestures for bottom sheet (Google Maps style swipe up to expand, swipe down to collapse)
   const touchStartYRef = useRef<number | null>(null);
@@ -2485,10 +2470,10 @@ export default function MapComponent({
             gpsToast={gpsToast}
             dockBottomClass={
               selectedPlace
-                ? 'max-md:bottom-[46vh] bottom-3 sm:bottom-6'
+                ? 'max-md:bottom-[48vh] bottom-4 sm:bottom-6'
                 : !isComparePanelMinimized
-                ? 'max-md:bottom-[54vh] bottom-3 sm:bottom-6'
-                : 'max-md:bottom-20 bottom-3 sm:bottom-6'
+                ? 'max-md:bottom-[56vh] bottom-4 sm:bottom-6'
+                : 'max-md:bottom-28 bottom-4 sm:bottom-6'
             }
           />
 

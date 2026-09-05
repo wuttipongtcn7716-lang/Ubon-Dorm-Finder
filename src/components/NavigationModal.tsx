@@ -298,17 +298,53 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
 
         {/* Fullscreen Map Viewport */}
         <div className="relative flex-1 w-full h-full md:h-full bg-slate-100 flex flex-col justify-between overflow-hidden">
-          {/* Floating Mobile Close Button (Top-Left) เพื่อให้ผู้ใช้สามารถปิดหน้าต่างแผนที่ได้ง่ายในโหมด Fullscreen บนมือถือ */}
-          <button 
-            type="button"
-            onClick={onClose}
-            className="md:hidden absolute left-3 z-[1500] w-10 h-10 rounded-full bg-white/95 backdrop-blur-md shadow-lg border border-slate-200/90 text-slate-700 hover:text-slate-950 flex items-center justify-center active:scale-95 transition cursor-pointer"
-            title="ปิดหน้าต่างแผนที่"
-            aria-label="ปิดหน้าต่างแผนที่"
+          {/* Floating Unified Mobile Top Card (Close Button + Route Info Card) */}
+          <div 
+            className="md:hidden absolute left-3 z-[1500] flex items-center gap-2 bg-white/95 backdrop-blur-xl shadow-lg border border-slate-200/90 rounded-2xl py-1 px-1.5 pr-3 max-w-[calc(100vw-5.5rem)] animate-in fade-in slide-in-from-top-2 duration-200 pointer-events-auto"
             style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
           >
-            <X className="w-5 h-5 text-slate-700" />
-          </button>
+            {/* Integrated Close Button (X) */}
+            <button 
+              type="button"
+              onClick={onClose}
+              className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 hover:text-slate-950 flex items-center justify-center active:scale-95 transition cursor-pointer flex-shrink-0"
+              title="ปิดหน้าต่างแผนที่"
+              aria-label="ปิดหน้าต่างแผนที่"
+            >
+              <X className="w-4 h-4 text-slate-700" />
+            </button>
+
+            {/* Target Dormitory & Real-Time Calculated Route Distance / Time */}
+            <div className="flex flex-col min-w-0 pr-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black text-[#0a1931] truncate max-w-[155px] xs:max-w-[190px]">
+                  {dorm.name}
+                </span>
+                {isWhite && (
+                  <span className="text-[10px] text-amber-500 font-bold flex-shrink-0" title="หอพักสีขาว">
+                    🛡️
+                  </span>
+                )}
+              </div>
+
+              {distanceKm !== null ? (
+                <div className="flex items-center gap-1 text-[11px] font-bold text-slate-600 truncate">
+                  <span className="text-blue-900 font-extrabold flex items-center gap-0.5">
+                    <span>{travelMode === 'motorcycle' ? '🚲' : '🚗'}</span>
+                    <span>{distanceKm < 1 && distanceMeters ? `${distanceMeters} ม.` : `${distanceKm} กม.`}</span>
+                  </span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-emerald-700 font-black">
+                    ~{estimatedMins} นาที
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[10px] text-slate-400 font-medium animate-pulse">
+                  กำลังคำนวณเส้นทาง...
+                </span>
+              )}
+            </div>
+          </div>
 
           {/* GPS Error Alert Card with Retry Button & Guidance */}
           {gpsStatus === 'error' && !dismissError && (

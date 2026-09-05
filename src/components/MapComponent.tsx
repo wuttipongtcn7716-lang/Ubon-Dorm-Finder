@@ -387,7 +387,7 @@ function UnifiedActionDock({
   showPoiMarkers = true,
   onTogglePoiMarkers,
   gpsToast,
-  isBottomOverlayOpen = false,
+  dockBottomClass = 'max-md:bottom-20 bottom-3 sm:bottom-6',
 }: {
   isLocatingGps: boolean;
   onLocateGps: () => void;
@@ -397,14 +397,12 @@ function UnifiedActionDock({
   showPoiMarkers?: boolean;
   onTogglePoiMarkers?: () => void;
   gpsToast: string | null;
-  isBottomOverlayOpen?: boolean;
+  dockBottomClass?: string;
 }) {
   const map = useMap();
 
   return (
-    <div className={`absolute right-2.5 sm:right-4 z-[1000] flex flex-col items-end gap-1.5 sm:gap-2 pointer-events-auto select-none transition-all duration-300 ${
-      isBottomOverlayOpen ? 'max-md:bottom-[44vh] bottom-3 sm:bottom-6' : 'bottom-3 sm:bottom-6'
-    }`}>
+    <div className={`absolute right-2.5 sm:right-4 z-[1000] flex flex-col items-end gap-1.5 sm:gap-2 pointer-events-auto select-none transition-all duration-300 ${dockBottomClass}`}>
       {gpsToast && (
         <div className="bg-slate-900/95 text-white text-[10px] sm:text-[11px] font-bold px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl shadow-2xl border border-blue-400/40 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-200 max-w-[200px] sm:max-w-[260px] text-right">
           {gpsToast}
@@ -1369,6 +1367,27 @@ export default function MapComponent({
     }
   }, []);
 
+  // Mobile swipe gestures for bottom sheet (Google Maps style swipe up to expand, swipe down to collapse)
+  const touchStartYRef = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartYRef.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent, onSwipeUp?: () => void, onSwipeDown?: () => void) => {
+      if (touchStartYRef.current === null) return;
+      const deltaY = e.changedTouches[0].clientY - touchStartYRef.current;
+      touchStartYRef.current = null;
+      if (deltaY < -35 && onSwipeUp) {
+        onSwipeUp(); // Swiped Up
+      } else if (deltaY > 35 && onSwipeDown) {
+        onSwipeDown(); // Swiped Down
+      }
+    },
+    []
+  );
+
   // Highlight/active destination route leg ID
   const [activeDestId, setActiveDestId] = useState<string | number | null>(null);
 
@@ -1647,94 +1666,201 @@ export default function MapComponent({
   return (
     <div className={`relative w-full h-full flex flex-col overflow-hidden bg-gray-100 ${className}`}>
       
-      {/* 1. Mobile Vertical Overlay Stack (Route Info Card + Comparison Box with gap-2) */}
-      <div className="max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:flex max-md:flex-col max-md:gap-2 max-md:items-start max-md:z-[1050] max-md:pointer-events-none sm:contents">
-        
-        {/* A. Google Maps Style Route Info Card (Top item in mobile vertical stack, Floating Bottom-Left on Desktop) */}
-        {!selectedPlace && isComparePanelMinimized && destinations.length > 0 && destinationStats[destinations[0].id] && (
-          <div 
-            id="route-info-card" 
-            className="pointer-events-auto max-md:relative max-md:bottom-auto max-md:left-auto max-md:ml-3 max-md:mb-0 map-route-card bg-white shadow-sm rounded-xl border border-blue-100/90 animate-in fade-in slide-in-from-bottom-2 duration-200"
-          >
-            <div className="route-icon-box">
-              {vehicleType === 'driving' ? (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="#1e3a8a">
-                  <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
-                  <circle cx="7.5" cy="14.5" r="1.5" fill="#1e3a8a"/>
-                  <circle cx="16.5" cy="14.5" r="1.5" fill="#1e3a8a"/>
-                </svg>
-              ) : (
-                <Bike className="w-3.5 h-3.5 text-blue-900" />
-              )}
+      {/* 1. Desktop Google Maps Style Route Info Card (Floating Bottom-Left) */}
+      {!selectedPlace && isComparePanelMinimized && destinations.length > 0 && destinationStats[destinations[0].id] && (
+        <div 
+          id="route-info-card" 
+          className="hidden md:flex pointer-events-auto map-route-card bg-white shadow-sm rounded-xl border border-blue-100/90 animate-in fade-in slide-in-from-bottom-2 duration-200"
+        >
+          <div className="route-icon-box">
+            {vehicleType === 'driving' ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#1e3a8a">
+                <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
+                <circle cx="7.5" cy="14.5" r="1.5" fill="#1e3a8a"/>
+                <circle cx="16.5" cy="14.5" r="1.5" fill="#1e3a8a"/>
+              </svg>
+            ) : (
+              <Bike className="w-3.5 h-3.5 text-blue-900" />
+            )}
+          </div>
+          <div className="route-details">
+            <div id="route-time" className="route-time text-slate-900 font-black">
+              {vehicleType === 'motorcycle' 
+                ? Math.max(1, Math.round(destinationStats[destinations[0].id].baseDurationMins * 0.85))
+                : destinationStats[destinations[0].id].baseDurationMins
+              } นาที
             </div>
-            <div className="route-details">
-              <div id="route-time" className="route-time text-slate-900 font-black">
-                {vehicleType === 'motorcycle' 
-                  ? Math.max(1, Math.round(destinationStats[destinations[0].id].baseDurationMins * 0.85))
-                  : destinationStats[destinations[0].id].baseDurationMins
-                } นาที
-              </div>
-              <div id="route-distance" className="route-distance text-slate-500 font-semibold">
-                {destinationStats[destinations[0].id].distanceKm} กม. ({destinations[0].name})
-              </div>
+            <div id="route-distance" className="route-distance text-slate-500 font-semibold">
+              {destinationStats[destinations[0].id].distanceKm} กม. ({destinations[0].name})
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* B. Multi-Destination Comparison Box / Collapsed Action Pill */}
-        <div 
-          className={`pointer-events-auto transition-all duration-300 ${
-            isComparePanelMinimized 
-              ? 'max-md:relative max-md:bottom-auto max-md:left-auto max-md:ml-3 max-md:mb-3 max-md:w-auto sm:absolute sm:top-3 sm:left-4 sm:bottom-auto sm:w-auto' 
-              : 'max-md:relative max-md:bottom-auto max-md:left-auto max-md:w-full sm:absolute sm:top-3 sm:left-4 sm:bottom-auto sm:right-auto sm:w-80 md:w-96 sm:max-w-[420px]'
-          } ${isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1050]'}`}
+      {/* 2. Desktop Collapsed Action Pill (Floating Top-Left) */}
+      {isComparePanelMinimized && (
+        <div className="hidden md:block absolute top-3 left-4 z-[1050] pointer-events-auto">
+          <button
+            type="button"
+            onClick={() => setIsComparePanelMinimized(false)}
+            className="group flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl bg-blue-100 hover:bg-blue-200/90 text-blue-950 shadow-md border border-blue-300 backdrop-blur-xl transition-all duration-200 active:scale-95 hover:scale-[1.02] cursor-pointer ring-2 ring-blue-400/20 hover:ring-blue-400/40 select-none animate-in fade-in slide-in-from-bottom-2"
+            title="แตะเพื่อเปิดแผงเปรียบเทียบระยะทาง"
+            aria-label="เปิดแผงเปรียบเทียบระยะทาง"
+          >
+            <div className="relative flex items-center justify-center flex-shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping absolute opacity-75" />
+              <span className="w-2 h-2 rounded-full bg-blue-600 relative" />
+            </div>
+            
+            <div className="flex items-center gap-1.5 font-sans">
+              <span className="text-xs sm:text-sm font-black text-blue-950 group-hover:text-blue-800 transition-colors">
+                เปรียบเทียบ
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-blue-200/80 text-blue-950 text-[10px] sm:text-xs font-black border border-blue-300/70">
+                {destinations.length}/4
+              </span>
+            </div>
+
+            <div className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-200/70 group-hover:bg-blue-700 text-blue-900 group-hover:text-white transition-all ml-0.5 flex-shrink-0">
+              <ChevronUp className="w-3.5 h-3.5 transition-transform group-hover:-translate-y-0.5" />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* 3. Mobile Minimized Docked Bottom Bar (Compact ~50px bar with Grab Handle & Route Summary) */}
+      {!selectedPlace && isComparePanelMinimized && (
+        <div
+          onTouchStart={handleTouchStart}
+          onTouchEnd={(e) => handleTouchEnd(e, () => {
+            setSelectedPlace(null);
+            setIsComparePanelMinimized(false);
+          })}
+          onClick={() => {
+            setSelectedPlace(null);
+            setIsComparePanelMinimized(false);
+          }}
+          className="md:hidden fixed bottom-0 inset-x-0 w-full z-[1050] bg-white/95 backdrop-blur-xl border-t border-slate-200/90 shadow-xl cursor-pointer select-none rounded-t-2xl transition-all duration-300 animate-in slide-in-from-bottom-2 pointer-events-auto"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)' }}
+          title="แตะหรือปัดขึ้นเพื่อเปิดแผงเปรียบเทียบ"
         >
-          {isComparePanelMinimized ? (
-            /* Collapsed Call-to-Action Pill: Eye-catching, prominent, inviting to click */
-            <button
-              type="button"
-              onClick={() => setIsComparePanelMinimized(false)}
-              className="group flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl bg-blue-100 hover:bg-blue-200/90 text-blue-950 shadow-md border border-blue-300 backdrop-blur-xl transition-all duration-200 active:scale-95 hover:scale-[1.02] cursor-pointer ring-2 ring-blue-400/20 hover:ring-blue-400/40 select-none animate-in fade-in slide-in-from-bottom-2"
-              title="แตะเพื่อเปิดแผงเปรียบเทียบระยะทาง"
-              aria-label="เปิดแผงเปรียบเทียบระยะทาง"
-            >
+          {/* Grab Handle */}
+          <div className="w-10 h-1 bg-slate-300 rounded-full mx-auto my-1.5" />
+
+          {/* Docked Bar Content */}
+          <div className="flex items-center justify-between px-3.5 py-1">
+            {/* Left: Indicator + Title + Stats */}
+            <div className="flex items-center gap-2 min-w-0">
               <div className="relative flex items-center justify-center flex-shrink-0">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-ping absolute opacity-75" />
-                <span className="w-2 h-2 rounded-full bg-blue-600 relative" />
+                <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping absolute opacity-75" />
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 relative" />
               </div>
-              
-              <div className="flex items-center gap-1.5 font-sans">
-                <span className="text-xs sm:text-sm font-black text-blue-950 group-hover:text-blue-800 transition-colors">
-                  เปรียบเทียบ
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-blue-200/80 text-blue-950 text-[10px] sm:text-xs font-black border border-blue-300/70">
+
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="text-xs font-black text-blue-950">เปรียบเทียบ</span>
+                <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-900 text-[10px] font-black border border-blue-200">
                   {destinations.length}/4
                 </span>
               </div>
 
-              <div className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-200/70 group-hover:bg-blue-700 text-blue-900 group-hover:text-white transition-all ml-0.5 flex-shrink-0">
-                <ChevronUp className="w-3.5 h-3.5 transition-transform group-hover:-translate-y-0.5" />
+              {/* Primary destination quick route pill */}
+              {destinations.length > 0 && destinationStats[destinations[0].id] && (
+                <div className="flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-200/80 truncate ml-1">
+                  <span>{vehicleType === 'driving' ? '🚗' : '🚲'}</span>
+                  <span className="text-blue-950 font-black">
+                    {vehicleType === 'motorcycle' 
+                      ? Math.max(1, Math.round(destinationStats[destinations[0].id].baseDurationMins * 0.85))
+                      : destinationStats[destinations[0].id].baseDurationMins} น.
+                  </span>
+                  <span className="text-slate-300">•</span>
+                  <span>{destinationStats[destinations[0].id].distanceKm} กม.</span>
+                </div>
+              )}
+            </div>
+
+            {/* Right: Mode Switcher + Expand Button */}
+            <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              <div className="flex bg-slate-100 rounded-full p-0.5 border border-slate-200/70">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setVehicleType('driving');
+                  }}
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                    vehicleType === 'driving'
+                      ? 'bg-slate-900 text-yellow-400 shadow-xs'
+                      : 'text-slate-400 hover:text-slate-700'
+                  }`}
+                  title="โหมดรถยนต์"
+                >
+                  🚗
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setVehicleType('motorcycle');
+                  }}
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                    vehicleType === 'motorcycle'
+                      ? 'bg-slate-900 text-yellow-400 shadow-xs'
+                      : 'text-slate-400 hover:text-slate-700'
+                  }`}
+                  title="โหมดมอเตอร์ไซค์"
+                >
+                  🚲
+                </button>
               </div>
-            </button>
-          ) : isRouteCalculating ? (
-            <ComparisonPanelSkeleton className="max-md:rounded-t-3xl max-md:rounded-b-none max-md:max-h-[42vh]" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedPlace(null);
+                  setIsComparePanelMinimized(false);
+                }}
+                className="w-6 h-6 rounded-full bg-blue-100 text-blue-900 flex items-center justify-center hover:bg-blue-200 transition cursor-pointer flex-shrink-0"
+                title="แตะเพื่อเปิดแผงเปรียบเทียบ"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Multi-Destination Comparison Box (Expanded: Bottom Sheet on Mobile, Floating Panel on Desktop) */}
+      {!isComparePanelMinimized && (
+        <div 
+          className={`pointer-events-auto transition-all duration-300 max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:w-full md:absolute md:top-3 md:left-4 md:bottom-auto md:right-auto md:w-96 md:max-w-[420px] ${
+            isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1050]'
+          }`}
+        >
+          {isRouteCalculating ? (
+            <ComparisonPanelSkeleton className="max-md:rounded-t-3xl max-md:rounded-b-none max-md:max-h-[52vh]" />
           ) : (
             <div 
-              className="bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl flex flex-col font-sans transition-all max-md:rounded-t-3xl max-md:rounded-b-none max-md:border-t max-md:border-x-0 max-md:border-b-0 max-md:max-h-[42vh] max-md:overflow-y-auto p-2.5 sm:p-4 sm:rounded-3xl sm:max-h-none animate-bottom-sheet no-scrollbar"
+              className="bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-2xl flex flex-col font-sans transition-all max-md:rounded-t-3xl max-md:rounded-b-none max-md:border-t max-md:border-x-0 max-md:border-b-0 max-md:max-h-[52vh] max-md:overflow-y-auto p-2.5 sm:p-4 md:rounded-3xl md:max-h-none animate-bottom-sheet no-scrollbar"
               style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
             >
-              {/* Mobile Bottom Sheet Grab Handle */}
+              {/* Mobile Bottom Sheet Grab Handle & Swipe Down Zone */}
               <div 
+                onTouchStart={handleTouchStart}
+                onTouchEnd={(e) => handleTouchEnd(e, undefined, () => setIsComparePanelMinimized(true))}
                 onClick={() => setIsComparePanelMinimized(true)}
-                className="w-12 h-1.5 bg-slate-300 hover:bg-slate-400 rounded-full mx-auto mb-1.5 md:hidden flex-shrink-0 cursor-pointer transition-colors"
-                title="แตะเพื่อย่อแผงเปรียบเทียบ"
+                className="w-12 h-1.5 bg-slate-300 hover:bg-slate-400 rounded-full mx-auto mt-0.5 mb-2 md:hidden flex-shrink-0 cursor-pointer transition-colors"
+                title="ปัดลงหรือแตะเพื่อย่อแผงเปรียบเทียบ"
               />
           
               {/* 1. ส่วนหัว */}
-              <div className="flex justify-between items-center select-none mb-2 sm:mb-3 pb-1.5 sm:pb-2 border-b border-slate-100">
+              <div 
+                onTouchStart={handleTouchStart}
+                onTouchEnd={(e) => handleTouchEnd(e, undefined, () => setIsComparePanelMinimized(true))}
+                className="flex justify-between items-center select-none mb-2 sm:mb-3 pb-1.5 sm:pb-2 border-b border-slate-100"
+              >
                 <div 
                   onClick={() => setIsComparePanelMinimized(true)}
-                  className="flex items-center text-blue-950 font-extrabold text-[11px] xs:text-xs sm:text-sm cursor-pointer hover:text-blue-800 select-none flex-1 min-w-0 mr-1"
+                  className="flex items-center text-blue-950 font-extrabold text-xs sm:text-sm cursor-pointer hover:text-blue-800 select-none flex-1 min-w-0 mr-1"
                   title="คลิกเพื่อย่อแถบเปรียบเทียบ"
                 >
                   <div className="w-2 h-2 bg-blue-600 rounded-full mr-1.5 flex-shrink-0 animate-pulse"></div>
@@ -1883,7 +2009,7 @@ export default function MapComponent({
               </div>
 
               {/* 3. จุดหมาย (Destinations List with Interactive Search & Metrics) */}
-              <div className="flex flex-col gap-1.5 sm:gap-2 mb-2 sm:mb-3 max-h-32 sm:max-h-48 overflow-y-auto pr-1 no-scrollbar">
+              <div className="flex flex-col gap-1.5 sm:gap-2 mb-2 sm:mb-3 max-h-44 sm:max-h-52 overflow-y-auto pr-1 no-scrollbar">
                 {destinations.length === 0 ? (
                   <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center select-none">
                     <p className="text-xs text-slate-600 font-bold">ยังไม่ได้เลือกจุดหมายปลายทาง</p>
@@ -2064,7 +2190,7 @@ export default function MapComponent({
             </div>
           )}
         </div>
-      </div>
+      )}
 
       {/* 2. Top-Right Category Dropdown Filter (High z-index to always remain clickable above overlays) */}
       <div className={`absolute top-3 right-3 sm:right-4 flex items-center gap-2 pointer-events-auto transition-all duration-300 ${(isCategoryDropdownOpen || showOffsetControls) ? 'z-[9999]' : 'z-[1200]'}`}>
@@ -2357,7 +2483,13 @@ export default function MapComponent({
               });
             }}
             gpsToast={gpsToast}
-            isBottomOverlayOpen={Boolean(selectedPlace || !isComparePanelMinimized)}
+            dockBottomClass={
+              selectedPlace
+                ? 'max-md:bottom-[46vh] bottom-3 sm:bottom-6'
+                : !isComparePanelMinimized
+                ? 'max-md:bottom-[54vh] bottom-3 sm:bottom-6'
+                : 'max-md:bottom-20 bottom-3 sm:bottom-6'
+            }
           />
 
 

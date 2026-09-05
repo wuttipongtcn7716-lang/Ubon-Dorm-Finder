@@ -221,11 +221,11 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
   return (
     <div className="fixed inset-0 z-[2000] flex items-end md:items-stretch justify-center bg-black/70 backdrop-blur-sm p-0 md:p-0 animate-in fade-in duration-200">
       {/* Fullscreen Responsive Modal Container (Full Width & Height on iPad / PC) */}
-      <div className="bg-white w-full h-[92dvh] md:h-[100dvh] md:w-screen md:max-w-none rounded-t-3xl md:rounded-none flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300 border-none">
+      <div className="bg-white w-full h-[100dvh] md:h-[100dvh] md:w-screen md:max-w-none rounded-none flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300 border-none">
         
-        {/* Header */}
+        {/* Header - ซ่อนบนหน้าจอมือถือเพื่อคืนพื้นที่แผนที่ให้กว้างเต็มตาตามคำขอ */}
         <div 
-          className="w-full box-border px-4 pb-3 sm:px-6 border-b border-blue-900/50 flex justify-between items-start bg-[#0a1931] text-white z-20 flex-shrink-0 shadow-md"
+          className="hidden md:flex w-full box-border px-4 pb-3 sm:px-6 border-b border-blue-900/50 justify-between items-start bg-[#0a1931] text-white z-20 flex-shrink-0 shadow-md"
           style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
         >
           <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -296,37 +296,19 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
           </div>
         </div>
 
-        {/* Real-Time Road Routing Stats Bar on Mobile */}
-        {userLocation ? (
-          <div className="sm:hidden bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-between gap-2 text-xs flex-shrink-0">
-            <div className="flex items-baseline gap-1.5 truncate">
-              {distanceKm !== null ? (
-                <span className="font-extrabold text-blue-950 truncate">
-                  ห่าง {distanceKm < 1 && distanceMeters ? `${distanceMeters} ม.` : `${distanceKm} กม.`} (~{estimatedMins} น.)
-                </span>
-              ) : (
-                <span className="text-slate-500 font-medium text-[11px]">กำลังคำนวณเส้นทาง...</span>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="sm:hidden bg-amber-50/90 px-4 py-2 border-b border-amber-200 flex items-center justify-between gap-2 text-xs flex-shrink-0">
-            <div className="flex items-center gap-1.5 text-amber-900 font-medium truncate">
-              <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-              <span className="truncate">{gpsErrorMessage || 'ยังไม่ได้รับพิกัด GPS เพื่อคำนวณเส้นทาง'}</span>
-            </div>
-            <button
-              onClick={requestGPS}
-              className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 flex-shrink-0 cursor-pointer active:scale-95"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>ลองใหม่</span>
-            </button>
-          </div>
-        )}
-
         {/* Fullscreen Map Viewport */}
         <div className="relative flex-1 w-full h-full md:h-full bg-slate-100 flex flex-col justify-between overflow-hidden">
+          {/* Floating Mobile Close Button (Top-Left) เพื่อให้ผู้ใช้สามารถปิดหน้าต่างแผนที่ได้ง่ายในโหมด Fullscreen บนมือถือ */}
+          <button 
+            type="button"
+            onClick={onClose}
+            className="md:hidden absolute left-3 z-[1500] w-10 h-10 rounded-full bg-white/95 backdrop-blur-md shadow-lg border border-slate-200/90 text-slate-700 hover:text-slate-950 flex items-center justify-center active:scale-95 transition cursor-pointer"
+            title="ปิดหน้าต่างแผนที่"
+            aria-label="ปิดหน้าต่างแผนที่"
+            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+          >
+            <X className="w-5 h-5 text-slate-700" />
+          </button>
 
           {/* GPS Error Alert Card with Retry Button & Guidance */}
           {gpsStatus === 'error' && !dismissError && (

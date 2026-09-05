@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     description: 'ค้นหาหอพักรอบ ม.อุบลฯ ตรวจสอบมาตรฐานหอพักสีขาว ราคา สิ่งอำนวยความสะดวก และระบบแผนที่นำทาง GPS',
     images: [
       {
-        url: '/Picture/default-dorm.jpg',
+        url: '/picture/ปก.jpg',
         width: 1200,
         height: 630,
         alt: 'Dormie UBU แพลตฟอร์มค้นหาหอพัก มหาวิทยาลัยอุบลราชธานี',
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Dormie UBU | รวมหอพักสีขาว ม.อุบลฯ 60 แห่ง พร้อมระบบ GPS นำทาง',
     description: 'ค้นหาหอพักรอบ ม.อุบลฯ ตรวจสอบมาตรฐานหอพักสีขาว และระบบ GPS นำทาง',
-    images: ['/Picture/default-dorm.jpg'],
+    images: ['/picture/ปก.jpg'],
   },
   robots: {
     index: true,

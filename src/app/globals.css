@@ -135,3 +135,17 @@ body {
   -ms-overflow-style: none !important;  /* IE and Edge */
   scrollbar-width: none !important;  /* Firefox */
 }
+
+/* ป้องกัน iOS Safari ซูมหน้าจออัตโนมัติเมื่อกดแตะช่อง Input / Select บนมือถือ */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="search"],
+  input[type="number"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

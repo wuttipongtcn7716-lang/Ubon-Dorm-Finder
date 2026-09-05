@@ -114,7 +114,7 @@ export default function DormFilter({
             onChange={(e) => updateFilter('searchTerm', e.target.value)}
             placeholder="ค้นหาชื่อหอพัก, โซน หรือทำเลใกล้เคียง..."
             aria-label="ค้นหาชื่อหอพัก โซน หรือทำเลใกล้เคียง"
-            className="w-full pl-10 pr-9 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white transition"
+            className="w-full pl-10 pr-9 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white transition"
           />
           {safeFilters.searchTerm && (
             <button
@@ -139,7 +139,7 @@ export default function DormFilter({
             value={safeFilters.zone}
             onChange={(e) => updateFilter('zone', e.target.value)}
             aria-label="เลือกโซน"
-            className="w-full px-3.5 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-bold text-blue-950 transition"
+            className="w-full px-3.5 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-bold text-blue-950 transition"
           >
             <option value="all">📍 ทุกโซนรอบ ม.อุบลฯ</option>
             {zones.map((z) => (
@@ -331,7 +331,7 @@ export default function DormFilter({
                 aria-label="ประเภทผู้พักอาศัย"
                 value={safeFilters.genderType || 'all'}
                 onChange={(e) => updateFilter('genderType', e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-semibold text-slate-800"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-semibold text-slate-800"
               >
                 <option value="all">ทั้งหมด</option>
                 <option value="female">หอพักหญิง</option>

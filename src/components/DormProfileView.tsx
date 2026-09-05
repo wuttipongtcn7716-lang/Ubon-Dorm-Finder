@@ -338,7 +338,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
               <div className="flex items-center gap-1.5 text-slate-500 text-sm mt-1">
                 <MapPin className="w-4 h-4 text-amber-500" />
                 <span>{dorm.zone || 'รอบ ม.อุบลฯ'}</span>
-                {dorm.nearMainRoad && <span>• ติด{dorm.nearMainRoad}</span>}
+                {dorm.nearMainRoad && <span>• {dorm.nearMainRoad}</span>}
               </div>
             </div>
 

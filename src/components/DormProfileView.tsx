@@ -10,7 +10,7 @@ import {
   CheckCircle2, XCircle, DollarSign, FileText, Share2,
   Shield, Lock, Sparkles, Fan, Snowflake, Store, Heart,
   ChevronDown, Dog, Waves, ShieldAlert, BookOpen, Clock4, Loader2,
-  ArrowRight
+  Calendar
 } from 'lucide-react';
 import { Dormitory, PriceStructure } from '@/types/dormitory';
 import NavigationModal from '@/components/NavigationModal';
@@ -164,6 +164,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
   };
 
   const isWhite = Boolean(dorm.isWhiteDorm || dorm.status === 'ผ่าน' || dorm.evalResult === 'ผ่าน');
+  const evaluationDate = dorm.evaluationDate || dorm.evalDate;
 
   // Structured price resolution
   const priceObj: PriceStructure | null = 
@@ -309,13 +310,21 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
 
           {/* Minimalist White Dormitory Badge on Image */}
           {isWhite ? (
-            <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-blue-950/95 backdrop-blur-md text-amber-300 px-3.5 py-1.5 rounded-full shadow-lg text-xs sm:text-sm font-black border border-amber-400/40 z-20">
-              <ShieldCheck className="w-4 h-4 text-amber-400" />
-              <span>หอพักสีขาว ม.อุบลฯ</span>
+            <div className="absolute top-4 left-4 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 bg-blue-950/95 backdrop-blur-md text-amber-300 px-3.5 py-1.5 rounded-2xl sm:rounded-full shadow-lg text-xs sm:text-sm font-black border border-amber-400/40 z-20">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <span>หอพักสีขาว ม.อุบลฯ</span>
+              </div>
+              {evaluationDate && (
+                <span className="text-[11px] text-amber-200/90 font-medium sm:border-l sm:border-amber-400/30 sm:pl-2">
+                  ตรวจเมื่อ: {evaluationDate}
+                </span>
+              )}
             </div>
           ) : (
-            <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs font-medium z-20">
+            <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs font-medium z-20 flex items-center gap-1.5">
               <span>ผลประเมิน: {dorm.status || dorm.evalResult || 'หอพักทั่วไป'}</span>
+              {evaluationDate && <span className="text-slate-300">({evaluationDate})</span>}
             </div>
           )}
 
@@ -335,10 +344,18 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
               <h1 className="text-2xl sm:text-3xl font-black text-blue-950 tracking-tight">
                 {dorm.name}
               </h1>
-              <div className="flex items-center gap-1.5 text-slate-500 text-sm mt-1">
-                <MapPin className="w-4 h-4 text-amber-500" />
-                <span>{dorm.zone || 'รอบ ม.อุบลฯ'}</span>
+              <div className="flex items-center gap-2 text-slate-500 text-sm mt-1.5 flex-wrap">
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                  <span>{dorm.zone || 'รอบ ม.อุบลฯ'}</span>
+                </span>
                 {dorm.nearMainRoad && <span>• {dorm.nearMainRoad}</span>}
+                {evaluationDate && (
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-900 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-lg shadow-2xs">
+                    <Calendar className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" />
+                    <span>วันที่ประเมิน: {evaluationDate}</span>
+                  </span>
+                )}
               </div>
             </div>
 
@@ -523,6 +540,11 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300/60">
                     5 ด้านมาตรฐาน
                   </span>
+                  {evaluationDate && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
+                      ตรวจประเมิน: {evaluationDate}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
                   แตะเพื่อดูข้อกำหนด 5 ด้าน และมาตรฐานความปลอดภัยสำหรับนักศึกษา
@@ -543,11 +565,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
               isCriteriaOpen ? 'max-h-[2200px] opacity-100 border-t border-amber-100/80' : 'max-h-0 opacity-0'
             }`}
           >
-            <div className="p-4 sm:p-6 space-y-3.5">
-              <p className="text-xs text-slate-600">
-                แตะแต่ละหัวข้อด้านล่างเพื่อตรวจสอบรายละเอียดข้อกำหนดและมาตรการความปลอดภัย:
-              </p>
-
+            <div className="p-4 sm:p-6 space-y-3">
               {/* 5 Topic Sub-Accordions (Single Active State prevents overlapping) */}
               <div className="space-y-2.5">
                 {WHITE_DORM_CRITERIA.map((criterion) => {
@@ -634,31 +652,24 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
                 })}
               </div>
 
-              {/* Status Note & Quick Navigation Links */}
-              <div className="pt-2 space-y-3">
-                <div className="p-3 bg-amber-100/70 rounded-2xl text-amber-950 text-xs font-medium flex items-center gap-2.5 border border-amber-200/80">
-                  <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                  <span>
-                    หอพักที่มีสัญลักษณ์ <strong>หอพักสีขาว</strong> ได้รับการตรวจสอบและประเมินผ่านเกณฑ์โดยมหาวิทยาลัยอุบลราชธานี
-                  </span>
-                </div>
-
-                {/* Navigation Links inside Accordion */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-1">
-                  <Link
-                    href="/?white=true"
-                    className="inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl font-bold text-xs shadow-sm transition active:scale-98 cursor-pointer"
-                  >
-                    <span>ค้นหาหอพักสีขาวทั้งหมด (60 แห่ง)</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-
+              {/* Status Note with Official University Announcement Reference */}
+              <div className="pt-2">
+                <div className="p-3.5 bg-amber-100/70 rounded-2xl text-amber-950 text-xs font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-amber-200/80">
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    <span>
+                      หอพักที่มีสัญลักษณ์ <strong>หอพักสีขาว</strong> ได้รับการตรวจสอบและประเมินผ่านเกณฑ์โดยมหาวิทยาลัยอุบลราชธานี
+                    </span>
+                  </div>
                   <a
-                    href="#contact-section"
-                    className="inline-flex items-center justify-center gap-1.5 py-2.5 px-4 bg-white hover:bg-slate-50 text-blue-950 rounded-xl font-semibold text-xs border border-slate-200 transition shadow-2xs cursor-pointer"
+                    href="https://www.ubu.ac.th/web/student/news/27385/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-blue-950 hover:text-blue-700 font-bold underline underline-offset-4 flex-shrink-0 text-xs transition"
+                    title="เปิดหน้าประกาศเกณฑ์หอพักสีขาว มหาวิทยาลัยอุบลราชธานี ในแท็บใหม่"
                   >
-                    <span>ติดต่อสอบถามข้อมูลหอพักนี้</span>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
+                    <span>อ้างอิงประกาศเกณฑ์หอพักสีขาว ม.อุบลฯ</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-800 flex-shrink-0" />
                   </a>
                 </div>
               </div>

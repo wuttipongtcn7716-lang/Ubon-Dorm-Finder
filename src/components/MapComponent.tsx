@@ -1808,7 +1808,7 @@ export default function MapComponent({
                 {isOriginModalOpen && (
                   <div 
                     ref={originModalRef}
-                    className="max-md:relative max-md:mt-2 max-md:w-full sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-84 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150"
+                    className="max-md:relative max-md:mt-2 max-md:w-full sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-84 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150 overflow-x-hidden"
                   >
                     <div className="flex items-center justify-between pb-1 border-b border-slate-100 text-[11px] font-extrabold text-[#0a1931]">
                       <span>เลือกจุดเริ่มต้น (Origin)</span>
@@ -1820,7 +1820,10 @@ export default function MapComponent({
                       </button>
                     </div>
 
-                    <div className="flex overflow-x-auto no-scrollbar gap-1 p-0.5 bg-slate-100 rounded-xl text-[10px] font-extrabold whitespace-nowrap">
+                    <div 
+                      className="flex overflow-x-auto no-scrollbar gap-1 p-0.5 bg-slate-100 rounded-xl text-[10px] font-extrabold whitespace-nowrap"
+                      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
                       <button
                         onClick={() => setOriginTab('gps')}
                         className={`flex-1 min-w-[70px] py-1 px-1 rounded-lg transition text-center ${originTab === 'gps' ? 'bg-[#0a1931] text-amber-300 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
@@ -1970,7 +1973,7 @@ export default function MapComponent({
 
                   {/* Add POI Dropdown Menu - z-[9999] to prevent overlapping */}
                   {isAddPoiDropdownOpen && (
-                    <div className="max-md:relative max-md:mt-2 max-md:w-full sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-64 sm:max-h-80 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="max-md:relative max-md:mt-2 max-md:w-full sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-64 sm:max-h-80 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150 overflow-x-hidden">
                       <div className="flex items-center justify-between pb-1 border-b border-slate-100 text-[11px] font-extrabold text-slate-700">
                         <span>เลือกสถานที่ปลายทาง ({availablePoisToAdd.length} แห่ง)</span>
                         <button 
@@ -1993,7 +1996,10 @@ export default function MapComponent({
                         />
                       </div>
 
-                      <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[10px] no-scrollbar">
+                      <div 
+                        className="flex items-center gap-1 overflow-x-auto pb-1 text-[10px] no-scrollbar"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                      >
                         {['all', 'building', 'landmark', 'stadium', 'gas', 'official', 'food', 'cafe', 'store', 'hospital', 'service', 'hangout', 'park', 'bank'].map((cat) => (
                           <button
                             key={cat}
@@ -2022,7 +2028,10 @@ export default function MapComponent({
                         ))}
                       </div>
 
-                      <div className="flex-1 overflow-y-auto max-h-52 divide-y divide-slate-100">
+                      <div 
+                        className="flex-1 overflow-y-auto overflow-x-hidden max-h-52 divide-y divide-slate-100 no-scrollbar"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                      >
                         {availablePoisToAdd.length === 0 ? (
                           <div className="py-6 text-center text-xs text-slate-400 font-medium">
                             ไม่พบสถานที่ที่ค้นหา

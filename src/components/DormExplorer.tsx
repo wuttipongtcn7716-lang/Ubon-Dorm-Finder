@@ -22,7 +22,13 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
   const { isFavorite, toggleFavorite, count: favoritesCount } = useFavorites();
   const [isSaved, setIsSaved] = useState<boolean | null>(null);
 
-  const [showOnlySaved, setShowOnlySaved] = useState<boolean>(false);
+  const [showOnlySaved, setShowOnlySaved] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('saved') === 'true' || params.get('onlySavedOnly') === 'true';
+    }
+    return false;
+  });
 
   const handleToggleFavorite = (dormId: number) => {
     const isNowSaved = !isFavorite(dormId);
@@ -32,6 +38,9 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
 
   useEffect(() => {
     setIsClientLoaded(true);
+    if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
   }, []);
 
   const uniqueZones = useMemo(() => {
@@ -59,8 +68,8 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
 
     return initialDorms.filter((d) => {
       if (!d) return false;
-      // Item 5: showOnlySaved ทำงานอิสระจากการรีเซ็ตตัวกรองหลัก
-      if ((showOnlySaved || f.onlySavedOnly) && !isFavorite(d.id)) {
+      // Item 4: showOnlySaved ทำงานอิสระจากการรีเซ็ตตัวกรองหลัก
+      if (showOnlySaved && !isFavorite(d.id)) {
         return false;
       }
 
@@ -259,7 +268,7 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
           <h2 className="text-sm font-black text-slate-800">
             พบหอพักทั้งหมด {filteredDorms.length} แห่ง
           </h2>
-          {(showOnlySaved || filters.onlySavedOnly) && (
+          {showOnlySaved && (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-bold">
               <Heart className="w-3 h-3 fill-rose-600 text-rose-600" /> ที่บันทึกไว้
             </span>

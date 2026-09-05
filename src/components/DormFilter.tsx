@@ -57,15 +57,8 @@ export default function DormFilter({
     hasActiveQuickFilters ||
     hasAdvancedFilters;
 
-  // Collapsible state: Hidden by default as requested in Item 1
-  const [isOpenFilters, setIsOpenFilters] = useState(hasActiveQuickFilters || hasAdvancedFilters);
-
-  // Auto-expand if active filters arrive (e.g. from URL search params)
-  React.useEffect(() => {
-    if (hasActiveQuickFilters || hasAdvancedFilters) {
-      setIsOpenFilters(true);
-    }
-  }, [hasActiveQuickFilters, hasAdvancedFilters]);
+  // Collapsible state: Strictly hidden by default as requested in Item 1
+  const [isOpenFilters, setIsOpenFilters] = useState(false);
 
   const updateFilter = (key: keyof FilterState, value: any) => {
     onFilterChange?.({

@@ -1302,6 +1302,7 @@ export default function MapComponent({
           return [firstDest, ...rest];
         });
         setForceFitKey(Date.now());
+        setIsComparePanelMinimized(false);
       }
     }
   }, [selectedDorm]);
@@ -2178,7 +2179,7 @@ export default function MapComponent({
       )}
 
       {/* 2. Top-Right Category Dropdown Filter (High z-index to always remain clickable above overlays) */}
-      <div className={`absolute top-3 right-3 sm:right-4 flex items-center gap-2 pointer-events-auto transition-all duration-300 ${(isCategoryDropdownOpen || showOffsetControls) ? 'z-[9999]' : 'z-[1200]'}`}>
+      <div className={`absolute mobile-safe-top right-3 sm:right-4 flex items-center gap-2 pointer-events-auto transition-all duration-300 ${(isCategoryDropdownOpen || showOffsetControls) ? 'z-[9999]' : 'z-[1200]'}`}>
 
         <div ref={dropdownRef} className="relative">
           <button

@@ -300,8 +300,7 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
         <div className="relative flex-1 w-full h-full md:h-full bg-slate-100 flex flex-col justify-between overflow-hidden">
           {/* Floating Unified Mobile Top Card (Close Button + Route Info Card) */}
           <div 
-            className="md:hidden absolute left-3 z-[1500] flex items-center gap-2 bg-white/95 backdrop-blur-xl shadow-lg border border-slate-200/90 rounded-2xl py-1 px-1.5 pr-3 max-w-[calc(100vw-5.5rem)] animate-in fade-in slide-in-from-top-2 duration-200 pointer-events-auto"
-            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+            className="md:hidden absolute left-3.5 z-[1500] mobile-safe-top flex items-center gap-2.5 bg-white/95 backdrop-blur-xl shadow-lg border border-slate-200/90 rounded-2xl py-1.5 px-2 pr-3.5 max-w-[calc(100vw-5.5rem)] animate-in fade-in slide-in-from-top-2 duration-200 pointer-events-auto"
           >
             {/* Integrated Close Button (X) */}
             <button 

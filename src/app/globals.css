@@ -61,6 +61,17 @@ body {
   }
 }
 
+/* เว้นระยะปลอดภัยด้านบนสำหรับอุปกรณ์พกพาที่มี Notch / Dynamic Island / Status Bar ป้องกันขอบจอบดบังการ์ด */
+.mobile-safe-top {
+  top: max(24px, calc(env(safe-area-inset-top, 0px) + 16px)) !important;
+}
+
+@media (min-width: 768px) {
+  .mobile-safe-top {
+    top: 12px !important;
+  }
+}
+
 /* Mobile Bottom Sheet Slide-Up Animation */
 @keyframes slideUpBottomSheet {
   from {

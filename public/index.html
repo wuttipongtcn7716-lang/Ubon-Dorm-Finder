@@ -4719,8 +4719,8 @@
                 const toPt = waypoints[i + 1];
                 const colorMeta = LEG_COLORS[i % LEG_COLORS.length];
 
-                // URL สำหรับ OSRM ขับรถยนต์ทีละคู่
-                const url = `https://router.project-osrm.org/route/v1/driving/${fromPt.lng},${fromPt.lat};${toPt.lng},${toPt.lat}?overview=full&geometries=geojson&steps=true&radiuses=150;150`;
+                // URL สำหรับ OSRM ขับรถยนต์ทีละคู่ พร้อม unlimited snap radius
+                const url = `https://router.project-osrm.org/route/v1/driving/${fromPt.lng},${fromPt.lat};${toPt.lng},${toPt.lat}?overview=full&geometries=geojson&steps=false&radiuses=unlimited;unlimited`;
 
                 const p = fetch(url)
                     .then(res => res.json())
@@ -4738,22 +4738,23 @@
                                 km,
                                 mins,
                                 duration,
-                                colorMeta
+                                colorMeta,
+                                isDirectFallback: false
                             };
                         }
                         throw new Error('OSRM Error');
                     })
                     .catch(err => {
-                        console.error(`ไม่สามารถคำนวณเส้นทางไปยัง "${toPt.name}" ได้ กรุณาตรวจสอบพิกัดของสถานที่นี้`, err);
-                        alert(`ไม่สามารถคำนวณเส้นทางไปยัง "${toPt.name}" ได้ กรุณาตรวจสอบพิกัดของสถานที่นี้`);
-                        // Fallback เส้นตรง
+                        console.warn(`การคำนวณเส้นทาง OSRM ไปยัง "${toPt.name}" ไม่สำเร็จ ใช้เส้นทางตรงสำรอง:`, err);
+                        // Fallback เส้นตรง (ประ)
                         return {
                             legIndex: i,
                             coords: [[fromPt.lat, fromPt.lng], [toPt.lat, toPt.lng]],
                             km: 0,
                             mins: 0,
                             duration: 0,
-                            colorMeta
+                            colorMeta,
+                            isDirectFallback: true
                         };
                     });
 
@@ -4772,7 +4773,8 @@
                     weight: 8,
                     opacity: 0.25, // default opacity reduced for overlapping
                     lineCap: 'round',
-                    lineJoin: 'round'
+                    lineJoin: 'round',
+                    dashArray: leg.isDirectFallback ? '8, 12' : undefined
                 });
 
                 // 2. วาดเส้นแกนหลักตามสีของช่วงนั้นๆ (ความหนา 5.5, opacity 0.6)
@@ -4781,7 +4783,8 @@
                     weight: 5.5,
                     opacity: 0.6, // default opacity reduced to 0.6 as requested
                     lineCap: 'round',
-                    lineJoin: 'round'
+                    lineJoin: 'round',
+                    dashArray: leg.isDirectFallback ? '6, 10' : undefined
                 });
 
                 routeLayerGroup.addLayer(halo);

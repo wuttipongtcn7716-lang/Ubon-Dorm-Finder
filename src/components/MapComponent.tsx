@@ -712,6 +712,8 @@ interface MultiColorLeg {
   haloColor: string;
   distanceKm: number;
   baseDurationMins: number;
+  distanceMeters: number;
+  isDirectFallback?: boolean;
 }
 
 function MultiRoadRoutingLayer({
@@ -722,6 +724,7 @@ function MultiRoadRoutingLayer({
   activeDestId,
   setActiveDestId,
   adjustLatLng,
+  onRouteWarning,
 }: {
   originLocation: { lat: number; lng: number; label?: string; mode?: OriginMode };
   destinations: DestinationItem[];
@@ -730,6 +733,7 @@ function MultiRoadRoutingLayer({
   activeDestId: string | number | null;
   setActiveDestId: (id: string | number | null) => void;
   adjustLatLng: (lat: number, lng: number) => [number, number];
+  onRouteWarning?: (message: string) => void;
 }) {
   const map = useMap();
   const [legs, setLegs] = useState<MultiColorLeg[]>([]);
@@ -811,62 +815,68 @@ function MultiRoadRoutingLayer({
         const straightMeters = R_EARTH * 2 * Math.atan2(Math.sqrt(aDist), Math.sqrt(1 - aDist));
 
         // Note: OSRM strictly expects coordinates in [longitude, latitude] order:
-        // Format: /route/v1/driving/{startLng},{startLat};{destLng},{destLat}
-        const url = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${adjLng},${adjLat}?overview=full&geometries=geojson&steps=false&continue_straight=false`;
+        // Format: /route/v1/{profile}/{startLng},{startLat};{destLng},{destLat}?radiuses=unlimited;unlimited
+        const primaryDrivingUrl = `https://router.project-osrm.org/route/v1/driving/${startLng},${startLat};${adjLng},${adjLat}?overview=full&geometries=geojson&steps=false&continue_straight=false&radiuses=unlimited;unlimited`;
+        const backupBicycleUrl = `https://router.project-osrm.org/route/v1/bicycle/${startLng},${startLat};${adjLng},${adjLat}?overview=full&geometries=geojson&steps=false&continue_straight=false&radiuses=unlimited;unlimited`;
 
-        return fetch(url)
-          .then((res) => res.json())
-          .then((data) => {
+        const fetchRouteData = async () => {
+          // 1. Primary: Try Driving Profile with unlimited snapping radius
+          try {
+            const res = await fetch(primaryDrivingUrl);
+            const data = await res.json();
             if (data.code === 'Ok' && data.routes && data.routes[0]) {
-              const r = data.routes[0];
+              return data.routes[0];
+            }
+          } catch (e) {
+            // Driving failed or blocked, proceed to bicycle fallback
+          }
 
-              // Detour Detection: If straight-line distance is short (< 2.5km) but OSRM detour exceeds 2.2x straight distance
-              // (due to dual-carriageway highway U-turns or wrong-side highway snapping)
-              let effectiveDistanceMeters = r.distance;
-              const isDetour = straightMeters < 2500 && r.distance > straightMeters * 2.2;
-              if (isDetour) {
-                // Calibrate to realistic local road connection in town/campus grid (straightMeters * 1.25)
-                effectiveDistanceMeters = Math.round(straightMeters * 1.25);
-              }
+          // 2. Backup: Try Bicycle Profile (traverses campus walkways/access lanes closed to regular cars)
+          try {
+            const resBackup = await fetch(backupBicycleUrl);
+            const dataBackup = await resBackup.json();
+            if (dataBackup.code === 'Ok' && dataBackup.routes && dataBackup.routes[0]) {
+              return dataBackup.routes[0];
+            }
+          } catch (e) {}
 
+          return null;
+        };
+
+        return fetchRouteData()
+          .then((r) => {
+            if (r) {
+              const effectiveDistanceMeters = r.distance;
               const km = parseFloat((effectiveDistanceMeters / 1000).toFixed(1));
-              const effectiveDurationSecs = isDetour
-                ? (effectiveDistanceMeters / 1000 / 28) * 3600
-                : Math.max(r.duration, (effectiveDistanceMeters / 1000 / 28) * 3600);
+              const effectiveDurationSecs = Math.max(r.duration, (effectiveDistanceMeters / 1000 / 28) * 3600);
               const baseMins = Math.max(1, Math.round(effectiveDurationSecs / 60));
 
               // Seamless Pin-to-Pin Route Stitching:
-              // Ensure the polyline starts directly AT the origin pin and connects directly INTO the dorm pin
+              // Always use real road geometry from OSRM, never straight line through buildings!
               const coords: [number, number][] = [];
 
-              if (isDetour) {
-                // For detour cases, connect directly between origin and dorm pin
-                coords.push([startLat, startLng]);
-                coords.push([adjLat, adjLng]);
-              } else {
-                // 1. Prepend exact Origin Pin coordinate (eliminates start gap)
-                coords.push([startLat, startLng]);
+              // 1. Prepend exact Origin Pin coordinate (eliminates start gap)
+              coords.push([startLat, startLng]);
 
-                // 2. Add OSRM intermediate road waypoints [latitude, longitude]
-                r.geometry.coordinates.forEach(([lon, lat]: [number, number]) => {
-                  let ptLat = lat;
-                  let ptLon = lon;
-                  if (ptLat > 50 && ptLon < 30) {
-                    ptLat = lon;
-                    ptLon = lat;
-                  }
-                  // Deduplicate adjacent identical coordinates
-                  const prevPt = coords[coords.length - 1];
-                  if (!prevPt || Math.abs(prevPt[0] - ptLat) > 0.00002 || Math.abs(prevPt[1] - ptLon) > 0.00002) {
-                    coords.push([ptLat, ptLon]);
-                  }
-                });
-
-                // 3. Append exact Destination Dorm Pin coordinate (eliminates dorm gap)
-                const lastPt = coords[coords.length - 1];
-                if (!lastPt || Math.abs(lastPt[0] - adjLat) > 0.00002 || Math.abs(lastPt[1] - adjLng) > 0.00002) {
-                  coords.push([adjLat, adjLng]);
+              // 2. Add OSRM intermediate road waypoints [latitude, longitude]
+              r.geometry.coordinates.forEach(([lon, lat]: [number, number]) => {
+                let ptLat = lat;
+                let ptLon = lon;
+                if (ptLat > 50 && ptLon < 30) {
+                  ptLat = lon;
+                  ptLon = lat;
                 }
+                // Deduplicate adjacent identical coordinates
+                const prevPt = coords[coords.length - 1];
+                if (!prevPt || Math.abs(prevPt[0] - ptLat) > 0.00002 || Math.abs(prevPt[1] - ptLon) > 0.00002) {
+                  coords.push([ptLat, ptLon]);
+                }
+              });
+
+              // 3. Append exact Destination Pin coordinate (eliminates destination gap)
+              const lastPt = coords[coords.length - 1];
+              if (!lastPt || Math.abs(lastPt[0] - adjLat) > 0.00002 || Math.abs(lastPt[1] - adjLng) > 0.00002) {
+                coords.push([adjLat, adjLng]);
               }
 
               return {
@@ -877,9 +887,11 @@ function MultiRoadRoutingLayer({
                 distanceKm: km,
                 baseDurationMins: baseMins,
                 distanceMeters: effectiveDistanceMeters,
+                isDirectFallback: false,
               };
             }
-            throw new Error('No route');
+
+            throw new Error('No road route available on network');
           })
           .catch((err) => {
             console.warn(`การคำนวณเส้นทาง OSRM ไปยัง "${d.name}" ไม่สำเร็จ ใช้เส้นทางตรงสำรอง:`, err);
@@ -895,6 +907,7 @@ function MultiRoadRoutingLayer({
               distanceKm: fallbackKm,
               baseDurationMins: fallbackMins,
               distanceMeters: fallbackMeters,
+              isDirectFallback: true,
             };
           });
       });
@@ -917,6 +930,13 @@ function MultiRoadRoutingLayer({
         allCoords.push([startLat, startLng]);
 
         setLegs(validLegs);
+
+        // Check if any leg fell back to direct line and alert user gently
+        const directLeg = validLegs.find((l) => l.isDirectFallback);
+        if (directLeg && onRouteWarning) {
+          const targetDest = destinations.find((d) => d.id === directLeg.id);
+          onRouteWarning(`⚠️ ไม่พบโครงข่ายถนนสำหรับ "${targetDest?.name || 'สถานที่'}" แสดงแนวเส้นตรงประมาณการ`);
+        }
 
         if (onUpdateStats) {
           onUpdateStats(statsMap);
@@ -985,6 +1005,7 @@ function MultiRoadRoutingLayer({
                 opacity: isActive ? 0.6 : 0.25, // default opacity reduced for overlapping
                 lineCap: 'round',
                 lineJoin: 'round',
+                dashArray: leg.isDirectFallback ? '8, 12' : undefined,
               }}
             />
             {/* Core Polyline แยกสีแต่ละช่วงชัดเจน */}
@@ -1009,6 +1030,7 @@ function MultiRoadRoutingLayer({
                 opacity: isActive ? 0.95 : 0.6, // opacity 0.6 by default as requested
                 lineCap: 'round',
                 lineJoin: 'round',
+                dashArray: leg.isDirectFallback ? '6, 10' : undefined,
               }}
             />
           </React.Fragment>
@@ -2406,6 +2428,13 @@ export default function MapComponent({
         onRetry={handleRequestLiveGps}
       />
 
+      {/* Floating System / Routing Toast Feedback */}
+      {gpsToast && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[9999] bg-slate-900/90 text-white backdrop-blur-md px-4 py-2 rounded-2xl text-xs font-bold shadow-2xl border border-white/20 animate-in fade-in slide-in-from-top-2 duration-200 pointer-events-none text-center max-w-[90vw]">
+          {gpsToast}
+        </div>
+      )}
+
       {/* Main Map Container with Error Boundary */}
       <MapErrorBoundary onRetry={handleRetryMap}>
         <MapContainer
@@ -2539,6 +2568,10 @@ export default function MapComponent({
           activeDestId={activeDestId}
           setActiveDestId={setActiveDestId}
           adjustLatLng={adjustLatLng}
+          onRouteWarning={(msg) => {
+            setGpsToast(msg);
+            setTimeout(() => setGpsToast(null), 5000);
+          }}
         />
 
         {/* Dormitory Marker Clustering Layer */}

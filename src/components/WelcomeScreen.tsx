@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Sparkles, ChevronRight, Compass } from 'lucide-react';
 
 export default function WelcomeScreen() {
@@ -18,7 +18,7 @@ export default function WelcomeScreen() {
     }
   }, []);
 
-  const handleEnter = () => {
+  const handleEnter = useCallback(() => {
     setIsFading(true);
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('hasVisited', 'true');
@@ -27,14 +27,44 @@ export default function WelcomeScreen() {
       setShow(false);
       setIsVisible(false);
     }, 450);
-  };
+  }, []);
+
+  // Keyboard Navigation: รองรับการกดปุ่ม Enter, Spacebar หรือปุ่มใดๆ บนคีย์บอร์ดเพื่อเข้าสู่หน้าหลัก
+  useEffect(() => {
+    if (!show || isFading) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ข้ามปุ่ม Modifier ทั่วไป และปุ่ม Function ของเบราว์เซอร์ (เช่น F12, F5)
+      if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'].includes(e.key)) {
+        return;
+      }
+      if (e.key.startsWith('F') && !isNaN(Number(e.key.slice(1)))) {
+        return;
+      }
+
+      // ป้องกันผลข้างเคียงของ Spacebar (การเลื่อนหน้าจอ)
+      if (e.code === 'Space' || e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+      }
+
+      handleEnter();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [show, isFading, handleEnter]);
 
   if (!show) return null;
 
   return (
     <div
       onClick={handleEnter}
-      className={`fixed inset-0 h-[100dvh] z-[9999] flex-col items-center justify-between bg-gradient-to-b from-[#08152e] via-[#0f2b5c] to-[#061024] cursor-pointer select-none transition-all duration-500 overflow-hidden ${
+      role="button"
+      tabIndex={0}
+      aria-label="แตะที่ใดก็ได้ หรือกดปุ่มใดๆ บนคีย์บอร์ดเพื่อเริ่มต้นใช้งาน"
+      className={`fixed inset-0 h-[100dvh] z-[9999] flex-col items-center justify-between bg-gradient-to-b from-[#08152e] via-[#0f2b5c] to-[#061024] cursor-pointer select-none transition-all duration-500 overflow-hidden outline-none ${
         isFading ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
       } ${isVisible ? 'flex' : 'hidden'}`}
       style={{ height: '100dvh', display: isVisible ? 'flex' : 'none' }}

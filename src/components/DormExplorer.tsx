@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Dormitory, FilterState } from '@/types/dormitory';
 import DormFilter from './DormFilter';
 import DormCard from './DormCard';
@@ -109,12 +109,86 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
     });
   }, [initialDorms, filters, isFavorite]);
 
-  const [visibleCount, setVisibleCount] = useState(12);
+  const isFirstRender = useRef(true);
+  const hasRestoredScroll = useRef(false);
 
-  // รีเซ็ตการแบ่งหน้าเมื่อมีการเปลี่ยนเงื่อนไขตัวกรอง
+  const [visibleCount, setVisibleCount] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const savedId = sessionStorage.getItem('dorm_last_viewed_id');
+      if (savedId) {
+        const idNum = parseInt(savedId, 10);
+        const idx = initialDorms.findIndex((d) => d.id === idNum);
+        if (idx >= 0) {
+          return Math.min(initialDorms.length, Math.max(12, Math.ceil((idx + 1) / 12) * 12));
+        }
+      }
+    }
+    return 12;
+  });
+
+  // รีเซ็ตการแบ่งหน้าเมื่อผู้ใช้เปลี่ยนเงื่อนไขตัวกรอง (ข้ามรอบแรกเพื่อคงค่า visibleCount สำหรับ scroll restoration)
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     setVisibleCount(12);
   }, [filters]);
+
+  // ระบบ Scroll Restoration: เลื่อนกลับมาตำแหน่งเดิมของการ์ดหอพักที่เพิ่งกดดูเมื่อย้อนกลับมาหน้าหลัก
+  useEffect(() => {
+    if (!isClientLoaded || hasRestoredScroll.current) return;
+
+    const savedId = typeof window !== 'undefined' ? sessionStorage.getItem('dorm_last_viewed_id') : null;
+    const savedScroll = typeof window !== 'undefined' ? sessionStorage.getItem('dorm_home_scroll_pos') : null;
+
+    if (!savedId && !savedScroll) {
+      hasRestoredScroll.current = true;
+      return;
+    }
+
+    // ตรวจสอบว่าการ์ดที่เพิ่งดูอยู่ใน filteredDorms หรือไม่ และขยาย visibleCount ให้ครอบคลุมการ์ดนั้น
+    if (savedId) {
+      const idNum = parseInt(savedId, 10);
+      const dormIdx = filteredDorms.findIndex((d) => d.id === idNum);
+      if (dormIdx >= 0 && dormIdx >= visibleCount) {
+        const needed = Math.min(filteredDorms.length, Math.ceil((dormIdx + 1) / 12) * 12);
+        setVisibleCount(needed);
+        // รอให้ state visibleCount ปรับและเรนเดอร์การ์ดลง DOM ในรอบถัดไปก่อนเลื่อน
+        return;
+      }
+    }
+
+    // เมื่อการ์ดถูกเรนเดอร์ลงใน DOM แน่นอนแล้ว ให้เลื่อนตำแหน่งไปยังการ์ดดังกล่าวทันที
+    const timer = setTimeout(() => {
+      let scrolled = false;
+
+      if (savedId) {
+        const targetElement = document.getElementById(`dorm-card-${savedId}`);
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetElement.classList.add('ring-4', 'ring-amber-400', 'ring-offset-2', 'transition-all', 'duration-300');
+          setTimeout(() => {
+            targetElement.classList.remove('ring-4', 'ring-amber-400', 'ring-offset-2');
+          }, 1500);
+          scrolled = true;
+        }
+      }
+
+      if (!scrolled && savedScroll) {
+        const top = parseInt(savedScroll, 10);
+        if (!isNaN(top)) {
+          window.scrollTo({ top, behavior: 'smooth' });
+        }
+      }
+
+      hasRestoredScroll.current = true;
+      sessionStorage.removeItem('dorm_last_viewed_id');
+      sessionStorage.removeItem('dorm_home_scroll_pos');
+    }, 120);
+
+    return () => clearTimeout(timer);
+  }, [isClientLoaded, filteredDorms, visibleCount]);
 
   const displayedDorms = useMemo(() => {
     return filteredDorms.slice(0, visibleCount);

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   MapPin, Phone, MessageCircle, ShieldCheck, 
   Wind, Wifi, Car, Key, Video, Users, 
@@ -95,7 +95,17 @@ const WHITE_DORM_CRITERIA = [
 ];
 
 export default function DormProfileView({ dorm }: DormProfileViewProps) {
+  const router = useRouter();
   const [isNavOpen, setIsNavOpen] = useState(false);
+
+  const handleBack = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/');
+    }
+  };
   
   // จัดการ State โหลดรูปภาพอย่างปลอดภัย ป้องกันปัญหาค้างถาวร
   const initialImageSrc = encodeURI((dorm.images && dorm.images[0]) || dorm.image || '/Picture/default-dorm.jpg');
@@ -246,14 +256,15 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
       <div className="sticky top-0 z-40 bg-[#0a1931]/75 backdrop-blur-xl border-b border-white/10 px-4 py-2.5 sm:py-3 text-white shadow-lg shadow-black/10 transition-all duration-300">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           {/* Back Button: Glassmorphic Icon Button */}
-          <Link
-            href="/"
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center text-blue-100 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 transition-all duration-200 active:scale-95 flex-shrink-0 shadow-sm"
+          <button
+            type="button"
+            onClick={handleBack}
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center text-blue-100 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 transition-all duration-200 active:scale-95 flex-shrink-0 shadow-sm cursor-pointer"
             title="ย้อนกลับหน้าหลัก"
             aria-label="ย้อนกลับ"
           >
             <ChevronLeft className="w-5 h-5" />
-          </Link>
+          </button>
 
           {/* Right Action Group: Favorite & Share */}
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -511,11 +522,18 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
             </div>
 
             {/* White Dorm Status */}
-            <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold ${
+            <div className={`p-3 rounded-2xl border flex items-center justify-between font-bold ${
               isWhite ? 'bg-amber-50 text-amber-900 border-amber-200/80 shadow-xs' : 'bg-slate-50 text-slate-500 border-slate-100'
             }`}>
-              <ShieldCheck className={`w-4 h-4 flex-shrink-0 ${isWhite ? 'text-amber-600' : 'text-slate-400'}`} />
-              <span>{isWhite ? 'ผ่านเกณฑ์หอพักสีขาว' : 'หอพักทั่วไป'}</span>
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className={`w-4 h-4 flex-shrink-0 ${isWhite ? 'text-amber-600' : 'text-slate-400'}`} />
+                <span>{isWhite ? 'ผ่านเกณฑ์หอพักสีขาว' : 'หอพักทั่วไป'}</span>
+              </div>
+              {evaluationDate && (
+                <span className="text-[10px] font-normal text-amber-900/80 bg-amber-100/80 border border-amber-300/60 px-2 py-0.5 rounded-lg shadow-2xs">
+                  {evaluationDate}
+                </span>
+              )}
             </div>
           </div>
         </div>

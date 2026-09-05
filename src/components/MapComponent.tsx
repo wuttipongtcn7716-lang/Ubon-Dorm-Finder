@@ -2583,6 +2583,12 @@ export default function MapComponent({
                     </div>
                     <Link
                       href={`/dorm/${dorm.id}`}
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          sessionStorage.setItem('dorm_home_scroll_pos', window.scrollY.toString());
+                          sessionStorage.setItem('dorm_last_viewed_id', dorm.id.toString());
+                        }
+                      }}
                       className="w-full flex items-center justify-center gap-1 py-2.5 px-3 rounded-2xl bg-[#0a1931] hover:bg-blue-950 text-amber-300 font-black text-xs transition active:scale-95 border border-amber-400/40 text-center shadow-md"
                     >
                       <span>ดูรายละเอียดหอพักนี้</span>

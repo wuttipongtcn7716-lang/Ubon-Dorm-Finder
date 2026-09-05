@@ -702,7 +702,6 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
               <Compass className="w-5 h-5 text-amber-500" />
               <span>จุดสังเกตและสถานที่ใกล้เคียง</span>
             </h3>
-            <span className="text-xs text-slate-400 font-medium">คำนวณจากพิกัดจริง</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">

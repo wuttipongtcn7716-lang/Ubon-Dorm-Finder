@@ -22,6 +22,8 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
   const { isFavorite, toggleFavorite, count: favoritesCount } = useFavorites();
   const [isSaved, setIsSaved] = useState<boolean | null>(null);
 
+  const [showOnlySaved, setShowOnlySaved] = useState<boolean>(false);
+
   const handleToggleFavorite = (dormId: number) => {
     const isNowSaved = !isFavorite(dormId);
     toggleFavorite(dormId);
@@ -57,7 +59,8 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
 
     return initialDorms.filter((d) => {
       if (!d) return false;
-      if (f.onlySavedOnly && !isFavorite(d.id)) {
+      // Item 5: showOnlySaved ทำงานอิสระจากการรีเซ็ตตัวกรองหลัก
+      if ((showOnlySaved || f.onlySavedOnly) && !isFavorite(d.id)) {
         return false;
       }
 
@@ -107,7 +110,7 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
 
       return true;
     });
-  }, [initialDorms, filters, isFavorite]);
+  }, [initialDorms, filters, isFavorite, showOnlySaved]);
 
   const isFirstRender = useRef(true);
   const hasRestoredScroll = useRef(false);
@@ -147,6 +150,14 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
       return;
     }
 
+    // ป้องกันการเด้งไปบนสุดทันทีด้วย instant scroll หากมีตำแหน่งเดิมบันทึกไว้
+    if (savedScroll && window.scrollY === 0) {
+      const top = parseInt(savedScroll, 10);
+      if (!isNaN(top)) {
+        window.scrollTo({ top, behavior: 'instant' as ScrollBehavior });
+      }
+    }
+
     // ตรวจสอบว่าการ์ดที่เพิ่งดูอยู่ใน filteredDorms หรือไม่ และขยาย visibleCount ให้ครอบคลุมการ์ดนั้น
     if (savedId) {
       const idNum = parseInt(savedId, 10);
@@ -159,14 +170,14 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
       }
     }
 
-    // เมื่อการ์ดถูกเรนเดอร์ลงใน DOM แน่นอนแล้ว ให้เลื่อนตำแหน่งไปยังการ์ดดังกล่าวทันที
+    // เมื่อการ์ดถูกเรนเดอร์ลงใน DOM แน่นอนแล้ว ให้เลื่อนตำแหน่งไปยังการ์ดดังกล่าวทันที (ใช้ auto เพื่อไม่ให้กระตุกหรือลื่นหลุดบน Tablet/iPad)
     const timer = setTimeout(() => {
       let scrolled = false;
 
       if (savedId) {
         const targetElement = document.getElementById(`dorm-card-${savedId}`);
         if (targetElement) {
-          targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetElement.scrollIntoView({ behavior: 'auto', block: 'center' });
           targetElement.classList.add('ring-4', 'ring-amber-400', 'ring-offset-2', 'transition-all', 'duration-300');
           setTimeout(() => {
             targetElement.classList.remove('ring-4', 'ring-amber-400', 'ring-offset-2');
@@ -178,14 +189,14 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
       if (!scrolled && savedScroll) {
         const top = parseInt(savedScroll, 10);
         if (!isNaN(top)) {
-          window.scrollTo({ top, behavior: 'smooth' });
+          window.scrollTo({ top, behavior: 'auto' });
         }
       }
 
       hasRestoredScroll.current = true;
       sessionStorage.removeItem('dorm_last_viewed_id');
       sessionStorage.removeItem('dorm_home_scroll_pos');
-    }, 120);
+    }, 80);
 
     return () => clearTimeout(timer);
   }, [isClientLoaded, filteredDorms, visibleCount]);
@@ -223,6 +234,8 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
         filters={filters}
         onFilterChange={setFilters}
         onResetFilters={resetFilters}
+        showOnlySaved={showOnlySaved}
+        onToggleShowSaved={() => setShowOnlySaved((prev) => !prev)}
         zones={uniqueZones}
         totalResults={filteredDorms.length}
         favoritesCount={favoritesCount}
@@ -246,7 +259,7 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
           <h2 className="text-sm font-black text-slate-800">
             พบหอพักทั้งหมด {filteredDorms.length} แห่ง
           </h2>
-          {filters.onlySavedOnly && (
+          {(showOnlySaved || filters.onlySavedOnly) && (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-bold">
               <Heart className="w-3 h-3 fill-rose-600 text-rose-600" /> ที่บันทึกไว้
             </span>

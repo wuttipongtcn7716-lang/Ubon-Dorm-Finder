@@ -177,7 +177,7 @@ export default function DormCard({
           sessionStorage.setItem('dorm_last_viewed_id', dorm.id.toString());
         }
       }}
-      className="group bg-white rounded-3xl border border-slate-200/90 hover:border-amber-400 hover:shadow-xl hover:shadow-blue-950/5 transition-all duration-200 overflow-hidden flex flex-col justify-between cursor-pointer block transform-gpu hover:-translate-y-1 active:scale-[0.99]"
+      className="scroll-mt-24 group bg-white rounded-3xl border border-slate-200/90 hover:border-amber-400 hover:shadow-xl hover:shadow-blue-950/5 transition-all duration-200 overflow-hidden flex flex-col justify-between cursor-pointer block transform-gpu hover:-translate-y-1 active:scale-[0.99]"
     >
       <div>
         {/* Top Image Preview with Loading Skeleton & Badges */}

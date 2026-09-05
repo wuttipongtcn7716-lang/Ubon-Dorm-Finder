@@ -18,7 +18,7 @@ interface DormExplorerProps {
 export default function DormExplorer({ initialDorms }: DormExplorerProps) {
   const { filters, setFilters, resetFilters } = useDormFiltersSync();
   const [navigatingDorm, setNavigatingDorm] = useState<Dormitory | null>(null);
-  const [isClientLoaded, setIsClientLoaded] = useState(false);
+  const [isClientLoaded, setIsClientLoaded] = useState(true);
   const { isFavorite, toggleFavorite, count: favoritesCount } = useFavorites();
   const [isSaved, setIsSaved] = useState<boolean | null>(null);
 
@@ -159,14 +159,6 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
       return;
     }
 
-    // ป้องกันการเด้งไปบนสุดทันทีด้วย instant scroll หากมีตำแหน่งเดิมบันทึกไว้
-    if (savedScroll && window.scrollY === 0) {
-      const top = parseInt(savedScroll, 10);
-      if (!isNaN(top)) {
-        window.scrollTo({ top, behavior: 'instant' as ScrollBehavior });
-      }
-    }
-
     // ตรวจสอบว่าการ์ดที่เพิ่งดูอยู่ใน filteredDorms หรือไม่ และขยาย visibleCount ให้ครอบคลุมการ์ดนั้น
     if (savedId) {
       const idNum = parseInt(savedId, 10);
@@ -179,35 +171,43 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
       }
     }
 
-    // เมื่อการ์ดถูกเรนเดอร์ลงใน DOM แน่นอนแล้ว ให้เลื่อนตำแหน่งไปยังการ์ดดังกล่าวทันที (ใช้ auto เพื่อไม่ให้กระตุกหรือลื่นหลุดบน Tablet/iPad)
-    const timer = setTimeout(() => {
-      let scrolled = false;
+    // ใช้ requestAnimationFrame สองชั้น เพื่อให้มั่นใจว่าเบราว์เซอร์คำนวณ DOM Layout และ Paint เสร็จสิ้น 100%
+    // ก่อนทำการ Restore Scroll ช่วยกำจัดอาการหน้าจอกระตุกหรือกระโดด (Smooth Scroll Recovery)
+    let isCancelled = false;
+    const frame1 = requestAnimationFrame(() => {
+      const frame2 = requestAnimationFrame(() => {
+        if (isCancelled) return;
+        let scrolled = false;
 
-      if (savedId) {
-        const targetElement = document.getElementById(`dorm-card-${savedId}`);
-        if (targetElement) {
-          targetElement.scrollIntoView({ behavior: 'auto', block: 'center' });
-          targetElement.classList.add('ring-4', 'ring-amber-400', 'ring-offset-2', 'transition-all', 'duration-300');
-          setTimeout(() => {
-            targetElement.classList.remove('ring-4', 'ring-amber-400', 'ring-offset-2');
-          }, 1500);
-          scrolled = true;
+        if (savedId) {
+          const targetElement = document.getElementById(`dorm-card-${savedId}`);
+          if (targetElement) {
+            targetElement.scrollIntoView({ behavior: 'auto', block: 'center' });
+            targetElement.classList.add('ring-4', 'ring-amber-400', 'ring-offset-2', 'transition-all', 'duration-300');
+            setTimeout(() => {
+              targetElement.classList.remove('ring-4', 'ring-amber-400', 'ring-offset-2');
+            }, 1500);
+            scrolled = true;
+          }
         }
-      }
 
-      if (!scrolled && savedScroll) {
-        const top = parseInt(savedScroll, 10);
-        if (!isNaN(top)) {
-          window.scrollTo({ top, behavior: 'auto' });
+        if (!scrolled && savedScroll) {
+          const top = parseInt(savedScroll, 10);
+          if (!isNaN(top)) {
+            window.scrollTo({ top, behavior: 'auto' });
+          }
         }
-      }
 
-      hasRestoredScroll.current = true;
-      sessionStorage.removeItem('dorm_last_viewed_id');
-      sessionStorage.removeItem('dorm_home_scroll_pos');
-    }, 80);
+        hasRestoredScroll.current = true;
+        sessionStorage.removeItem('dorm_last_viewed_id');
+        sessionStorage.removeItem('dorm_home_scroll_pos');
+      });
+    });
 
-    return () => clearTimeout(timer);
+    return () => {
+      isCancelled = true;
+      cancelAnimationFrame(frame1);
+    };
   }, [isClientLoaded, filteredDorms, visibleCount]);
 
   const displayedDorms = useMemo(() => {
@@ -287,6 +287,8 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
         <DormEmptyState
           onReset={resetFilters}
           searchTerm={filters.searchTerm}
+          isSavedMode={showOnlySaved}
+          onResetSaved={() => setShowOnlySaved(false)}
         />
       ) : (
         <div className="space-y-6">

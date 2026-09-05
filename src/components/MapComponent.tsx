@@ -1971,7 +1971,7 @@ export default function MapComponent({
 
                   {/* Add POI Dropdown Menu - z-[9999] to prevent overlapping */}
                   {isAddPoiDropdownOpen && (
-                    <div className="max-md:relative max-md:mt-2 max-md:w-full sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-72 sm:max-h-84 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150 overflow-x-hidden">
+                    <div className="max-md:relative max-md:mt-2 max-md:w-full sm:absolute sm:top-full sm:left-0 sm:right-0 sm:mt-1.5 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2.5 z-[9999] max-h-[70vh] md:max-h-[80vh] lg:max-h-[85vh] flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-150 overflow-x-hidden">
                       <div className="flex items-center justify-between pb-1 border-b border-slate-100 text-[11px] font-extrabold text-slate-700">
                         <span>เลือกสถานที่ปลายทาง ({availablePoisToAdd.length} แห่ง)</span>
                         <button 
@@ -1980,18 +1980,6 @@ export default function MapComponent({
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
-                      </div>
-
-                      <div className="relative">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="text"
-                          value={poiSearchTerm}
-                          onChange={(e) => setPoiSearchTerm(e.target.value)}
-                          placeholder="ค้นหาประตู ม., ร้านอาหาร, คาเฟ่, อาคาร..."
-                          className="w-full bg-slate-100 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-base text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition"
-                          autoFocus
-                        />
                       </div>
 
                       {/* แถบหมวดหมู่ตัวเลือกสถานที่ (Horizontal Scrollable Categories - รองรับทุกอุปกรณ์และ PC Mouse Wheel) */}
@@ -2036,7 +2024,7 @@ export default function MapComponent({
                       </div>
 
                       <div 
-                        className="flex-1 overflow-y-auto overflow-x-hidden max-h-52 divide-y divide-slate-100 no-scrollbar"
+                        className="flex-1 overflow-y-auto overflow-x-hidden max-h-[55vh] md:max-h-[65vh] lg:max-h-[70vh] divide-y divide-slate-100 scrollbar-none no-scrollbar [&::-webkit-scrollbar]:hidden"
                         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                       >
                         {availablePoisToAdd.length === 0 ? (

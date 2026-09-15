@@ -168,16 +168,9 @@ export default function DormCard({
   }, [dorm.lat, dorm.lng]);
 
   return (
-    <Link
+    <article
       id={`dorm-card-${dorm.id}`}
-      href={`/dorm/${dorm.id}`}
-      onClick={() => {
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('dorm_home_scroll_pos', window.scrollY.toString());
-          sessionStorage.setItem('dorm_last_viewed_id', dorm.id.toString());
-        }
-      }}
-      className="scroll-mt-24 group bg-white rounded-3xl border border-slate-200/90 hover:border-amber-400 hover:shadow-xl hover:shadow-blue-950/5 transition-all duration-200 overflow-hidden flex flex-col justify-between cursor-pointer block transform-gpu hover:-translate-y-1 active:scale-[0.99]"
+      className="scroll-mt-24 group bg-white rounded-3xl border border-slate-200/90 hover:border-amber-400 hover:shadow-xl hover:shadow-blue-950/5 transition-all duration-200 overflow-hidden flex flex-col justify-between relative transform-gpu hover:-translate-y-1 active:scale-[0.99] cursor-pointer focus-within:ring-2 focus-within:ring-amber-400/40 focus-within:border-amber-400"
     >
       <div>
         {/* Top Image Preview with Loading Skeleton & Badges */}
@@ -193,7 +186,7 @@ export default function DormCard({
           <img 
             ref={imgRef}
             src={currentImgSrc} 
-            alt={dorm.name || 'หอพัก'}
+            alt={imageHasError ? `รูปภาพตัวอย่างหอพัก ${dorm.name}` : `ภาพถ่ายอาคารหอพัก ${dorm.name}`}
             className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-300 relative z-10 ${
               isImageLoaded ? 'opacity-100' : 'opacity-0'
             }`}
@@ -224,14 +217,19 @@ export default function DormCard({
                 e.stopPropagation();
                 onToggleFavorite(dorm.id);
               }}
-              className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition shadow-md z-30 active:scale-90 ${
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.stopPropagation();
+                }
+              }}
+              className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition shadow-md z-20 active:scale-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 cursor-pointer ${
                 isFavorite
                   ? 'bg-rose-500 text-white shadow-rose-500/30'
                   : 'bg-white/90 text-slate-400 hover:text-rose-500 hover:bg-white'
               }`}
-              aria-label="บันทึกการ์ด"
+              aria-label={isFavorite ? `ยกเลิกบันทึกหอพัก ${dorm.name}` : `บันทึกหอพัก ${dorm.name}`}
               aria-pressed={isFavorite}
-              title={isFavorite ? 'ยกเลิกบันทึกการ์ด' : 'บันทึกการ์ด'}
+              title={isFavorite ? `ยกเลิกบันทึกหอพัก ${dorm.name}` : `บันทึกหอพัก ${dorm.name}`}
             >
               <Heart className={`w-4 h-4 ${isFavorite ? 'fill-white' : ''}`} aria-hidden="true" />
             </button>
@@ -261,7 +259,18 @@ export default function DormCard({
               </div>
             </div>
             <h3 className="font-extrabold text-blue-950 text-base group-hover:text-amber-600 transition truncate">
-              {dorm.name}
+              <Link
+                href={`/dorm/${dorm.id}`}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('dorm_home_scroll_pos', window.scrollY.toString());
+                    sessionStorage.setItem('dorm_last_viewed_id', dorm.id.toString());
+                  }
+                }}
+                className="focus:outline-none after:absolute after:inset-0 after:z-10 focus-visible:underline"
+              >
+                {dorm.name}
+              </Link>
             </h3>
           </div>
 
@@ -333,20 +342,27 @@ export default function DormCard({
 
       {/* Card Actions Footer: Direct Navigation Button */}
       {onNavigate && (
-        <div className="p-4 sm:p-5 pt-0">
+        <div className="p-4 sm:p-5 pt-0 relative z-20">
           <button
+            type="button"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               onNavigate(dorm);
             }}
-            className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 bg-gradient-to-r from-blue-900 via-blue-950 to-indigo-950 hover:from-blue-800 hover:to-indigo-900 text-amber-300 text-xs font-extrabold rounded-2xl transition shadow-md active:scale-95 border border-amber-400/20"
+            onKeyDown={(e) => {
+              if (e.key === ' ' || e.key === 'Enter') {
+                e.stopPropagation();
+              }
+            }}
+            aria-label={`นำทางไปหอพัก ${dorm.name}`}
+            className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 bg-gradient-to-r from-blue-900 via-blue-950 to-indigo-950 hover:from-blue-800 hover:to-indigo-900 text-amber-300 text-xs font-extrabold rounded-2xl transition shadow-md active:scale-95 border border-amber-400/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 cursor-pointer"
           >
             <Navigation className="w-3.5 h-3.5 text-amber-400" />
             <span>นำทางไปหอนี้</span>
           </button>
         </div>
       )}
-    </Link>
+    </article>
   );
 }

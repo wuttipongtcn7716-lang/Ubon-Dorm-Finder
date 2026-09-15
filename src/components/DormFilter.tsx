@@ -156,18 +156,32 @@ export default function DormFilter({
             <button
               type="button"
               onClick={onToggleShowSaved}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.stopPropagation();
+                }
+              }}
               aria-pressed={showOnlySaved}
-              className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-2.5 rounded-2xl font-bold text-xs sm:text-sm transition flex-shrink-0 active:scale-95 border cursor-pointer ${
+              aria-label={
+                showOnlySaved
+                  ? 'แสดงหอพักทั้งหมด (ปิดการกรองหอพักที่บันทึกไว้)'
+                  : `แสดงเฉพาะหอพักที่บันทึกไว้${favoritesCount > 0 ? ` (${favoritesCount} แห่ง)` : ''}`
+              }
+              title={
+                showOnlySaved
+                  ? 'แสดงหอพักทั้งหมด (ปิดการกรองหอพักที่บันทึกไว้)'
+                  : `แสดงเฉพาะหอพักที่บันทึกไว้${favoritesCount > 0 ? ` (${favoritesCount} แห่ง)` : ''}`
+              }
+              className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-2.5 rounded-2xl font-bold text-xs sm:text-sm transition flex-shrink-0 active:scale-95 border cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 ${
                 showOnlySaved
                   ? 'bg-rose-500 border-rose-500 text-white shadow-md shadow-rose-500/25'
                   : 'bg-rose-50/80 border-rose-200/80 text-rose-700 hover:bg-rose-100/90'
               }`}
-              title="แสดงเฉพาะหอพักที่บันทึกไว้ (ทำงานอิสระจากตัวกรองหลัก)"
             >
-              <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${showOnlySaved ? 'fill-white' : 'fill-rose-500'}`} />
-              <span>ที่บันทึกไว้</span>
+              <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${showOnlySaved ? 'fill-white' : 'fill-rose-500'}`} aria-hidden="true" />
+              <span aria-hidden="true">ที่บันทึกไว้</span>
               {favoritesCount > 0 && (
-                <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-black ${showOnlySaved ? 'bg-white text-rose-600' : 'bg-rose-200 text-rose-800'}`}>
+                <span aria-hidden="true" className={`px-1.5 py-0.2 text-[10px] rounded-full font-black ${showOnlySaved ? 'bg-white text-rose-600' : 'bg-rose-200 text-rose-800'}`}>
                   {favoritesCount}
                 </span>
               )}
@@ -303,14 +317,23 @@ export default function DormFilter({
                   {(safeFilters.maxPrice ?? 10000) >= 10000 ? 'ไม่จำกัด' : `฿${(safeFilters.maxPrice ?? 10000).toLocaleString()}`}
                 </span>
               </div>
+              <label htmlFor="priceRangeFilter" className="sr-only">
+                งบประมาณสูงสุดต่อเดือน
+              </label>
               <input
+                id="priceRangeFilter"
+                aria-label="งบประมาณสูงสุดต่อเดือน"
+                aria-valuemin={1500}
+                aria-valuemax={10000}
+                aria-valuenow={safeFilters.maxPrice ?? 10000}
+                aria-valuetext={(safeFilters.maxPrice ?? 10000) >= 10000 ? 'ไม่จำกัดงบประมาณ' : `${(safeFilters.maxPrice ?? 10000).toLocaleString()} บาทต่อเดือน`}
                 type="range"
                 min="1500"
                 max="10000"
                 step="200"
                 value={safeFilters.maxPrice ?? 10000}
                 onChange={(e) => updateFilter('maxPrice', parseInt(e.target.value, 10))}
-                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               />
               <div className="flex justify-between text-[10px] text-slate-400">
                 <span>฿1,500</span>

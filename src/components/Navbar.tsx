@@ -1,20 +1,25 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { ShieldCheck, Sparkles, Building2, Heart } from 'lucide-react';
 
 export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 bg-[#0a1931]/95 backdrop-blur-md border-b border-blue-900/50 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-2.5 sm:py-3.5 flex items-center justify-between">
-        {/* Brand Logo & Name (Click Disabled) */}
-        <div className="flex items-center gap-2.5 select-none cursor-default">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-500 flex items-center justify-center text-slate-950 shadow-md shadow-amber-400/20">
+        {/* Brand Logo & Name */}
+        <Link 
+          href="/" 
+          className="flex items-center gap-2.5 group rounded-2xl p-1 -m-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a1931] cursor-pointer"
+          aria-label="Dormie UBU กลับหน้าหลัก"
+        >
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-500 flex items-center justify-center text-slate-950 shadow-md shadow-amber-400/20 group-hover:scale-105 transition-transform">
             <Building2 className="w-5 h-5 text-slate-950 font-black" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-black text-base sm:text-lg text-white tracking-tight">
+              <span className="font-black text-base sm:text-lg text-white tracking-tight group-hover:text-amber-300 transition-colors">
                 Dormie <span className="text-amber-400">UBU</span>
               </span>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/40">
@@ -25,7 +30,7 @@ export default function Navbar() {
               ค้นหาหอพัก & แผนที่นำทาง
             </p>
           </div>
-        </div>
+        </Link>
 
         {/* Minimal Right Badges / Status */}
         <div className="flex items-center gap-2 sm:gap-3">

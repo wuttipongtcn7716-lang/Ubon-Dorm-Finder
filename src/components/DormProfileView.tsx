@@ -17,6 +17,7 @@ import NavigationModal from '@/components/NavigationModal';
 import ShareButton from '@/components/ShareButton';
 import { getNearbyLandmarks } from '@/data/landmarks';
 import { useFavorites } from '@/hooks/useFavorites';
+import { parseThaiDateToIso, formatThaiDateFull } from '@/utils/dateUtils';
 
 interface DormProfileViewProps {
   dorm: Dormitory;
@@ -165,9 +166,9 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
     const willBeSaved = !isFavorite(dorm.id);
     toggleFavorite(dorm.id);
     if (willBeSaved) {
-      setSaveStatusMessage(`บันทึกแล้ว: บันทึก ${dorm.name} ลงในรายการโปรดเรียบร้อยแล้ว`);
+      setSaveStatusMessage(`บันทึกแล้ว: บันทึกหอพัก ${dorm.name} ลงในรายการโปรดเรียบร้อยแล้ว`);
     } else {
-      setSaveStatusMessage(`ยกเลิกแล้ว: ยกเลิกการบันทึก ${dorm.name}`);
+      setSaveStatusMessage(`ยกเลิกแล้ว: ยกเลิกการบันทึกหอพัก ${dorm.name}`);
     }
   };
 
@@ -181,6 +182,8 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
 
   const isWhite = Boolean(dorm.isWhiteDorm || dorm.status === 'ผ่าน' || dorm.evalResult === 'ผ่าน');
   const evaluationDate = formatThaiEvalDate(dorm.evaluationDate || dorm.evalDate);
+  const evaluationDateFull = formatThaiDateFull(dorm.evaluationDate || dorm.evalDate);
+  const isoDate = parseThaiDateToIso(dorm.evaluationDate || dorm.evalDate);
 
   // Structured price resolution
   const priceObj: PriceStructure | null = 
@@ -278,9 +281,15 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
             <button
               type="button"
               onClick={handleToggleFavorite}
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.stopPropagation();
+                }
+              }}
               aria-pressed={isFavorite(dorm.id)}
               aria-label={isFavorite(dorm.id) ? `ยกเลิกบันทึกหอพัก ${dorm.name}` : `บันทึกหอพัก ${dorm.name}`}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all duration-200 border backdrop-blur-md shadow-sm active:scale-95 whitespace-nowrap ${
+              title={isFavorite(dorm.id) ? `ยกเลิกบันทึกหอพัก ${dorm.name}` : `บันทึกหอพัก ${dorm.name}`}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all duration-200 border backdrop-blur-md shadow-sm active:scale-95 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 cursor-pointer ${
                 isFavorite(dorm.id)
                   ? 'bg-rose-500/90 text-white border-rose-400/80 shadow-rose-500/25'
                   : 'bg-white/10 text-blue-100 hover:text-rose-300 hover:bg-white/20 border-white/15'
@@ -315,7 +324,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
           <img 
             ref={imgRef}
             src={currentImgSrc} 
-            alt={dorm.name}
+            alt={imageHasError ? `รูปภาพตัวอย่างหอพัก ${dorm.name}` : `ภาพถ่ายอาคารหอพัก ${dorm.name}`}
             fetchPriority="high"
             decoding="async"
             className={`w-full h-full object-cover transition-opacity duration-300 relative z-10 ${
@@ -445,6 +454,20 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
           <p className="text-sm text-gray-500 italic mt-4">
             หมายเหตุ: ข้อมูลนี้เป็นข้อมูลพื้นฐานเพื่อประกอบการตัดสินใจ โปรดติดต่อสอบถามสถานะห้องว่างและราคาปัจจุบันกับทางหอพักโดยตรง
           </p>
+
+          {/* Last-Updated Information Bar from Real Evaluation Data */}
+          {evaluationDate && (
+            <div className="flex items-center gap-2 pt-3 border-t border-slate-100 text-xs text-slate-500 font-medium flex-wrap">
+              <Calendar className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+              <span>
+                ข้อมูลตรวจประเมินและอัปเดตล่าสุด:{' '}
+                <time dateTime={isoDate} className="font-bold text-slate-700">
+                  {evaluationDateFull || evaluationDate}
+                </time>{' '}
+                (รอบตรวจประเมินมาตรฐานหอพัก ม.อุบลฯ)
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Amenities Card */}
@@ -537,7 +560,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
                   </span>
                   {evaluationDate && (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
-                      ตรวจประเมิน: {evaluationDate}
+                      ตรวจประเมิน: <time dateTime={isoDate}>{evaluationDate}</time>
                     </span>
                   )}
                 </div>
@@ -819,7 +842,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
 
       {/* Screen Reader Announcement for Accessibility Test Case M-01 */}
       <div aria-live="polite" className="sr-only">
-        {isSaved ? 'บันทึกการ์ดเรียบร้อยแล้ว' : 'ยกเลิกการบันทึกการ์ดแล้ว'}
+        {saveStatusMessage || (isSaved ? 'บันทึกหอพักเรียบร้อยแล้ว' : 'ยกเลิกการบันทึกหอพักแล้ว')}
       </div>
     </div>
   );

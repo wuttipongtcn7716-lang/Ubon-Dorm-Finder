@@ -3,6 +3,7 @@ import DormProfileView from '@/components/DormProfileView';
 import dormsData from '@/data/dorms.json';
 import { Dormitory } from '@/types/dormitory';
 import type { Metadata } from 'next';
+import { parseThaiDateToIso } from '@/utils/dateUtils';
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ubon-dorm-finder.vercel.app';
 
@@ -12,6 +13,8 @@ export async function generateStaticParams() {
     id: dorm.id.toString(),
   }));
 }
+
+export const dynamicParams = false;
 
 export async function generateMetadata({
   params,
@@ -38,6 +41,7 @@ export async function generateMetadata({
   
   const rawImage = (dorm.images && dorm.images[0]) || dorm.image || '/Picture/default-dorm.jpg';
   const imageUrl = rawImage.startsWith('http') ? rawImage : `${baseUrl}${encodeURI(rawImage)}`;
+  const isoDate = parseThaiDateToIso(dorm.evaluationDate || dorm.evalDate);
 
   return {
     title: pageTitle,
@@ -52,12 +56,16 @@ export async function generateMetadata({
       siteName: 'Dormie UBU - ค้นหาหอพัก ม.อุบลฯ',
       locale: 'th_TH',
       type: 'article',
+      ...(isoDate ? {
+        publishedTime: isoDate,
+        modifiedTime: isoDate,
+      } : {}),
       images: [
         {
           url: imageUrl,
           width: 1200,
           height: 630,
-          alt: dorm.name,
+          alt: `ภาพถ่ายอาคารหอพัก ${dorm.name}`,
         },
       ],
     },
@@ -66,6 +74,12 @@ export async function generateMetadata({
       title: pageTitle,
       description: pageDesc,
       images: [imageUrl],
+    },
+    other: {
+      ...(isoDate ? {
+        'article:published_time': isoDate,
+        'article:modified_time': isoDate,
+      } : {}),
     },
   };
 }
@@ -102,6 +116,8 @@ export default function DormDetailPage({
     dorm.washingMachine ? { '@type': 'LocationFeatureSpecification', name: 'เครื่องซักผ้าหยอดเหรียญ', value: true } : null,
   ].filter(Boolean);
 
+  const isoDate = parseThaiDateToIso(dorm.evaluationDate || dorm.evalDate);
+
   const dormJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'ApartmentComplex',
@@ -112,6 +128,10 @@ export default function DormDetailPage({
     } ${dorm.isWhiteDorm ? 'ผ่านการประเมินมาตรฐานหอพักสีขาว ม.อุบลฯ' : ''}`,
     url: `${baseUrl}/dorm/${dorm.id}`,
     image: imageUrl,
+    ...(isoDate ? {
+      datePublished: isoDate,
+      dateModified: isoDate,
+    } : {}),
     telephone: dorm.phone || undefined,
     priceRange: dorm.minPrice
       ? `฿${dorm.minPrice} - ฿${dorm.maxPrice || dorm.minPrice}`
@@ -134,6 +154,13 @@ export default function DormDetailPage({
         }
       : {}),
     amenityFeature: amenities,
+    additionalProperty: [
+      ...(dorm.evaluationDate || dorm.evalDate ? [{
+        '@type': 'PropertyValue',
+        name: 'วันที่ตรวจประเมินมาตรฐานหอพัก',
+        value: dorm.evaluationDate || dorm.evalDate,
+      }] : []),
+    ],
   };
 
   return (

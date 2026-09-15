@@ -87,7 +87,9 @@ export default function WelcomeScreen() {
         <div className="relative w-full h-full max-h-[45dvh] md:max-h-[52dvh] lg:max-h-[60dvh] flex items-center justify-center">
           <img
             src="/cover.jpg"
-            alt="Dormie UBU Cover"
+            alt="ภาพหน้าปกแนะนำแอปพลิเคชัน Dormie UBU ค้นหาหอพัก มหาวิทยาลัยอุบลราชธานี"
+            fetchPriority="high"
+            decoding="async"
             className="w-full h-full object-contain drop-shadow-2xl rounded-2xl sm:rounded-3xl hover:scale-[1.01] transition-transform duration-300"
             onError={(e) => {
               e.currentTarget.src = '/Picture/default-dorm.jpg';

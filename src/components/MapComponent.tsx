@@ -1096,6 +1096,8 @@ export interface MapComponentProps {
   dorms: Dormitory[];
   selectedDorm?: Dormitory | null;
   userLocation?: { lat: number; lng: number } | null;
+  customOrigin?: OriginPointData | null;
+  onOriginChange?: (origin: OriginPointData) => void;
   showRoute?: boolean;
   travelMode?: 'driving' | 'motorcycle' | 'bicycling' | 'walking';
   showLandmarks?: boolean;
@@ -1110,6 +1112,8 @@ export default function MapComponent({
   dorms,
   selectedDorm,
   userLocation,
+  customOrigin,
+  onOriginChange,
   showRoute = false,
   travelMode = 'driving',
   showLandmarks = false,
@@ -1204,8 +1208,11 @@ export default function MapComponent({
 
 
 
-  // Dynamic Origin State: Defaults to GPS (if valid userLocation provided) or Gate 1
+  // Dynamic Origin State: Defaults to customOrigin, GPS, or Gate 1
   const [originPoint, setOriginPoint] = useState<OriginPointData>(() => {
+    if (customOrigin) {
+      return customOrigin;
+    }
     if (userLocation && !isNaN(userLocation.lat) && !isNaN(userLocation.lng)) {
       return {
         mode: 'gps',
@@ -1221,6 +1228,22 @@ export default function MapComponent({
       label: 'ประตู 1 ม.อุบลฯ (จุดเริ่มต้น)',
     };
   });
+
+  // Sync customOrigin prop when provided
+  useEffect(() => {
+    if (customOrigin) {
+      setOriginPoint(customOrigin);
+      const needsOffset = customOrigin.mode !== 'gps' && customOrigin.mode !== 'custom';
+      const [adjLat, adjLng] = needsOffset ? adjustLatLng(customOrigin.lat, customOrigin.lng) : [customOrigin.lat, customOrigin.lng];
+      setTargetFlyCenter([adjLat, adjLng]);
+      setForceFitKey(Date.now());
+    }
+  }, [customOrigin, adjustLatLng]);
+
+  // Notify parent component on origin change
+  useEffect(() => {
+    onOriginChange?.(originPoint);
+  }, [originPoint, onOriginChange]);
 
   // Prevent auto-zoom bug: flag to track whether initial zoom/pan has already occurred
   const hasInitialZoomedRef = useRef<boolean>(false);
@@ -2111,6 +2134,7 @@ export default function MapComponent({
                             type="text" 
                             value={dest.name} 
                             readOnly
+                            aria-label={`จุดหมายปลายทางที่ ${idx + 1}: ${dest.name}`}
                             className="ml-1 bg-transparent border-none outline-none text-slate-800 font-bold w-full text-base sm:text-sm truncate cursor-default" 
                             placeholder="ค้นหาหอพัก..." 
                           />
@@ -2479,6 +2503,7 @@ export default function MapComponent({
         isOpen={isPermissionModalOpen}
         onClose={() => setIsPermissionModalOpen(false)}
         onRetry={handleRequestLiveGps}
+        onChooseManualOrigin={() => setIsOriginModalOpen(true)}
       />
 
       {/* Floating System / Routing Toast Feedback */}

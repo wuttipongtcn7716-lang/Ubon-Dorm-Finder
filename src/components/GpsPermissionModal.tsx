@@ -4,19 +4,21 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Lock, RotateCcw, RefreshCw, 
   Laptop, Smartphone, 
-  AlertTriangle
+  AlertTriangle, MapPin
 } from 'lucide-react';
 
 interface GpsPermissionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onRetry: () => void;
+  onChooseManualOrigin?: () => void;
 }
 
 export default function GpsPermissionModal({
   isOpen,
   onClose,
   onRetry,
+  onChooseManualOrigin,
 }: GpsPermissionModalProps) {
   const [activeTab, setActiveTab] = useState<'desktop' | 'ios' | 'android'>('desktop');
 
@@ -103,11 +105,13 @@ export default function GpsPermissionModal({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition active:scale-95 flex-shrink-0 cursor-pointer"
+            className="w-9 h-9 sm:w-8 sm:h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition active:scale-95 flex-shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
             title="ปิดหน้าต่าง"
+            aria-label="ปิดหน้าต่างคำแนะนำเปิดสิทธิ์ GPS"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
@@ -252,6 +256,20 @@ export default function GpsPermissionModal({
             <RefreshCw className="w-3.5 h-3.5" />
             <span>รีโหลดหน้าเว็บ (Reload)</span>
           </button>
+
+          {onChooseManualOrigin && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onChooseManualOrigin();
+              }}
+              className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 text-xs font-black transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+            >
+              <MapPin className="w-3.5 h-3.5 text-slate-950 flex-shrink-0" />
+              <span>เลือกจุดเริ่มต้นด้วยตนเองแทน</span>
+            </button>
+          )}
 
           <button
             onClick={() => {

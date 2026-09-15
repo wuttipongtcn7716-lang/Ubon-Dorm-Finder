@@ -8,8 +8,6 @@ export const viewport: Viewport = {
   themeColor: '#0a1931',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export const metadata: Metadata = {
@@ -45,10 +43,10 @@ export const metadata: Metadata = {
     description: 'ค้นหาหอพักรอบ ม.อุบลฯ ตรวจสอบมาตรฐานหอพักสีขาว ราคา สิ่งอำนวยความสะดวก และระบบแผนที่นำทาง GPS',
     images: [
       {
-        url: '/picture/cover.jpg?v=2',
+        url: '/cover.jpg',
         width: 1200,
         height: 630,
-        alt: 'Dormie UBU แพลตฟอร์มค้นหาหอพัก มหาวิทยาลัยอุบลราชธานี',
+        alt: 'ภาพปกแนะนำแอปพลิเคชันค้นหาหอพัก Dormie UBU มหาวิทยาลัยอุบลราชธานี',
       },
     ],
   },
@@ -56,7 +54,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Dormie UBU | รวมหอพักสีขาว ม.อุบลฯ 60 แห่ง พร้อมระบบ GPS นำทาง',
     description: 'ค้นหาหอพักรอบ ม.อุบลฯ ตรวจสอบมาตรฐานหอพักสีขาว และระบบ GPS นำทาง',
-    images: ['/picture/cover.jpg?v=2'],
+    images: ['/cover.jpg'],
   },
   robots: {
     index: true,
@@ -111,8 +109,15 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen flex flex-col bg-[#f8fafc] text-slate-900 antialiased selection:bg-blue-600 selection:text-white">
+        {/* Skip to Main Content Link for Keyboard & Screen Reader Users (WCAG 2.4.1) */}
+        <a 
+          href="#main-content" 
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 z-[9999] px-4 py-2.5 bg-amber-400 text-slate-950 font-black text-sm rounded-xl shadow-2xl border-2 border-slate-900 focus:outline-none"
+        >
+          ข้ามไปยังเนื้อหาหลัก (Skip to Content)
+        </a>
         <Navbar />
-        <div className="flex-1">{children}</div>
+        <div id="main-content" className="flex-1">{children}</div>
       </body>
     </html>
   );

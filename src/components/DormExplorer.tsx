@@ -21,6 +21,7 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
   const [isClientLoaded, setIsClientLoaded] = useState(true);
   const { isFavorite, toggleFavorite, count: favoritesCount } = useFavorites();
   const [isSaved, setIsSaved] = useState<boolean | null>(null);
+  const [saveStatusMessage, setSaveStatusMessage] = useState<string>('');
 
   const [showOnlySaved, setShowOnlySaved] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -34,6 +35,9 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
     const isNowSaved = !isFavorite(dormId);
     toggleFavorite(dormId);
     setIsSaved(isNowSaved);
+    const dorm = initialDorms.find((d) => d.id === dormId);
+    const dormName = dorm?.name ? `หอพัก ${dorm.name}` : 'หอพัก';
+    setSaveStatusMessage(isNowSaved ? `บันทึกแล้ว: บันทึก${dormName}เรียบร้อยแล้ว` : `ยกเลิกแล้ว: ยกเลิกการบันทึก${dormName}แล้ว`);
   };
 
   useEffect(() => {
@@ -332,7 +336,7 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
 
       {/* Screen Reader Announcement Region for Accessibility M-01 */}
       <div aria-live="polite" className="sr-only">
-        {isSaved ? 'บันทึกการ์ดเรียบร้อยแล้ว' : 'ยกเลิกการบันทึกการ์ดแล้ว'}
+        {saveStatusMessage || (isSaved !== null && (isSaved ? 'บันทึกหอพักเรียบร้อยแล้ว' : 'ยกเลิกการบันทึกหอพักแล้ว'))}
       </div>
     </div>
   );

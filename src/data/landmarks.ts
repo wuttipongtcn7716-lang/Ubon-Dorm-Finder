@@ -31,6 +31,7 @@ export const landmarksData: LandmarkItem[] = [
   { name: "อาคารเรียนรวม 5 (CLB5)", lat: 15.120244, lng: 104.909043, category: "building" },
 
   // จุดสำคัญ / สถานที่ใน ม.
+  { name: "ประตู 1 ม.อุบลฯ", lat: 15.118464, lng: 104.899762, category: "landmark" },
   { name: "อาคารเฉลิมพระเกียรติ 7 รอบพระชนมพรรษาฯ", lat: 15.114791, lng: 104.901412, category: "landmark" },
   { name: "หอสมุดกลาง (ODL)", lat: 15.118783, lng: 104.907804, category: "landmark" },
   { name: "สำนักงานอธิการบดี", lat: 15.117253, lng: 104.903069, category: "landmark" },

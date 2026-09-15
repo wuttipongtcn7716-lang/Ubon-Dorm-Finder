@@ -27,9 +27,21 @@ body {
   z-index: 10;
 }
 
-/* ซ่อนกล่องลายน้ำ (Attribution) ที่มุมขวาล่างของแผนที่แบบถาวร */
+/* แสดง Attribution ของ CARTO และ OpenStreetMap ตามข้อกำหนดการใช้งาน */
 .leaflet-control-attribution {
-  display: none !important;
+  font-size: 10px !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(4px);
+  border-top-left-radius: 6px;
+  padding: 2px 6px !important;
+  color: #475569 !important;
+}
+.leaflet-control-attribution a {
+  color: #2563eb !important;
+  text-decoration: none !important;
+}
+.leaflet-control-attribution a:hover {
+  text-decoration: underline !important;
 }
 
 /* CSS: จัดแต่งทรงกล่องข้อมูลเส้นทางสไตล์ Google Maps ให้มีขนาดกะทัดรัด ไม่บังแผนที่ (Item 3) */
@@ -55,9 +67,9 @@ body {
   }
 }
 
-/* เว้นระยะปลอดภัยด้านบนสำหรับอุปกรณ์พกพาที่มี Notch / Dynamic Island / Status Bar ป้องกันขอบจอบดบังการ์ด (เช่น top-16 / 64px) */
+/* เว้นระยะปลอดภัยด้านบนสำหรับอุปกรณ์พกพาที่มี Notch / Dynamic Island / Status Bar ป้องกันขอบจอบดบังการ์ด */
 .mobile-safe-top {
-  top: max(64px, calc(env(safe-area-inset-top, 0px) + 16px)) !important;
+  top: max(44px, calc(env(safe-area-inset-top, 0px) + 8px)) !important;
 }
 
 @media (min-width: 768px) {

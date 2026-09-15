@@ -17,7 +17,7 @@ export interface SelectedOrigin {
 }
 
 export const POPULAR_CAMPUS_ORIGINS: SelectedOrigin[] = [
-  { name: 'ประตู 1 ม.อุบลฯ (จุดหลักแนะนำ)', lat: 15.1186, lng: 104.9150, type: 'gate' },
+  { name: 'ประตู 1 ม.อุบลฯ (จุดหลักแนะนำ)', lat: 15.118464, lng: 104.899762, type: 'gate' },
   { name: 'อาคารเรียนรวม 3 (CLB3)', lat: 15.117810, lng: 104.907578, type: 'landmark' },
   { name: 'อาคารเรียนรวม 4 (CLB4)', lat: 15.120793, lng: 104.908469, type: 'landmark' },
   { name: 'อาคารเรียนรวม 5 (CLB5)', lat: 15.120244, lng: 104.909043, type: 'landmark' },

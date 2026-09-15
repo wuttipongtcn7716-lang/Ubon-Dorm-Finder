@@ -93,6 +93,7 @@ export interface DestinationItem {
 
 // Approved major campus landmarks used as default origin points
 export const OFFICIAL_CAMPUS_GATES = [
+  { id: 'GATE1', name: 'ประตู 1 ม.อุบลฯ (จุดหลักแนะนำ)', lat: 15.118464, lng: 104.899762, icon: '🏛️', category: 'landmark' },
   { id: 'CLB3', name: 'อาคารเรียนรวม 3 (CLB3)', lat: 15.117810, lng: 104.907578, icon: '🏫', category: 'building' },
   { id: 'CLB4', name: 'อาคารเรียนรวม 4 (CLB4)', lat: 15.120793, lng: 104.908469, icon: '🏫', category: 'building' },
   { id: 'CLB5', name: 'อาคารเรียนรวม 5 (CLB5)', lat: 15.120244, lng: 104.909043, icon: '🏫', category: 'building' },
@@ -100,7 +101,13 @@ export const OFFICIAL_CAMPUS_GATES = [
   { id: 'OFFICE', name: 'สำนักงานอธิการบดี', lat: 15.117253, lng: 104.903069, icon: '🏛️', category: 'landmark' },
 ];
 
-const defaultCenter: [number, number] = [15.1186, 104.9150];
+const defaultCenter: [number, number] = [15.118464, 104.899762];
+
+const hasValidCartoKey = Boolean(
+  process.env.NEXT_PUBLIC_CARTO_API_KEY &&
+  process.env.NEXT_PUBLIC_CARTO_API_KEY.trim() !== '' &&
+  process.env.NEXT_PUBLIC_CARTO_API_KEY.trim() !== 'default_public'
+);
 
 export function calculateDistanceBetween(lat1: number, lon1: number, lat2: number, lon2: number): string {
   const R = 6371;
@@ -434,7 +441,7 @@ function UnifiedActionDock({
           type="button"
           onClick={onToggleLayer}
           className="w-9 h-8 sm:w-11 sm:h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition cursor-pointer"
-          title={`เปลี่ยนรูปแบบแผนที่ (ปัจจุบัน: ${mapTileStyle === 'osm' ? 'OSM มาตรฐาน' : 'CartoDB สบายตา'})`}
+          title={`เปลี่ยนรูปแบบแผนที่ (ปัจจุบัน: ${mapTileStyle === 'osm' ? 'OSM มาตรฐาน' : (hasValidCartoKey ? 'CartoDB สบายตา' : 'OSM HOT คมชัด')})`}
           aria-label="เปลี่ยนเลเยอร์แผนที่"
         >
           <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700" />
@@ -728,7 +735,7 @@ function MultiRoadRoutingLayer({
   adjustLatLng,
   onRouteWarning,
 }: {
-  originLocation: { lat: number; lng: number; label?: string; mode?: OriginMode };
+  originLocation?: { lat: number; lng: number; label?: string; mode?: OriginMode } | null;
   destinations: DestinationItem[];
   forceFitKey?: number | null;
   onUpdateStats?: (statsMap: Record<string | number, { distanceKm: number; baseDurationMins: number; distanceMeters: number }>) => void;
@@ -745,7 +752,7 @@ function MultiRoadRoutingLayer({
   const lastForceFitKeyRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!map || destinations.length === 0) {
+    if (!map || !originLocation || destinations.length === 0) {
       setLegs([]);
       return;
     }
@@ -1017,7 +1024,7 @@ function MultiRoadRoutingLayer({
     return () => {
       isCancelled = true;
     };
-  }, [map, originLocation.lat, originLocation.lng, originLocation.mode, destinations, forceFitKey, onUpdateStats, adjustLatLng]);
+  }, [map, originLocation?.lat, originLocation?.lng, originLocation?.mode, destinations, forceFitKey, onUpdateStats, adjustLatLng]);
 
   if (legs.length === 0) return null;
 
@@ -1097,7 +1104,7 @@ export interface MapComponentProps {
   selectedDorm?: Dormitory | null;
   userLocation?: { lat: number; lng: number } | null;
   customOrigin?: OriginPointData | null;
-  onOriginChange?: (origin: OriginPointData) => void;
+  onOriginChange?: (origin: OriginPointData | null) => void;
   showRoute?: boolean;
   travelMode?: 'driving' | 'motorcycle' | 'bicycling' | 'walking';
   showLandmarks?: boolean;
@@ -1106,6 +1113,7 @@ export interface MapComponentProps {
   onNavigate?: (dorm: Dormitory) => void;
   className?: string;
   initialZoom?: number;
+  gpsAlertNode?: React.ReactNode;
 }
 
 export default function MapComponent({
@@ -1122,6 +1130,7 @@ export default function MapComponent({
   onNavigate,
   className = 'w-full h-full min-h-[500px] flex-1',
   initialZoom = 15,
+  gpsAlertNode,
 }: MapComponentProps) {
   // Safe Default Icon Fix inside useEffect
   useEffect(() => {
@@ -1208,8 +1217,8 @@ export default function MapComponent({
 
 
 
-  // Dynamic Origin State: Defaults to customOrigin, GPS, or Gate 1
-  const [originPoint, setOriginPoint] = useState<OriginPointData>(() => {
+  // Dynamic Origin State: Defaults to customOrigin, GPS, or null (No automatic fallback to Gate 1 if GPS denied/not acquired)
+  const [originPoint, setOriginPoint] = useState<OriginPointData | null>(() => {
     if (customOrigin) {
       return customOrigin;
     }
@@ -1221,17 +1230,43 @@ export default function MapComponent({
         label: 'ตำแหน่ง GPS ของคุณ',
       };
     }
-    return {
-      mode: 'gate',
-      lat: defaultCenter[0],
-      lng: defaultCenter[1],
-      label: 'ประตู 1 ม.อุบลฯ (จุดเริ่มต้น)',
-    };
+    return null;
   });
 
-  // Sync customOrigin prop when provided
+  // Ref to track previous customOrigin values to prevent unnecessary updates
+  const prevCustomOriginRef = useRef<{ lat: number; lng: number; mode: string; label: string } | null>(null);
+
+  // Flag to indicate we are syncing from parent — suppress onOriginChange during this update
+  const isSyncingFromParentRef = useRef(false);
+
+  // Sync customOrigin prop when provided — only if values actually changed
   useEffect(() => {
-    if (customOrigin) {
+    if (customOrigin !== undefined) {
+      const prev = prevCustomOriginRef.current;
+      if (customOrigin === null) {
+        if (prev === null) return;
+        prevCustomOriginRef.current = null;
+        isSyncingFromParentRef.current = true;
+        setOriginPoint(null);
+        return;
+      }
+      // Only update if something actually changed
+      if (
+        prev &&
+        prev.lat === customOrigin.lat &&
+        prev.lng === customOrigin.lng &&
+        prev.mode === customOrigin.mode &&
+        prev.label === customOrigin.label
+      ) {
+        return; // Same values — skip to prevent loop
+      }
+      prevCustomOriginRef.current = {
+        lat: customOrigin.lat,
+        lng: customOrigin.lng,
+        mode: customOrigin.mode,
+        label: customOrigin.label,
+      };
+      isSyncingFromParentRef.current = true;
       setOriginPoint(customOrigin);
       const needsOffset = customOrigin.mode !== 'gps' && customOrigin.mode !== 'custom';
       const [adjLat, adjLng] = needsOffset ? adjustLatLng(customOrigin.lat, customOrigin.lng) : [customOrigin.lat, customOrigin.lng];
@@ -1240,15 +1275,20 @@ export default function MapComponent({
     }
   }, [customOrigin, adjustLatLng]);
 
-  // Notify parent component on origin change
+  // Notify parent component on origin change — but NOT when we just synced from parent
   useEffect(() => {
+    if (isSyncingFromParentRef.current) {
+      isSyncingFromParentRef.current = false;
+      return; // Skip notifying parent — this update came from the parent itself
+    }
     onOriginChange?.(originPoint);
   }, [originPoint, onOriginChange]);
 
   // Prevent auto-zoom bug: flag to track whether initial zoom/pan has already occurred
   const hasInitialZoomedRef = useRef<boolean>(false);
 
-  // Auto-update GPS origin when userLocation prop or GPS arrives
+  // Update live GPS blue dot when userLocation prop changes
+  // DO NOT overwrite originPoint — NavigationModal is the single source of truth for origin
   useEffect(() => {
     if (userLocation && !isNaN(userLocation.lat) && !isNaN(userLocation.lng)) {
       let uLat = Number(userLocation.lat);
@@ -1259,14 +1299,7 @@ export default function MapComponent({
         uLng = temp;
       }
       setLiveGpsLocation({ lat: uLat, lng: uLng });
-      setOriginPoint({
-        mode: 'gps',
-        lat: uLat,
-        lng: uLng,
-        label: 'ตำแหน่ง GPS ของคุณ',
-      });
-      // Only flyTo/center the camera on the very first time GPS arrives
-      // Subsequent GPS watch updates move the marker smoothly without hijacking the user's pan/zoom
+      // Only flyTo on the very first GPS arrival
       if (!hasInitialZoomedRef.current) {
         hasInitialZoomedRef.current = true;
         setTargetFlyCenter([uLat, uLng]);
@@ -1274,74 +1307,8 @@ export default function MapComponent({
     }
   }, [userLocation]);
 
-  // Initial immediate GPS fetch on mount
-  useEffect(() => {
-    if (typeof window === 'undefined' || !navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        let uLat = pos.coords.latitude;
-        let uLng = pos.coords.longitude;
-        if (uLat > 50 && uLng < 30) {
-          const temp = uLat;
-          uLat = uLng;
-          uLng = temp;
-        }
-        setLiveGpsLocation({ lat: uLat, lng: uLng });
-        setOriginPoint((prev) => {
-          if (prev.mode === 'gps' || (prev.mode === 'gate' && prev.label.includes('จุดเริ่มต้น'))) {
-            return {
-              mode: 'gps',
-              lat: uLat,
-              lng: uLng,
-              label: 'ตำแหน่ง GPS ของคุณ',
-            };
-          }
-          return prev;
-        });
-      },
-      () => {},
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-    );
-  }, []);
-
-  // Continuous background GPS Watcher
-  useEffect(() => {
-    if (typeof window === 'undefined' || !navigator.geolocation) return;
-
-    let watchId: number | null = null;
-    try {
-      watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          let uLat = pos.coords.latitude;
-          let uLng = pos.coords.longitude;
-          if (uLat > 50 && uLng < 30) {
-            const temp = uLat;
-            uLat = uLng;
-            uLng = temp;
-          }
-          setLiveGpsLocation({ lat: uLat, lng: uLng });
-          setOriginPoint((prev) => {
-            if (prev.mode === 'gps') {
-              return { ...prev, lat: uLat, lng: uLng };
-            }
-            return prev;
-          });
-        },
-        () => {},
-        {
-          enableHighAccuracy: true,
-          timeout: 8000,
-          maximumAge: 1000,
-        }
-      );
-    } catch (e) {}
-
-    return () => {
-      if (watchId !== null && navigator.geolocation) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-    };
-  }, []);
+  // NOTE: GPS fetching (getCurrentPosition / watchPosition) is handled exclusively
+  // by NavigationModal.tsx — removed from MapComponent to prevent dual GPS race conditions.
 
   // Change Origin Dropdown State (Item 11: 3 ตัวเลือกหลัก GPS, จุดสำคัญ ม., ปักหมุดเอง)
   const [isOriginModalOpen, setIsOriginModalOpen] = useState(false);
@@ -1636,7 +1603,7 @@ export default function MapComponent({
 
     // Don't show landmarks that are already selected as origin or destination
     const selectedNames = new Set<string>();
-    if (originPoint.label) selectedNames.add(originPoint.label);
+    if (originPoint?.label) selectedNames.add(originPoint.label);
     destinations.forEach((d) => selectedNames.add(d.name));
 
     let list = landmarksData;
@@ -1648,7 +1615,7 @@ export default function MapComponent({
     }
 
     return list.filter((lm) => !selectedNames.has(lm.name));
-  }, [activeCategory, showPoiMarkers, originPoint.label, destinations]);
+  }, [activeCategory, showPoiMarkers, originPoint?.label, destinations]);
 
   const handleSelectPlace = useCallback((place: SelectedPlaceType) => {
     setSelectedPlace(place);
@@ -1914,12 +1881,44 @@ export default function MapComponent({
       )}
 
       {/* 4. Multi-Destination Comparison Box (Expanded: Bottom Sheet on Mobile, Floating Panel on Desktop) */}
-      {!isComparePanelMinimized && (
-        <div 
-          className={`pointer-events-auto transition-all duration-300 max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:w-full md:absolute md:top-3 md:left-4 md:bottom-auto md:right-auto md:w-96 md:max-w-[420px] ${
-            isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1050]'
-          }`}
-        >
+      <div className="pointer-events-none md:absolute md:top-3 md:left-4 md:bottom-auto md:right-auto md:w-96 md:max-w-[420px] md:flex md:flex-col md:gap-2.5 md:z-[1100]">
+        {gpsAlertNode && (
+          <div className="hidden md:block pointer-events-auto w-full flex-shrink-0">
+            {gpsAlertNode}
+          </div>
+        )}
+
+        {/* Desktop Minimized Pill: Responsive compact launcher when minimized */}
+        {!selectedPlace && isComparePanelMinimized && (
+          <div
+            onClick={() => {
+              setSelectedPlace(null);
+              setIsComparePanelMinimized(false);
+            }}
+            className="hidden md:flex pointer-events-auto bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-lg cursor-pointer select-none rounded-2xl px-3.5 py-2 transition-all duration-200 hover:bg-white items-center justify-between gap-3 w-fit animate-in fade-in"
+            title="คลิกเพื่อขยายแผงเปรียบเทียบและจุดเริ่มต้น"
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+              <span className="text-xs font-black text-blue-950">เปรียบเทียบ ({destinations.length}/4)</span>
+              {originPoint && (
+                <span className="text-[11px] text-slate-500 font-bold max-w-[140px] truncate">
+                  • {originPoint.label}
+                </span>
+              )}
+            </div>
+            <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-900 flex items-center justify-center hover:bg-blue-200 transition text-xs font-bold">
+              ↑
+            </span>
+          </div>
+        )}
+
+        {!isComparePanelMinimized && (
+          <div 
+            className={`pointer-events-auto transition-all duration-300 max-md:fixed max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:w-full md:relative md:w-full ${
+              isOriginModalOpen || isAddPoiDropdownOpen ? 'z-[9999]' : 'z-[1050]'
+            }`}
+          >
           {isRouteCalculating ? (
             <ComparisonPanelSkeleton className="max-md:rounded-t-3xl max-md:rounded-b-none max-md:max-h-[52vh]" />
           ) : (
@@ -1993,13 +1992,15 @@ export default function MapComponent({
               </div>
               {/* 2. จุดเริ่มต้น (Origin) */}
               <div className="relative mb-1.5 sm:mb-2">
-                <div className="flex items-center justify-between border border-blue-200 bg-blue-50 rounded-xl p-2 sm:p-2.5 shadow-2xs">
+                <div className={`flex items-center justify-between border ${originPoint ? 'border-blue-200 bg-blue-50' : 'border-dashed border-amber-300 bg-amber-50/60'} rounded-xl p-2 sm:p-2.5 shadow-2xs`}>
                   <div className="flex items-center text-slate-800 font-bold text-xs sm:text-sm truncate mr-2">
-                    <div className="flex items-center justify-center w-5 h-5 rounded-full border-2 border-blue-600 p-0.5 mr-2 flex-shrink-0">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    <div className={`flex items-center justify-center w-5 h-5 rounded-full border-2 ${originPoint ? 'border-blue-600' : 'border-amber-500'} p-0.5 mr-2 flex-shrink-0`}>
+                      <div className={`w-2 h-2 ${originPoint ? 'bg-blue-600' : 'bg-amber-500'} rounded-full`}></div>
                     </div>
                     <span className="truncate">
-                      {originPoint.mode === 'gps' ? '📡' : originPoint.isWhite ? '🛡️' : '🏠'} จุดเริ่มต้น: {originPoint.label}
+                      {originPoint
+                        ? `${originPoint.mode === 'gps' ? '📡' : originPoint.isWhite ? '🛡️' : '🏠'} จุดเริ่มต้น: ${originPoint.label}`
+                        : '📍 ยังไม่ได้เลือกจุดเริ่มต้น'}
                     </span>
                   </div>
                   <button 
@@ -2008,7 +2009,7 @@ export default function MapComponent({
                     className="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 flex-shrink-0 cursor-pointer shadow-xs"
                   >
                     <span>✏️</span>
-                    <span>เปลี่ยน</span>
+                    <span>{originPoint ? 'เปลี่ยน' : 'เลือกจุด'}</span>
                   </button>
                 </div>
 
@@ -2245,7 +2246,7 @@ export default function MapComponent({
                         ) : (
                           availablePoisToAdd.map((p) => {
                             const meta = getLandmarkMeta(p.category, p.name);
-                            const directDist = calculateDistanceBetween(originPoint.lat, originPoint.lng, p.lat, p.lng);
+                            const directDist = originPoint ? calculateDistanceBetween(originPoint.lat, originPoint.lng, p.lat, p.lng) : null;
 
                             return (
                               <button
@@ -2260,9 +2261,11 @@ export default function MapComponent({
                                     <div className="text-[10px] text-slate-400 font-medium">{meta.label}</div>
                                   </div>
                                 </div>
-                                <span className="text-[10px] font-black text-indigo-600 bg-white px-2 py-0.5 rounded-md border border-indigo-100 shadow-2xs flex-shrink-0">
-                                  ~{directDist}
-                                </span>
+                                {directDist && (
+                                  <span className="text-[10px] font-black text-indigo-600 bg-white px-2 py-0.5 rounded-md border border-indigo-100 shadow-2xs flex-shrink-0">
+                                    ~{directDist}
+                                  </span>
+                                )}
                               </button>
                             );
                           })
@@ -2276,6 +2279,7 @@ export default function MapComponent({
           )}
         </div>
       )}
+      </div>
 
       {/* 2. Top-Right Category Dropdown Filter (High z-index to always remain clickable above overlays) */}
       <div className={`absolute mobile-safe-top right-3 sm:right-4 flex items-center gap-2 pointer-events-auto transition-all duration-300 ${(isCategoryDropdownOpen || showOffsetControls) ? 'z-[9999]' : 'z-[1200]'}`}>
@@ -2517,15 +2521,17 @@ export default function MapComponent({
       <MapErrorBoundary onRetry={handleRetryMap}>
         <MapContainer
           key={mapKey}
-          center={originPoint.mode !== 'gps' && originPoint.mode !== 'custom' 
+          center={originPoint && originPoint.mode !== 'gps' && originPoint.mode !== 'custom' 
             ? adjustLatLng(originPoint.lat, originPoint.lng)
-            : [originPoint.lat, originPoint.lng]}
+            : originPoint
+            ? [originPoint.lat, originPoint.lng]
+            : defaultCenter}
           zoom={initialZoom}
           zoomControl={false}
-          attributionControl={false}
+          attributionControl={true}
           scrollWheelZoom={true}
           style={{ width: '100%', height: '100%' }}
-          className="w-full h-full flex-1 [&_.leaflet-control-attribution]:hidden"
+          className="w-full h-full flex-1"
         >
           {/* Dynamic TileLayer based on selected map layer style */}
           {mapTileStyle === 'osm' ? (
@@ -2540,15 +2546,29 @@ export default function MapComponent({
                 },
               }}
             />
-          ) : (
+          ) : hasValidCartoKey ? (
             <TileLayer
               key="voyager-tile"
-              attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-              maxZoom={19}
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>'
+              url={`https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?api_key=${encodeURIComponent(process.env.NEXT_PUBLIC_CARTO_API_KEY!.trim())}`}
+              subdomains="abcd"
+              maxZoom={20}
               eventHandlers={{
                 tileerror: (err) => {
                   console.warn('Map Tile Loading Error (Carto):', err);
+                },
+              }}
+            />
+          ) : (
+            <TileLayer
+              key="hot-tile"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank" rel="noopener noreferrer">HOT</a>'
+              url="https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
+              subdomains="abc"
+              maxZoom={19}
+              eventHandlers={{
+                tileerror: (err) => {
+                  console.warn('Map Tile Loading Error (OSM HOT):', err);
                 },
               }}
             />
@@ -2570,7 +2590,11 @@ export default function MapComponent({
             onToggleLayer={() => {
               setMapTileStyle((prev) => {
                 const nextStyle = prev === 'osm' ? 'voyager' : 'osm';
-                setGpsToast(nextStyle === 'voyager' ? '🗺️ เปลี่ยนเป็นแผนที่สีสบายตา (CartoDB)' : '🗺️ เปลี่ยนเป็นแผนที่มาตรฐาน (OSM)');
+                setGpsToast(
+                  nextStyle === 'voyager'
+                    ? (hasValidCartoKey ? '🗺️ เปลี่ยนเป็นแผนที่สีสบายตา (CartoDB)' : '🗺️ เปลี่ยนเป็นแผนที่คมชัดพิเศษ (OSM HOT)')
+                    : '🗺️ เปลี่ยนเป็นแผนที่มาตรฐาน (OSM)'
+                );
                 setTimeout(() => setGpsToast(null), 3000);
                 return nextStyle;
               });
@@ -2596,7 +2620,7 @@ export default function MapComponent({
         />
 
         {/* User Live GPS Marker */}
-        {liveGpsLocation && originPoint.mode !== 'gps' && (
+        {liveGpsLocation && (!originPoint || originPoint.mode !== 'gps') && (
           <Marker
             position={[liveGpsLocation.lat, liveGpsLocation.lng]}
             icon={createUserGpsMarker('คุณอยู่ที่นี่ (GPS)')}
@@ -2605,7 +2629,7 @@ export default function MapComponent({
         )}
 
         {/* Origin Marker (Point A) */}
-        {(() => {
+        {originPoint && (() => {
           const originNeedsOffset = originPoint.mode !== 'gps' && originPoint.mode !== 'custom';
           const [originLat, originLng] = originNeedsOffset
             ? adjustLatLng(originPoint.lat, originPoint.lng)
@@ -2655,7 +2679,7 @@ export default function MapComponent({
         {/* Dormitory Marker Clustering Layer */}
         <DormClusterLayer
           dorms={dorms}
-          selectedDormId={originPoint.mode === 'dorm' ? originPoint.dormId : null}
+          selectedDormId={originPoint?.mode === 'dorm' ? originPoint.dormId : null}
           onSelectPlace={handleSelectPlace}
           adjustLatLng={adjustLatLng}
         />
@@ -2735,23 +2759,25 @@ export default function MapComponent({
                     </div>
                   </div>
 
-                  <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-indigo-50/80 border border-indigo-100/90 space-y-1">
-                    <div className="flex items-center justify-between text-[11px] sm:text-xs">
-                      <span className="text-indigo-950 font-bold flex items-center gap-1.5 truncate">
-                        <Flag className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 flex-shrink-0" />
-                        <span className="truncate max-w-[150px] sm:max-w-[160px]">ห่างจาก {originPoint.label}:</span>
-                      </span>
-                      <span className="font-extrabold text-indigo-900 flex-shrink-0 ml-1">
-                        {(() => {
-                          const originNeedsOffset = originPoint.mode !== 'gps' && originPoint.mode !== 'custom';
-                          const [calcOriginLat, calcOriginLng] = originNeedsOffset
-                            ? adjustLatLng(originPoint.lat, originPoint.lng)
-                            : [originPoint.lat, originPoint.lng];
-                          return calculateDistanceBetween(calcOriginLat, calcOriginLng, dormLat, dormLng);
-                        })()}
-                      </span>
+                  {originPoint && (
+                    <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-indigo-50/80 border border-indigo-100/90 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] sm:text-xs">
+                        <span className="text-indigo-950 font-bold flex items-center gap-1.5 truncate">
+                          <Flag className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-blue-600 flex-shrink-0" />
+                          <span className="truncate max-w-[150px] sm:max-w-[160px]">ห่างจาก {originPoint.label}:</span>
+                        </span>
+                        <span className="font-extrabold text-indigo-900 flex-shrink-0 ml-1">
+                          {(() => {
+                            const originNeedsOffset = originPoint.mode !== 'gps' && originPoint.mode !== 'custom';
+                            const [calcOriginLat, calcOriginLng] = originNeedsOffset
+                              ? adjustLatLng(originPoint.lat, originPoint.lng)
+                              : [originPoint.lat, originPoint.lng];
+                            return calculateDistanceBetween(calcOriginLat, calcOriginLng, dormLat, dormLng);
+                          })()}
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Actions */}
                   <div className="pt-0.5 flex flex-col gap-1.5 sm:gap-2">
@@ -2829,18 +2855,20 @@ export default function MapComponent({
                     <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium">จุดสังเกตและสถานที่รอบ ม.อุบลฯ</p>
                   </div>
 
-                  <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-indigo-50/80 border border-indigo-100/90 text-[11px] sm:text-xs flex items-center justify-between">
-                    <span className="text-indigo-950 font-bold truncate">ระยะทางจาก {originPoint.label}:</span>
-                    <span className="font-extrabold text-indigo-900 flex-shrink-0 ml-1">
-                      {(() => {
-                        const originNeedsOffset = originPoint.mode !== 'gps' && originPoint.mode !== 'custom';
-                        const [calcOriginLat, calcOriginLng] = originNeedsOffset
-                          ? adjustLatLng(originPoint.lat, originPoint.lng)
-                          : [originPoint.lat, originPoint.lng];
-                        return calculateDistanceBetween(calcOriginLat, calcOriginLng, lLat, lLng);
-                      })()}
-                    </span>
-                  </div>
+                  {originPoint && (
+                    <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-indigo-50/80 border border-indigo-100/90 text-[11px] sm:text-xs flex items-center justify-between">
+                      <span className="text-indigo-950 font-bold truncate">ระยะทางจาก {originPoint.label}:</span>
+                      <span className="font-extrabold text-indigo-900 flex-shrink-0 ml-1">
+                        {(() => {
+                          const originNeedsOffset = originPoint.mode !== 'gps' && originPoint.mode !== 'custom';
+                          const [calcOriginLat, calcOriginLng] = originNeedsOffset
+                            ? adjustLatLng(originPoint.lat, originPoint.lng)
+                            : [originPoint.lat, originPoint.lng];
+                          return calculateDistanceBetween(calcOriginLat, calcOriginLng, lLat, lLng);
+                        })()}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="pt-0.5 flex items-center gap-2">
                     <button

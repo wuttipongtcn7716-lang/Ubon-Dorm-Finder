@@ -12,6 +12,7 @@ import { MapComponentProps, OriginPointData } from './MapComponent';
 import GpsPermissionModal from './GpsPermissionModal';
 import OriginSelectionModal, { SelectedOrigin } from './OriginSelectionModal';
 import MapSkeleton from './MapSkeleton';
+import { trackNavigationClick } from '@/utils/analytics';
 
 // Dynamically Import Leaflet Map to ensure 100% SSR safety with realistic MapSkeleton
 const MapComponent = dynamic<MapComponentProps>(
@@ -194,6 +195,7 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
   }, [showToast]);
 
   useEffect(() => {
+    trackNavigationClick(dorm?.id, dorm?.name);
     requestGPS();
 
     return () => {
@@ -202,7 +204,7 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
     };
-  }, [requestGPS]);
+  }, [requestGPS, dorm?.id, dorm?.name]);
 
   // Handle ESC (Escape) key press to close modal with proper cleanup
   useEffect(() => {

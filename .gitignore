@@ -32,3 +32,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# analytics database & test events (prevent test data leakage to production)
+/data/*.db
+/data/*.db-journal
+/data/*.db-wal
+/data/*.db-shm
+/data/analytics_events*.json

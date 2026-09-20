@@ -6,6 +6,7 @@ import {
   Wind, X, Dog, Car, Waves, Fan, Users, Heart, RotateCcw, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { FilterState } from '@/types/dormitory';
+import { trackConfirmedSearch } from '@/utils/analytics';
 
 interface DormFilterProps {
   filters: FilterState;
@@ -86,6 +87,15 @@ export default function DormFilter({
     }
   };
 
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    const trimmed = (safeFilters.searchTerm || '').trim();
+    if (!trimmed) return;
+    trackConfirmedSearch(trimmed);
+  };
+
   // Active filter count for badge display on the toggle button
   const activeCount = [
     (safeFilters.roomType || 'all') !== 'all',
@@ -100,18 +110,39 @@ export default function DormFilter({
     <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-4 sm:p-5 space-y-3.5">
       {/* Top Search Bar & Main Action Controls */}
       <div className="flex flex-col sm:flex-row gap-2.5">
-        {/* Search input with Accessibility M-01 Standards */}
-        <div className="relative flex-1 min-w-0">
+        {/* Search input with Accessibility M-01 Standards & Confirmed Search Action */}
+        <form 
+          onSubmit={handleSearchSubmit}
+          className="relative flex-1 min-w-0"
+          role="search"
+          aria-label="ค้นหาหอพัก"
+        >
           <label htmlFor="dorm-search-input" className="sr-only">
             ค้นหาชื่อหอพัก โซน หรือทำเลใกล้เคียง
           </label>
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+          
+          {/* Interactive Search Submit Button */}
+          <button
+            type="submit"
+            title="กดเพื่อค้นหา"
+            aria-label="ค้นหา"
+            className="w-8 h-8 absolute left-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 hover:text-amber-500 hover:bg-amber-50/80 rounded-xl active:scale-95 transition cursor-pointer z-10 focus:outline-none focus:ring-1 focus:ring-amber-400"
+          >
+            <Search className="w-4 h-4" aria-hidden="true" />
+          </button>
+
           <input
             id="dorm-search-input"
             name="searchTerm"
-            type="text"
+            type="search"
             value={safeFilters.searchTerm}
             onChange={(e) => updateFilter('searchTerm', e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSearchSubmit();
+              }
+            }}
             placeholder="ค้นหาชื่อหอพัก, โซน หรือทำเลใกล้เคียง..."
             aria-label="ค้นหาชื่อหอพัก โซน หรือทำเลใกล้เคียง"
             className="w-full pl-10 pr-9 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white transition"
@@ -121,12 +152,13 @@ export default function DormFilter({
               type="button"
               onClick={() => updateFilter('searchTerm', '')}
               aria-label="ล้างคำค้นหา"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+              title="ล้างคำค้นหา"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 z-10 cursor-pointer"
             >
               <X className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
-        </div>
+        </form>
 
         {/* Zone Dropdown */}
         <div className="w-full sm:w-48 flex-shrink-0">

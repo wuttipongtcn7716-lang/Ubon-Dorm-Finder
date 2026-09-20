@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import AnalyticsTracker from '@/components/AnalyticsTracker';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ubon-dorm-finder.vercel.app';
 
@@ -117,6 +118,7 @@ export default function RootLayout({
           ข้ามไปยังเนื้อหาหลัก (Skip to Content)
         </a>
         <Navbar />
+        <AnalyticsTracker />
         <div id="main-content" className="flex-1">{children}</div>
       </body>
     </html>

@@ -8,18 +8,24 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 bg-[#0a1931]/95 backdrop-blur-md border-b border-blue-900/50 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-3 pb-2.5 sm:py-3.5 flex items-center justify-between">
-        {/* Brand Logo & Name */}
-        <Link 
-          href="/" 
-          className="flex items-center gap-2.5 group rounded-2xl p-1 -m-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a1931] cursor-pointer"
-          aria-label="Dormie UBU กลับหน้าหลัก"
+        {/* Brand Logo & Name (Pure Static Branding - No navigation/action on click/tap) */}
+        <div 
+          className="flex items-center gap-2.5 select-none cursor-default"
+          aria-label="Dormie UBU"
         >
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-500 flex items-center justify-center text-slate-950 shadow-md shadow-amber-400/20 group-hover:scale-105 transition-transform">
-            <Building2 className="w-5 h-5 text-slate-950 font-black" />
+          {/* Static Graphic Icon */}
+          <div 
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-500 flex items-center justify-center text-slate-950 shadow-md shadow-amber-400/20"
+            aria-hidden="true"
+            role="presentation"
+          >
+            <Building2 className="w-5 h-5 text-slate-950 font-black pointer-events-none" />
           </div>
+
+          {/* Static Brand Title & Subtitle */}
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-black text-base sm:text-lg text-white tracking-tight group-hover:text-amber-300 transition-colors">
+              <span className="font-black text-base sm:text-lg text-white tracking-tight">
                 Dormie <span className="text-amber-400">UBU</span>
               </span>
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/40">
@@ -30,7 +36,7 @@ export default function Navbar() {
               ค้นหาหอพัก & แผนที่นำทาง
             </p>
           </div>
-        </Link>
+        </div>
 
         {/* Minimal Right Badges / Status */}
         <div className="flex items-center gap-2 sm:gap-3">
@@ -42,6 +48,15 @@ export default function Navbar() {
           <span className="hidden sm:inline-flex items-center text-xs font-bold text-blue-100 bg-blue-900/40 px-2.5 py-1 rounded-full border border-blue-800/60">
             60 หอพักรอบ ม.
           </span>
+
+          <Link
+            href="/admin/analytics"
+            className="p-1.5 rounded-xl text-blue-300/60 hover:text-amber-400 hover:bg-blue-900/40 transition focus:outline-none focus:ring-1 focus:ring-amber-400"
+            title="ผู้ดูแลระบบ (Admin Analytics)"
+            aria-label="เข้าสู่ระบบผู้ดูแลระบบ (Admin Analytics)"
+          >
+            <ShieldCheck className="w-4 h-4" />
+          </Link>
         </div>
       </div>
     </header>

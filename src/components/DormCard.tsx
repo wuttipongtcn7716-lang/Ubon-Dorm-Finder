@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Dormitory, PriceStructure } from '@/types/dormitory';
 import { landmarksData, getLandmarkMeta } from '@/data/landmarks';
+import { trackDormitoryView, trackMapClick, trackNavigationClick } from '@/utils/analytics';
 
 interface DormCardProps {
   dorm: Dormitory;
@@ -266,6 +267,7 @@ export default function DormCard({
                     sessionStorage.setItem('dorm_home_scroll_pos', window.scrollY.toString());
                     sessionStorage.setItem('dorm_last_viewed_id', dorm.id.toString());
                   }
+                  trackDormitoryView(dorm.id, dorm.name);
                 }}
                 className="focus:outline-none after:absolute after:inset-0 after:z-10 focus-visible:underline"
               >
@@ -348,6 +350,8 @@ export default function DormCard({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              trackMapClick(dorm.id, dorm.name);
+              trackNavigationClick(dorm.id, dorm.name);
               onNavigate(dorm);
             }}
             onKeyDown={(e) => {

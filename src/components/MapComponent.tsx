@@ -11,7 +11,7 @@ import {
   Crosshair, Check, X, Navigation, 
   Car, Bike, MapPin, Compass, Circle, ArrowUpDown,
   ChevronRight, ChevronDown, ShieldCheck, Plus,
-  LocateFixed, Flag, Layers, RotateCcw,
+  LocateFixed, Flag, RotateCcw,
   Search, SlidersHorizontal, Loader2, Info, Edit3,
   ChevronUp, Minus
 } from 'lucide-react';
@@ -386,13 +386,13 @@ function MapReadyHandler({ onReady }: { onReady: () => void }) {
   return null;
 }
 
-// Unified Right-Side Floating Action Dock: Combines Compact GPS, Layer Switcher, Re-center, and Zoom Controls
+// Unified Right-Side Floating Action Dock: Combines Compact GPS, Re-center, and Zoom Controls
 function UnifiedActionDock({
   isLocatingGps,
   onLocateGps,
   onRecenterCampus,
-  mapTileStyle,
-  onToggleLayer,
+  onZoomIn,
+  onZoomOut,
   showPoiMarkers = true,
   onTogglePoiMarkers,
   gpsToast,
@@ -401,15 +401,13 @@ function UnifiedActionDock({
   isLocatingGps: boolean;
   onLocateGps: () => void;
   onRecenterCampus: () => void;
-  mapTileStyle: 'osm' | 'voyager';
-  onToggleLayer: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
   showPoiMarkers?: boolean;
   onTogglePoiMarkers?: () => void;
   gpsToast: string | null;
   dockBottomClass?: string;
 }) {
-  const map = useMap();
-
   return (
     <div className={`absolute right-2.5 sm:right-4 z-[1000] flex flex-col items-end gap-1.5 sm:gap-2 pointer-events-auto select-none transition-all duration-300 ${dockBottomClass}`}>
       {gpsToast && (
@@ -436,23 +434,12 @@ function UnifiedActionDock({
           )}
         </button>
 
-        {/* Map Layer Switcher */}
-        <button
-          type="button"
-          onClick={onToggleLayer}
-          className="w-9 h-8 sm:w-11 sm:h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition cursor-pointer"
-          title={`เปลี่ยนรูปแบบแผนที่ (ปัจจุบัน: ${mapTileStyle === 'osm' ? 'OSM มาตรฐาน' : (hasValidCartoKey ? 'CartoDB สบายตา' : 'OSM HOT คมชัด')})`}
-          aria-label="เปลี่ยนเลเยอร์แผนที่"
-        >
-          <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-700" />
-        </button>
-
-        {/* Campus Re-center */}
+        {/* Campus Re-center (Door 1: 15.118464, 104.899762) */}
         <button
           type="button"
           onClick={onRecenterCampus}
           className="w-9 h-8 sm:w-11 sm:h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition cursor-pointer"
-          title="กลับสู่มุมมอง ม.อุบลฯ (Campus Overview)"
+          title="กลับสู่มุมมอง ม.อุบลฯ (ประตู 1)"
           aria-label="มุมมอง ม.อุบลฯ"
         >
           <Compass className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-900" />
@@ -461,7 +448,7 @@ function UnifiedActionDock({
         {/* Zoom In (+) */}
         <button
           type="button"
-          onClick={() => map.zoomIn()}
+          onClick={onZoomIn}
           className="w-9 h-8 sm:w-11 sm:h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition font-black text-xs sm:text-base cursor-pointer select-none"
           title="ซูมเข้า (+)"
           aria-label="ซูมเข้า"
@@ -472,7 +459,7 @@ function UnifiedActionDock({
         {/* Zoom Out (−) */}
         <button
           type="button"
-          onClick={() => map.zoomOut()}
+          onClick={onZoomOut}
           className="w-9 h-8 sm:w-11 sm:h-10 flex items-center justify-center text-slate-700 hover:text-blue-900 hover:bg-slate-100 active:bg-slate-200 transition font-black text-xs sm:text-base cursor-pointer select-none"
           title="ซูมออก (-)"
           aria-label="ซูมออก"
@@ -482,6 +469,14 @@ function UnifiedActionDock({
       </div>
     </div>
   );
+}
+
+function LeafletMapInstanceCapture({ onMapReady }: { onMapReady: (map: L.Map) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    onMapReady(map);
+  }, [map, onMapReady]);
+  return null;
 }
 
 // React Error Boundary for resilient map rendering
@@ -1170,6 +1165,9 @@ export default function MapComponent({
   const [mapKey, setMapKey] = useState<number>(0);
   const [mapTileStyle, setMapTileStyle] = useState<'osm' | 'voyager'>('osm');
 
+  // Maps 1: Main Leaflet Map Instance
+  const [leafletMap, setLeafletMap] = useState<L.Map | null>(null);
+
   const handleRetryMap = useCallback(() => {
     setMapError(null);
     setIsMapReady(false);
@@ -1214,6 +1212,25 @@ export default function MapComponent({
       localStorage.setItem('map_lng_offset', newLng.toString());
     }
   };
+
+  const handleZoomIn = useCallback(() => {
+    leafletMap?.zoomIn();
+  }, [leafletMap]);
+
+  const handleZoomOut = useCallback(() => {
+    leafletMap?.zoomOut();
+  }, [leafletMap]);
+
+  const handleRecenterCampus = useCallback(() => {
+    const gate = OFFICIAL_CAMPUS_GATES[0];
+    const [gLat, gLng] = adjustLatLng(gate.lat, gate.lng);
+    setTargetFlyCenter([gLat, gLng]);
+    if (leafletMap) {
+      leafletMap.flyTo([gLat, gLng], 16, { animate: true, duration: 1.2 });
+    }
+    setGpsToast('🏛️ กลับสู่มุมมอง ประตู 1 ม.อุบลฯ');
+    setTimeout(() => setGpsToast(null), 3000);
+  }, [adjustLatLng, leafletMap]);
 
 
 
@@ -2517,182 +2534,168 @@ export default function MapComponent({
         </div>
       )}
 
-      {/* Main Map Container with Error Boundary */}
+      {/* Map 1: Main Dormitory Explorer (Leaflet) */}
       <MapErrorBoundary onRetry={handleRetryMap}>
-        <MapContainer
-          key={mapKey}
-          center={originPoint && originPoint.mode !== 'gps' && originPoint.mode !== 'custom' 
-            ? adjustLatLng(originPoint.lat, originPoint.lng)
-            : originPoint
-            ? [originPoint.lat, originPoint.lng]
-            : defaultCenter}
-          zoom={initialZoom}
-          zoomControl={false}
-          attributionControl={true}
-          scrollWheelZoom={true}
-          style={{ width: '100%', height: '100%' }}
-          className="w-full h-full flex-1"
-        >
-          {/* Dynamic TileLayer based on selected map layer style */}
-          {mapTileStyle === 'osm' ? (
-            <TileLayer
-              key="osm-tile"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maxZoom={19}
-              eventHandlers={{
-                tileerror: (err) => {
-                  console.warn('Map Tile Loading Error (OSM):', err);
-                },
+          <MapContainer
+            key={mapKey}
+            center={originPoint && originPoint.mode !== 'gps' && originPoint.mode !== 'custom' 
+              ? adjustLatLng(originPoint.lat, originPoint.lng)
+              : originPoint
+              ? [originPoint.lat, originPoint.lng]
+              : defaultCenter}
+            zoom={initialZoom}
+            zoomControl={false}
+            attributionControl={true}
+            scrollWheelZoom={true}
+            style={{ width: '100%', height: '100%' }}
+            className="w-full h-full flex-1"
+          >
+            <LeafletMapInstanceCapture onMapReady={setLeafletMap} />
+
+            {/* Dynamic TileLayer based on selected map layer style */}
+            {mapTileStyle === 'osm' ? (
+              <TileLayer
+                key="osm-tile"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                maxZoom={19}
+                eventHandlers={{
+                  tileerror: (err) => {
+                    console.warn('Map Tile Loading Error (OSM):', err);
+                  },
+                }}
+              />
+            ) : hasValidCartoKey ? (
+              <TileLayer
+                key="voyager-tile"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>'
+                url={`https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?api_key=${encodeURIComponent(process.env.NEXT_PUBLIC_CARTO_API_KEY!.trim())}`}
+                subdomains="abcd"
+                maxZoom={20}
+                eventHandlers={{
+                  tileerror: (err) => {
+                    console.warn('Map Tile Loading Error (Carto):', err);
+                  },
+                }}
+              />
+            ) : (
+              <TileLayer
+                key="hot-tile"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank" rel="noopener noreferrer">HOT</a>'
+                url="https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
+                subdomains="abc"
+                maxZoom={19}
+                eventHandlers={{
+                  tileerror: (err) => {
+                    console.warn('Map Tile Loading Error (OSM HOT):', err);
+                  },
+                }}
+              />
+            )}
+
+            {/* Map Readiness Listener to transition out Loading Skeleton */}
+            <MapReadyHandler onReady={() => setIsMapReady(true)} />
+
+            {/* Map Center & Pan Handler */}
+            <MapController targetCenter={targetFlyCenter} />
+
+            {/* Map Click Handler for Custom Origin Picking */}
+            <MapEventsHandler
+              isPickingManualOrigin={isPickingManualOrigin}
+              onPickManualOrigin={handlePickManualOriginOnMap}
+            />
+
+            {/* User Live GPS Marker */}
+            {liveGpsLocation && (!originPoint || originPoint.mode !== 'gps') && (
+              <Marker
+                position={[liveGpsLocation.lat, liveGpsLocation.lng]}
+                icon={createUserGpsMarker('คุณอยู่ที่นี่ (GPS)')}
+                zIndexOffset={1000}
+              />
+            )}
+
+            {/* Origin Marker (Point A) */}
+            {originPoint && (() => {
+              const originNeedsOffset = originPoint.mode !== 'gps' && originPoint.mode !== 'custom';
+              const [originLat, originLng] = originNeedsOffset
+                ? adjustLatLng(originPoint.lat, originPoint.lng)
+                : [originPoint.lat, originPoint.lng];
+              return (
+                <Marker
+                  position={[originLat, originLng]}
+                  icon={createOriginMarker(originPoint.label, originPoint.mode === 'gps', originPoint.isWhite)}
+                  zIndexOffset={950}
+                />
+              );
+            })()}
+
+            {destinations.map((p, idx) => {
+              const [destLat, destLng] = adjustLatLng(p.lat, p.lng);
+              return (
+                <Marker
+                  key={p.id}
+                  position={[destLat, destLng]}
+                  icon={createDestinationPoiMarker(p.name, idx, p.icon)}
+                  draggable={false}
+                  zIndexOffset={activeDestId === p.id ? 1000 : 800}
+                  eventHandlers={{
+                    mouseover: () => setActiveDestId(p.id),
+                    mouseout: () => setActiveDestId(null),
+                    click: () => setActiveDestId(p.id)
+                  }}
+                />
+              );
+            })}
+
+            {/* Multi-Destination In-App OSRM Driving Road Routing */}
+            <MultiRoadRoutingLayer
+              originLocation={originPoint}
+              destinations={destinations}
+              forceFitKey={forceFitKey}
+              onUpdateStats={handleStatsUpdated}
+              activeDestId={activeDestId}
+              setActiveDestId={setActiveDestId}
+              adjustLatLng={adjustLatLng}
+              onRouteWarning={(msg) => {
+                setGpsToast(msg);
+                setTimeout(() => setGpsToast(null), 5000);
               }}
             />
-          ) : hasValidCartoKey ? (
-            <TileLayer
-              key="voyager-tile"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>'
-              url={`https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?api_key=${encodeURIComponent(process.env.NEXT_PUBLIC_CARTO_API_KEY!.trim())}`}
-              subdomains="abcd"
-              maxZoom={20}
-              eventHandlers={{
-                tileerror: (err) => {
-                  console.warn('Map Tile Loading Error (Carto):', err);
-                },
-              }}
+
+            {/* Dormitory Marker Clustering Layer */}
+            <DormClusterLayer
+              dorms={dorms}
+              selectedDormId={originPoint?.mode === 'dorm' ? originPoint.dormId : null}
+              onSelectPlace={handleSelectPlace}
+              adjustLatLng={adjustLatLng}
             />
-          ) : (
-            <TileLayer
-              key="hot-tile"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank" rel="noopener noreferrer">HOT</a>'
-              url="https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
-              subdomains="abc"
-              maxZoom={19}
-              eventHandlers={{
-                tileerror: (err) => {
-                  console.warn('Map Tile Loading Error (OSM HOT):', err);
-                },
-              }}
+
+            {/* Dedicated Landmark LayerGroup (Toggled via Categories or Action Dock) */}
+            <LandmarksLayerGroup
+              visibleLandmarks={visibleLandmarks}
+              selectedLandmarkName={selectedPlace?.type === 'landmark' ? selectedPlace.landmark.name : null}
+              onSelectPlace={handleSelectPlace}
+              adjustLatLng={adjustLatLng}
             />
-          )}
+          </MapContainer>
+        </MapErrorBoundary>
 
-          {/* Map Readiness Listener to transition out Loading Skeleton */}
-          <MapReadyHandler onReady={() => setIsMapReady(true)} />
-
-          {/* Unified Right-Side Action Dock (Primary GPS, Layer Switcher, Campus Re-center, and Clean Zoom Controls) */}
-          <UnifiedActionDock
-            isLocatingGps={isLocatingGps}
-            onLocateGps={handleSetOriginToGps}
-            onRecenterCampus={() => {
-              const gate = OFFICIAL_CAMPUS_GATES[0];
-              const [gLat, gLng] = adjustLatLng(gate.lat, gate.lng);
-              setTargetFlyCenter([gLat, gLng]);
-            }}
-            mapTileStyle={mapTileStyle}
-            onToggleLayer={() => {
-              setMapTileStyle((prev) => {
-                const nextStyle = prev === 'osm' ? 'voyager' : 'osm';
-                setGpsToast(
-                  nextStyle === 'voyager'
-                    ? (hasValidCartoKey ? '🗺️ เปลี่ยนเป็นแผนที่สีสบายตา (CartoDB)' : '🗺️ เปลี่ยนเป็นแผนที่คมชัดพิเศษ (OSM HOT)')
-                    : '🗺️ เปลี่ยนเป็นแผนที่มาตรฐาน (OSM)'
-                );
-                setTimeout(() => setGpsToast(null), 3000);
-                return nextStyle;
-              });
-            }}
-            gpsToast={gpsToast}
-            dockBottomClass={
-              selectedPlace
-                ? 'max-md:bottom-[48vh] bottom-4 sm:bottom-6'
-                : !isComparePanelMinimized
-                ? 'max-md:bottom-[56vh] bottom-4 sm:bottom-6'
-                : 'max-md:bottom-28 bottom-4 sm:bottom-6'
-            }
-          />
-
-
-        {/* Map Center & Pan Handler */}
-        <MapController targetCenter={targetFlyCenter} />
-
-        {/* Map Click Handler for Custom Origin Picking */}
-        <MapEventsHandler
-          isPickingManualOrigin={isPickingManualOrigin}
-          onPickManualOrigin={handlePickManualOriginOnMap}
-        />
-
-        {/* User Live GPS Marker */}
-        {liveGpsLocation && (!originPoint || originPoint.mode !== 'gps') && (
-          <Marker
-            position={[liveGpsLocation.lat, liveGpsLocation.lng]}
-            icon={createUserGpsMarker('คุณอยู่ที่นี่ (GPS)')}
-            zIndexOffset={1000}
-          />
-        )}
-
-        {/* Origin Marker (Point A) */}
-        {originPoint && (() => {
-          const originNeedsOffset = originPoint.mode !== 'gps' && originPoint.mode !== 'custom';
-          const [originLat, originLng] = originNeedsOffset
-            ? adjustLatLng(originPoint.lat, originPoint.lng)
-            : [originPoint.lat, originPoint.lng];
-          return (
-            <Marker
-              position={[originLat, originLng]}
-              icon={createOriginMarker(originPoint.label, originPoint.mode === 'gps', originPoint.isWhite)}
-              zIndexOffset={950}
-            />
-          );
-        })()}
-
-        {destinations.map((p, idx) => {
-          const [destLat, destLng] = adjustLatLng(p.lat, p.lng);
-          return (
-            <Marker
-              key={p.id}
-              position={[destLat, destLng]}
-              icon={createDestinationPoiMarker(p.name, idx, p.icon)}
-              draggable={false}
-              zIndexOffset={activeDestId === p.id ? 1000 : 800}
-              eventHandlers={{
-                mouseover: () => setActiveDestId(p.id),
-                mouseout: () => setActiveDestId(null),
-                click: () => setActiveDestId(p.id)
-              }}
-            />
-          );
-        })}
-
-        {/* Multi-Destination In-App OSRM Driving Road Routing */}
-        <MultiRoadRoutingLayer
-          originLocation={originPoint}
-          destinations={destinations}
-          forceFitKey={forceFitKey}
-          onUpdateStats={handleStatsUpdated}
-          activeDestId={activeDestId}
-          setActiveDestId={setActiveDestId}
-          adjustLatLng={adjustLatLng}
-          onRouteWarning={(msg) => {
-            setGpsToast(msg);
-            setTimeout(() => setGpsToast(null), 5000);
-          }}
-        />
-
-        {/* Dormitory Marker Clustering Layer */}
-        <DormClusterLayer
-          dorms={dorms}
-          selectedDormId={originPoint?.mode === 'dorm' ? originPoint.dormId : null}
-          onSelectPlace={handleSelectPlace}
-          adjustLatLng={adjustLatLng}
-        />
-
-        {/* Dedicated Landmark LayerGroup (Toggled via Categories or Action Dock) */}
-        <LandmarksLayerGroup
-          visibleLandmarks={visibleLandmarks}
-          selectedLandmarkName={selectedPlace?.type === 'landmark' ? selectedPlace.landmark.name : null}
-          onSelectPlace={handleSelectPlace}
-          adjustLatLng={adjustLatLng}
-        />
-      </MapContainer>
-      </MapErrorBoundary>
+      {/* Unified Right-Side Action Dock (Primary GPS, Campus Re-center, and Clean Zoom Controls) */}
+      <UnifiedActionDock
+        isLocatingGps={isLocatingGps}
+        onLocateGps={handleSetOriginToGps}
+        onRecenterCampus={handleRecenterCampus}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        gpsToast={gpsToast}
+        dockBottomClass={
+          selectedPlace
+            ? 'max-md:bottom-[48vh] bottom-4 sm:bottom-6'
+            : !isComparePanelMinimized
+            ? 'max-md:bottom-[56vh] bottom-4 sm:bottom-6'
+            : 'max-md:bottom-28 bottom-4 sm:bottom-6'
+        }
+      />
 
 
 

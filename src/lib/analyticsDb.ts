@@ -8,7 +8,7 @@ export type AnalyticsEventType =
   | 'map_click' 
   | 'navigation_click';
 
-export type ActorType = 'user' | 'admin' | 'system';
+export type ActorType = 'user' | 'admin' | 'system' | 'anonymous';
 
 export interface AnalyticsEventInput {
   eventName: AnalyticsEventType;
@@ -419,44 +419,47 @@ export function registerAdminIdentifier(type: 'visitor_id' | 'session_id', value
 
   const now = new Date().toISOString();
 
-  if (useSqlite && sqliteDb) {
-    try {
-      sqliteDb.prepare(`
-        INSERT OR IGNORE INTO admin_identifiers (identifier_type, identifier_value, created_at)
-        VALUES (?, ?, ?)
-      `).run(type, cleanVal, now);
+  // We only register session_id as an admin identifier to prevent permanent lifetime blacklisting of devices/browsers
+  if (type === 'session_id') {
+    if (useSqlite && sqliteDb) {
+      try {
+        sqliteDb.prepare(`
+          INSERT OR IGNORE INTO admin_identifiers (identifier_type, identifier_value, created_at)
+          VALUES (?, ?, ?)
+        `).run('session_id', cleanVal, now);
 
-      // Also tag any previously recorded events from this admin identifier as actor_type = 'admin'
-      sqliteDb.prepare(`
-        UPDATE analytics_events 
-        SET actor_type = 'admin' 
-        WHERE (visitor_id = ? OR session_id = ?) AND (actor_type = 'user' OR actor_type IS NULL)
-      `).run(cleanVal, cleanVal);
-    } catch (e) {
-      console.warn('Failed to register admin identifier in SQLite:', e);
-    }
-  }
-
-  // Fallback JSON persistence
-  try {
-    const list = readJsonAdminIdentifiers();
-    if (!list.some(item => item.identifierType === type && item.identifierValue === cleanVal)) {
-      list.push({ identifierType: type, identifierValue: cleanVal, createdAt: now });
-      writeJsonAdminIdentifiers(list);
-    }
-    // Tag existing JSON events
-    const events = readJsonEvents();
-    let updated = false;
-    events.forEach(ev => {
-      if ((ev.visitorId === cleanVal || ev.sessionId === cleanVal) && ev.actorType !== 'admin') {
-        ev.actorType = 'admin';
-        updated = true;
+        // Retroactively mark events in this specific session as actor_type = 'admin'
+        sqliteDb.prepare(`
+          UPDATE analytics_events 
+          SET actor_type = 'admin' 
+          WHERE session_id = ? AND (actor_type != 'admin' OR actor_type IS NULL)
+        `).run(cleanVal);
+      } catch (e) {
+        console.warn('Failed to register admin identifier in SQLite:', e);
       }
-    });
-    if (updated) {
-      writeJsonEvents(events);
     }
-  } catch (e) {}
+
+    // Fallback JSON persistence
+    try {
+      const list = readJsonAdminIdentifiers();
+      if (!list.some(item => item.identifierType === 'session_id' && item.identifierValue === cleanVal)) {
+        list.push({ identifierType: 'session_id', identifierValue: cleanVal, createdAt: now });
+        writeJsonAdminIdentifiers(list);
+      }
+      // Tag existing JSON events
+      const events = readJsonEvents();
+      let updated = false;
+      events.forEach(ev => {
+        if (ev.sessionId === cleanVal && ev.actorType !== 'admin') {
+          ev.actorType = 'admin';
+          updated = true;
+        }
+      });
+      if (updated) {
+        writeJsonEvents(events);
+      }
+    } catch (e) {}
+  }
 }
 
 /**
@@ -468,10 +471,9 @@ export function getKnownAdminIdentifiers(): { visitorIds: Set<string>; sessionId
 
   if (useSqlite && sqliteDb) {
     try {
-      const rows = sqliteDb.prepare(`SELECT identifier_type, identifier_value FROM admin_identifiers`).all();
+      const rows = sqliteDb.prepare(`SELECT identifier_type, identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id'`).all();
       for (const row of rows) {
-        if (row.identifier_type === 'visitor_id') visitorIds.add(String(row.identifier_value));
-        if (row.identifier_type === 'session_id') sessionIds.add(String(row.identifier_value));
+        sessionIds.add(String(row.identifier_value));
       }
       return { visitorIds, sessionIds };
     } catch (e) {}
@@ -480,7 +482,6 @@ export function getKnownAdminIdentifiers(): { visitorIds: Set<string>; sessionId
   try {
     const list = readJsonAdminIdentifiers();
     for (const item of list) {
-      if (item.identifierType === 'visitor_id') visitorIds.add(String(item.identifierValue));
       if (item.identifierType === 'session_id') sessionIds.add(String(item.identifierValue));
     }
   } catch (e) {}
@@ -489,14 +490,12 @@ export function getKnownAdminIdentifiers(): { visitorIds: Set<string>; sessionId
 }
 
 /**
- * Check if a given visitorId or sessionId belongs to an authenticated Admin
+ * Check if a given sessionId belongs to an authenticated Admin session
  */
 export function isKnownAdminIdentifier(visitorId?: string | null, sessionId?: string | null): boolean {
-  if (!visitorId && !sessionId) return false;
-  const { visitorIds, sessionIds } = getKnownAdminIdentifiers();
-  if (visitorId && visitorIds.has(visitorId)) return true;
-  if (sessionId && sessionIds.has(sessionId)) return true;
-  return false;
+  if (!sessionId) return false;
+  const { sessionIds } = getKnownAdminIdentifiers();
+  return sessionIds.has(sessionId);
 }
 
 /**
@@ -770,7 +769,7 @@ export function recordEvent(event: AnalyticsEventInput): StoredAnalyticsEvent | 
     return null;
   }
 
-  const actorType: ActorType = event.actorType || 'user';
+  const actorType: ActorType = event.actorType || (event.userId ? 'user' : 'anonymous');
   const createdAt = event.createdAt || new Date().toISOString();
   const metadataStr = event.metadata ? JSON.stringify(event.metadata) : null;
 
@@ -923,9 +922,8 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
             SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views
           FROM analytics_events
           WHERE created_at >= ? AND created_at <= ?
-            AND (actor_type = 'user' OR actor_type IS NULL)
+            AND (actor_type IS NULL OR actor_type != 'admin')
             AND (user_id IS NULL OR user_id != 'admin')
-            AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
             AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
         `).get(range.start, range.end);
         return {
@@ -968,7 +966,7 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
 
   // Fallback implementation with JSON
   const events = readJsonEvents();
-  const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+  const { sessionIds: adminSes } = getKnownAdminIdentifiers();
   const inRange = (d: string, start: string, end: string) => {
     const t = new Date(d).getTime();
     return t >= new Date(start).getTime() && t <= new Date(end).getTime();
@@ -988,7 +986,6 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
       e.actorType !== 'admin' &&
       e.actorType !== 'system' &&
       (e.userId === null || e.userId !== 'admin') &&
-      !adminVis.has(e.visitorId) &&
       !adminSes.has(e.sessionId)
     );
     const visitors = new Set(subset.map(e => e.visitorId));
@@ -1101,9 +1098,8 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
                 COUNT(*) as views
               FROM analytics_events
               WHERE created_at >= ? AND created_at <= ?
-                AND (actor_type = 'user' OR actor_type IS NULL)
+                AND (actor_type IS NULL OR actor_type != 'admin')
                 AND (user_id IS NULL OR user_id != 'admin')
-                AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
                 AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
             `).get(range.start, range.end);
             visitors = Number(row?.visitors || 0);
@@ -1113,7 +1109,7 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
           }
         } else {
           const events = readJsonEvents();
-          const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+          const { sessionIds: adminSes } = getKnownAdminIdentifiers();
           const inSlot = events.filter((e) => {
             const t = new Date(e.createdAt).getTime();
             return (
@@ -1122,7 +1118,6 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
               e.actorType !== 'admin' &&
               e.actorType !== 'system' &&
               (e.userId === null || e.userId !== 'admin') &&
-              !adminVis.has(e.visitorId) &&
               !adminSes.has(e.sessionId)
             );
           });
@@ -1177,9 +1172,8 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
               COUNT(*) as views
             FROM analytics_events
             WHERE created_at >= ? AND created_at <= ?
-              AND (actor_type = 'user' OR actor_type IS NULL)
+              AND (actor_type IS NULL OR actor_type != 'admin')
               AND (user_id IS NULL OR user_id != 'admin')
-              AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
               AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
           `).get(range.start, range.end);
           visitors = Number(row?.visitors || 0);
@@ -1189,7 +1183,7 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
         }
       } else {
         const events = readJsonEvents();
-        const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+        const { sessionIds: adminSes } = getKnownAdminIdentifiers();
         const inDay = events.filter((e) => {
           const t = new Date(e.createdAt).getTime();
           return (
@@ -1198,7 +1192,6 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
             e.actorType !== 'admin' &&
             e.actorType !== 'system' &&
             (e.userId === null || e.userId !== 'admin') &&
-            !adminVis.has(e.visitorId) &&
             !adminSes.has(e.sessionId)
           );
         });
@@ -1243,9 +1236,8 @@ export function getTopDormitories(period: PeriodType, limit = 5): TopDormitory[]
         WHERE event_name = 'dormitory_view'
           AND dormitory_id IS NOT NULL
           AND created_at >= ? AND created_at <= ?
-          AND (actor_type = 'user' OR actor_type IS NULL)
+          AND (actor_type IS NULL OR actor_type != 'admin')
           AND (user_id IS NULL OR user_id != 'admin')
-          AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
           AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
         GROUP BY dormitory_id, dormitory_name
         ORDER BY count DESC
@@ -1263,7 +1255,7 @@ export function getTopDormitories(period: PeriodType, limit = 5): TopDormitory[]
   }
 
   const events = readJsonEvents();
-  const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+  const { sessionIds: adminSes } = getKnownAdminIdentifiers();
   const subset = events.filter(e => {
     const t = new Date(e.createdAt).getTime();
     return (
@@ -1272,7 +1264,6 @@ export function getTopDormitories(period: PeriodType, limit = 5): TopDormitory[]
       e.actorType !== 'admin' &&
       e.actorType !== 'system' &&
       (e.userId === null || e.userId !== 'admin') &&
-      !adminVis.has(e.visitorId) &&
       !adminSes.has(e.sessionId) &&
       t >= new Date(range.start).getTime() && 
       t <= new Date(range.end).getTime()
@@ -1318,9 +1309,8 @@ export function getTopSearchKeywords(period: PeriodType, limit = 5): TopSearch[]
           AND search_keyword IS NOT NULL
           AND TRIM(search_keyword) != ''
           AND created_at >= ? AND created_at <= ?
-          AND (actor_type = 'user' OR actor_type IS NULL)
+          AND (actor_type IS NULL OR actor_type != 'admin')
           AND (user_id IS NULL OR user_id != 'admin')
-          AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
           AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
         GROUP BY LOWER(TRIM(search_keyword))
         ORDER BY count DESC
@@ -1337,7 +1327,7 @@ export function getTopSearchKeywords(period: PeriodType, limit = 5): TopSearch[]
   }
 
   const events = readJsonEvents();
-  const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+  const { sessionIds: adminSes } = getKnownAdminIdentifiers();
   const subset = events.filter(e => {
     const t = new Date(e.createdAt).getTime();
     return (
@@ -1347,7 +1337,6 @@ export function getTopSearchKeywords(period: PeriodType, limit = 5): TopSearch[]
       e.actorType !== 'admin' &&
       e.actorType !== 'system' &&
       (e.userId === null || e.userId !== 'admin') &&
-      !adminVis.has(e.visitorId) &&
       !adminSes.has(e.sessionId) &&
       t >= new Date(range.start).getTime() && 
       t <= new Date(range.end).getTime()
@@ -1409,9 +1398,8 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
             SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views
           FROM analytics_events
           WHERE created_at >= ? AND created_at < ?
-            AND (actor_type = 'user' OR actor_type IS NULL)
+            AND (actor_type IS NULL OR actor_type != 'admin')
             AND (user_id IS NULL OR user_id != 'admin')
-            AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
             AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')`
         : `SELECT 
             COUNT(DISTINCT visitor_id) as unique_visitors,
@@ -1420,9 +1408,8 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
             SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views
           FROM analytics_events
           WHERE created_at < ?
-            AND (actor_type = 'user' OR actor_type IS NULL)
+            AND (actor_type IS NULL OR actor_type != 'admin')
             AND (user_id IS NULL OR user_id != 'admin')
-            AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
             AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')`;
 
       const params = startAt ? [startAt, endAt] : [endAt];
@@ -1439,7 +1426,7 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
   }
 
   const events = readJsonEvents();
-  const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+  const { sessionIds: adminSes } = getKnownAdminIdentifiers();
   const subset = events.filter((e) => {
     const t = new Date(e.createdAt).getTime();
     const endT = new Date(endAt).getTime();
@@ -1447,7 +1434,7 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
     if (startAt && t < new Date(startAt).getTime()) return false;
     if (e.actorType === 'admin' || e.actorType === 'system') return false;
     if (e.userId === 'admin') return false;
-    if (adminVis.has(e.visitorId) || adminSes.has(e.sessionId)) return false;
+    if (adminSes.has(e.sessionId)) return false;
     return true;
   });
 
@@ -1560,8 +1547,9 @@ export function getHistoricalAnalyticsData(
           SELECT MIN(created_at) as min_date 
           FROM analytics_events 
           WHERE created_at < ? 
-            AND (actor_type = 'user' OR actor_type IS NULL)
+            AND (actor_type IS NULL OR actor_type != 'admin')
             AND (user_id IS NULL OR user_id != 'admin')
+            AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
         `).get(endAt);
         if (row && row.min_date) {
           earliestTime = new Date(row.min_date).getTime();
@@ -1569,13 +1557,12 @@ export function getHistoricalAnalyticsData(
       } catch (e) {}
     }
     if (!earliestTime) {
-      const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+      const { sessionIds: adminSes } = getKnownAdminIdentifiers();
       const events = readJsonEvents().filter((e) => 
         new Date(e.createdAt).getTime() < endDate.getTime() &&
         e.actorType !== 'admin' &&
         e.actorType !== 'system' &&
         (e.userId === null || e.userId !== 'admin') &&
-        !adminVis.has(e.visitorId) &&
         !adminSes.has(e.sessionId)
       );
       if (events.length > 0) {
@@ -1625,9 +1612,8 @@ export function getHistoricalAnalyticsData(
               COUNT(*) as views
             FROM analytics_events
             WHERE created_at >= ? AND created_at <= ?
-              AND (actor_type = 'user' OR actor_type IS NULL)
+              AND (actor_type IS NULL OR actor_type != 'admin')
               AND (user_id IS NULL OR user_id != 'admin')
-              AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
               AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
           `).get(slotStartDate.toISOString(), slotEndDate.toISOString());
           visitors = Number(row?.visitors || 0);
@@ -1635,7 +1621,7 @@ export function getHistoricalAnalyticsData(
         } catch (e) {}
       } else {
         const events = readJsonEvents();
-        const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+        const { sessionIds: adminSes } = getKnownAdminIdentifiers();
         const inSlot = events.filter((e) => {
           const t = new Date(e.createdAt).getTime();
           return (
@@ -1644,7 +1630,6 @@ export function getHistoricalAnalyticsData(
             e.actorType !== 'admin' &&
             e.actorType !== 'system' &&
             (e.userId === null || e.userId !== 'admin') &&
-            !adminVis.has(e.visitorId) &&
             !adminSes.has(e.sessionId)
           );
         });
@@ -1694,9 +1679,8 @@ export function getHistoricalAnalyticsData(
               COUNT(*) as views
             FROM analytics_events
             WHERE created_at >= ? AND created_at <= ?
-              AND (actor_type = 'user' OR actor_type IS NULL)
+              AND (actor_type IS NULL OR actor_type != 'admin')
               AND (user_id IS NULL OR user_id != 'admin')
-              AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
               AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
           `).get(dayStartDate.toISOString(), dayEndDate.toISOString());
           visitors = Number(row?.visitors || 0);
@@ -1704,7 +1688,7 @@ export function getHistoricalAnalyticsData(
         } catch (e) {}
       } else {
         const events = readJsonEvents();
-        const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+        const { sessionIds: adminSes } = getKnownAdminIdentifiers();
         const inDay = events.filter((e) => {
           const t = new Date(e.createdAt).getTime();
           return (
@@ -1713,7 +1697,6 @@ export function getHistoricalAnalyticsData(
             e.actorType !== 'admin' &&
             e.actorType !== 'system' &&
             (e.userId === null || e.userId !== 'admin') &&
-            !adminVis.has(e.visitorId) &&
             !adminSes.has(e.sessionId)
           );
         });
@@ -1741,9 +1724,8 @@ export function getHistoricalAnalyticsData(
            FROM analytics_events
            WHERE event_name = 'dormitory_view' AND dormitory_id IS NOT NULL
              AND created_at >= ? AND created_at < ?
-             AND (actor_type = 'user' OR actor_type IS NULL)
+             AND (actor_type IS NULL OR actor_type != 'admin')
              AND (user_id IS NULL OR user_id != 'admin')
-             AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
              AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
            GROUP BY dormitory_id, dormitory_name
            ORDER BY count DESC LIMIT 5`
@@ -1751,9 +1733,8 @@ export function getHistoricalAnalyticsData(
            FROM analytics_events
            WHERE event_name = 'dormitory_view' AND dormitory_id IS NOT NULL
              AND created_at < ?
-             AND (actor_type = 'user' OR actor_type IS NULL)
+             AND (actor_type IS NULL OR actor_type != 'admin')
              AND (user_id IS NULL OR user_id != 'admin')
-             AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
              AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
            GROUP BY dormitory_id, dormitory_name
            ORDER BY count DESC LIMIT 5`;
@@ -1768,7 +1749,7 @@ export function getHistoricalAnalyticsData(
       console.warn('SQLite top dorms history error:', e);
     }
   } else {
-    const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+    const { sessionIds: adminSes } = getKnownAdminIdentifiers();
     const events = readJsonEvents().filter(e => {
       const t = new Date(e.createdAt).getTime();
       return (
@@ -1777,7 +1758,6 @@ export function getHistoricalAnalyticsData(
         e.actorType !== 'admin' &&
         e.actorType !== 'system' &&
         (e.userId === null || e.userId !== 'admin') &&
-        !adminVis.has(e.visitorId) &&
         !adminSes.has(e.sessionId) &&
         t < new Date(endAt).getTime() && 
         (!startAt || t >= new Date(startAt).getTime())
@@ -1805,9 +1785,8 @@ export function getHistoricalAnalyticsData(
            FROM analytics_events
            WHERE event_name = 'search' AND search_keyword IS NOT NULL AND TRIM(search_keyword) != ''
              AND created_at >= ? AND created_at < ?
-             AND (actor_type = 'user' OR actor_type IS NULL)
+             AND (actor_type IS NULL OR actor_type != 'admin')
              AND (user_id IS NULL OR user_id != 'admin')
-             AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
              AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
            GROUP BY LOWER(TRIM(search_keyword))
            ORDER BY count DESC LIMIT 5`
@@ -1815,9 +1794,8 @@ export function getHistoricalAnalyticsData(
            FROM analytics_events
            WHERE event_name = 'search' AND search_keyword IS NOT NULL AND TRIM(search_keyword) != ''
              AND created_at < ?
-             AND (actor_type = 'user' OR actor_type IS NULL)
+             AND (actor_type IS NULL OR actor_type != 'admin')
              AND (user_id IS NULL OR user_id != 'admin')
-             AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
              AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
            GROUP BY LOWER(TRIM(search_keyword))
            ORDER BY count DESC LIMIT 5`;
@@ -1831,7 +1809,7 @@ export function getHistoricalAnalyticsData(
       console.warn('SQLite top search history error:', e);
     }
   } else {
-    const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+    const { sessionIds: adminSes } = getKnownAdminIdentifiers();
     const events = readJsonEvents().filter(e => {
       const t = new Date(e.createdAt).getTime();
       return (
@@ -1841,7 +1819,6 @@ export function getHistoricalAnalyticsData(
         e.actorType !== 'admin' &&
         e.actorType !== 'system' &&
         (e.userId === null || e.userId !== 'admin') &&
-        !adminVis.has(e.visitorId) &&
         !adminSes.has(e.sessionId) &&
         t < new Date(endAt).getTime() && 
         (!startAt || t >= new Date(startAt).getTime())

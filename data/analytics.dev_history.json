@@ -26,5 +26,33 @@
     "createdBy": "admin",
     "createdAt": "2026-09-21T21:23:49.745Z",
     "note": "Final clean reset after server test"
+  },
+  {
+    "id": 28,
+    "resetAt": "2026-09-21T21:53:50.451Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:53:50.451Z",
+    "note": "Verification Test Matrix Baseline"
+  },
+  {
+    "id": 29,
+    "resetAt": "2026-09-21T21:53:56.959Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:53:56.959Z",
+    "note": "Verification Test Matrix Baseline"
+  },
+  {
+    "id": 30,
+    "resetAt": "2026-09-21T21:53:57.560Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:53:57.560Z",
+    "note": "Post Verification Reset"
+  },
+  {
+    "id": 31,
+    "resetAt": "2026-09-21T21:54:06.705Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:54:06.705Z",
+    "note": "ระบบพร้อมใช้งาน - สถิติเริ่มต้นนับใหม่หลังจากปรับปรุง Anonymous & User Analytics ครบถ้วน"
   }
 ]

@@ -27,10 +27,8 @@ export async function GET(request: Request) {
     );
   }
 
-  // Register admin identifiers if passed in request headers
-  const reqVis = request.headers.get('x-visitor-id');
+  // Register admin session if passed in request headers
   const reqSes = request.headers.get('x-session-id');
-  if (reqVis) registerAdminIdentifier('visitor_id', reqVis);
   if (reqSes) registerAdminIdentifier('session_id', reqSes);
 
   try {

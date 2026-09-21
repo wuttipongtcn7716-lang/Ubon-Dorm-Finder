@@ -1,18 +1,8 @@
 [
   {
-    "identifierType": "visitor_id",
-    "identifierValue": "admin_vis_1790024124037",
-    "createdAt": "2026-09-21T20:55:24.317Z"
-  },
-  {
     "identifierType": "session_id",
     "identifierValue": "admin_ses_1790024124037",
     "createdAt": "2026-09-21T20:55:24.320Z"
-  },
-  {
-    "identifierType": "visitor_id",
-    "identifierValue": "admin_vis_1790024153719",
-    "createdAt": "2026-09-21T20:55:53.734Z"
   },
   {
     "identifierType": "session_id",
@@ -20,19 +10,9 @@
     "createdAt": "2026-09-21T20:55:53.737Z"
   },
   {
-    "identifierType": "visitor_id",
-    "identifierValue": "admin_vis_1790024162346",
-    "createdAt": "2026-09-21T20:56:02.362Z"
-  },
-  {
     "identifierType": "session_id",
     "identifierValue": "admin_ses_1790024162346",
     "createdAt": "2026-09-21T20:56:02.365Z"
-  },
-  {
-    "identifierType": "visitor_id",
-    "identifierValue": "v_2f3c153e-2293-4ddb-9410-d8e97e28b92d",
-    "createdAt": "2026-09-21T20:57:48.175Z"
   },
   {
     "identifierType": "session_id",
@@ -40,29 +20,14 @@
     "createdAt": "2026-09-21T20:57:48.180Z"
   },
   {
-    "identifierType": "visitor_id",
-    "identifierValue": "admin_vis_1790025051592",
-    "createdAt": "2026-09-21T21:10:51.675Z"
-  },
-  {
     "identifierType": "session_id",
     "identifierValue": "admin_ses_1790025051592",
     "createdAt": "2026-09-21T21:10:51.691Z"
   },
   {
-    "identifierType": "visitor_id",
-    "identifierValue": "admin_live_vis_1790025800199",
-    "createdAt": "2026-09-21T21:23:20.222Z"
-  },
-  {
     "identifierType": "session_id",
     "identifierValue": "admin_live_ses_1790025800199",
     "createdAt": "2026-09-21T21:23:20.228Z"
-  },
-  {
-    "identifierType": "visitor_id",
-    "identifierValue": "admin_live_vis_1790025828415",
-    "createdAt": "2026-09-21T21:23:48.676Z"
   },
   {
     "identifierType": "session_id",
@@ -73,5 +38,135 @@
     "identifierType": "session_id",
     "identifierValue": "s_e2f9bcc3-f1d1-4fec-90bd-f6ba841fdb76",
     "createdAt": "2026-09-21T21:24:44.413Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_setup_1790027630153",
+    "createdAt": "2026-09-21T21:53:50.220Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_reset_1790027630236",
+    "createdAt": "2026-09-21T21:53:50.446Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027630460",
+    "createdAt": "2026-09-21T21:53:50.631Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027630831",
+    "createdAt": "2026-09-21T21:53:50.845Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027630877",
+    "createdAt": "2026-09-21T21:53:50.892Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "admin_ses_1790027630899_3",
+    "createdAt": "2026-09-21T21:53:50.925Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027630930",
+    "createdAt": "2026-09-21T21:53:50.941Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027630969",
+    "createdAt": "2026-09-21T21:53:50.984Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_setup_1790027636856",
+    "createdAt": "2026-09-21T21:53:56.926Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_reset_1790027636941",
+    "createdAt": "2026-09-21T21:53:56.955Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027636966",
+    "createdAt": "2026-09-21T21:53:56.991Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027637051",
+    "createdAt": "2026-09-21T21:53:57.062Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027637082",
+    "createdAt": "2026-09-21T21:53:57.092Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "admin_ses_1790027637099_3",
+    "createdAt": "2026-09-21T21:53:57.109Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027637116",
+    "createdAt": "2026-09-21T21:53:57.141Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027637175",
+    "createdAt": "2026-09-21T21:53:57.186Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "pre_admin_ses_1790027637150",
+    "createdAt": "2026-09-21T21:53:57.216Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027637223",
+    "createdAt": "2026-09-21T21:53:57.247Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_viewer_1790027637455",
+    "createdAt": "2026-09-21T21:53:57.467Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027637473",
+    "createdAt": "2026-09-21T21:53:57.494Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027637515",
+    "createdAt": "2026-09-21T21:53:57.539Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_reset2_1790027637544",
+    "createdAt": "2026-09-21T21:53:57.556Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027637572",
+    "createdAt": "2026-09-21T21:53:57.587Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790027637605",
+    "createdAt": "2026-09-21T21:53:57.619Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_final_reset_1790027646594",
+    "createdAt": "2026-09-21T21:54:06.673Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_final_reset_1790027646684",
+    "createdAt": "2026-09-21T21:54:06.701Z"
   }
 ]

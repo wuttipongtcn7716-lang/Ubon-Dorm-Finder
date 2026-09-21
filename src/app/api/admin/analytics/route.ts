@@ -27,10 +27,8 @@ export async function GET(request: Request) {
     );
   }
 
-  // Auto-register admin visitor/session identifiers from request headers
-  const reqVis = request.headers.get('x-visitor-id');
+  // Auto-register admin session identifier from request headers
   const reqSes = request.headers.get('x-session-id');
-  if (reqVis) registerAdminIdentifier('visitor_id', reqVis);
   if (reqSes) registerAdminIdentifier('session_id', reqSes);
 
   try {

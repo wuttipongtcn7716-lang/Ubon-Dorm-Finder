@@ -73,6 +73,21 @@ export function getSessionId(): string {
 }
 
 /**
+ * Reset Anonymous Session ID (e.g. upon Admin logout)
+ * Generates a brand new session ID and persists it in sessionStorage.
+ */
+export function resetSessionId(): string {
+  if (typeof window === 'undefined') return 'server_session';
+  try {
+    const newSid = generateAnonymousId('s');
+    sessionStorage.setItem(SESSION_STORAGE_KEY, newSid);
+    return newSid;
+  } catch (e) {
+    return generateAnonymousId('s_temp');
+  }
+}
+
+/**
  * Check if current user is an authenticated Admin.
  * Admin sessions are strictly excluded from all user analytics tracking (Requirement 11, 12, 13).
  */
@@ -83,15 +98,7 @@ export function isAdminUser(): boolean {
     if (window.location.pathname.startsWith('/admin')) {
       return true;
     }
-    // 2. Client-side admin persistence flags
-    if (
-      localStorage.getItem('dormie_admin_active') === '1' ||
-      localStorage.getItem('dormie_is_admin') === 'true' ||
-      sessionStorage.getItem('dormie_admin_active') === '1'
-    ) {
-      return true;
-    }
-    // 3. Client cookies check
+    // 2. Client cookies check
     const cookie = document.cookie || '';
     if (
       cookie.split(';').some((c) => {
@@ -101,6 +108,13 @@ export function isAdminUser(): boolean {
           trimmed.startsWith('admin_session=')
         );
       })
+    ) {
+      return true;
+    }
+    // 3. Client-side admin session flag
+    if (
+      sessionStorage.getItem('dormie_admin_active') === '1' ||
+      sessionStorage.getItem('dormie_is_admin') === 'true'
     ) {
       return true;
     }
@@ -127,7 +141,8 @@ export function trackEvent(eventName: TrackableEvent, payload: EventPayload = {}
       eventName,
       sessionId: getSessionId(),
       visitorId: getVisitorId(),
-      actorType: 'user',
+      actorType: 'anonymous',
+      userId: null,
       page: payload.page || (typeof window !== 'undefined' ? window.location.pathname : '/'),
       dormitoryId: payload.dormitoryId || null,
       dormitoryName: payload.dormitoryName || null,

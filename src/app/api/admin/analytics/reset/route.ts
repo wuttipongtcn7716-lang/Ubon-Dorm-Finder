@@ -27,10 +27,8 @@ export async function GET(request: Request) {
     );
   }
 
-  // Register admin identifiers if passed in headers
-  const reqVis = request.headers.get('x-visitor-id');
+  // Register admin session if passed in headers
   const reqSes = request.headers.get('x-session-id');
-  if (reqVis) registerAdminIdentifier('visitor_id', reqVis);
   if (reqSes) registerAdminIdentifier('session_id', reqSes);
 
   const resetAt = getDisplayResetTimestamp();
@@ -98,8 +96,7 @@ export async function POST(request: Request) {
       }
     } catch (e) {}
 
-    // Immediately register Admin identifiers so all past and future events are marked admin
-    if (visitorId) registerAdminIdentifier('visitor_id', visitorId);
+    // Immediately register Admin session identifier
     if (sessionId) registerAdminIdentifier('session_id', sessionId);
 
     const newRecord = createResetRecord(createdBy, note || 'รีเซ็ตการแสดงผลสถิติ');

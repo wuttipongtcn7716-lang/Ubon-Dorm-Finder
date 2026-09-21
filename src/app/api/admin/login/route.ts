@@ -22,10 +22,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Register this Admin's browser visitor ID and session ID to permanently exclude from User Analytics
-    if (visitorId && typeof visitorId === 'string') {
-      registerAdminIdentifier('visitor_id', visitorId);
-    }
+    // Register this Admin's active session ID to exclude from User Analytics
     if (sessionId && typeof sessionId === 'string') {
       registerAdminIdentifier('session_id', sessionId);
     }

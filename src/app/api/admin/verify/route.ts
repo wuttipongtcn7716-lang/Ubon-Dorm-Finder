@@ -14,9 +14,7 @@ const NO_CACHE_HEADERS = {
 export async function GET(request: Request) {
   const authenticated = isRequestAdminAuthenticated(request);
   if (authenticated) {
-    const reqVis = request.headers.get('x-visitor-id');
     const reqSes = request.headers.get('x-session-id');
-    if (reqVis) registerAdminIdentifier('visitor_id', reqVis);
     if (reqSes) registerAdminIdentifier('session_id', reqSes);
   }
   return NextResponse.json(

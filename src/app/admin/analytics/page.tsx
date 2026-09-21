@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { PeriodType, AnalyticsDashboardData, HistoricalPeriod } from '@/lib/analyticsDb';
 import AnalyticsChart from '@/components/admin/AnalyticsChart';
-import { getVisitorId, getSessionId } from '@/utils/analytics';
+import { getVisitorId, getSessionId, resetSessionId } from '@/utils/analytics';
 
 const PERIOD_OPTIONS: { label: string; value: PeriodType }[] = [
   { label: 'วันนี้', value: 'today' },
@@ -267,6 +267,10 @@ export default function AdminAnalyticsPage() {
       try {
         localStorage.removeItem('dormie_admin_active');
         localStorage.removeItem('dormie_is_admin');
+        sessionStorage.removeItem('dormie_admin_active');
+        sessionStorage.removeItem('dormie_is_admin');
+        document.cookie = 'dormie_role=; path=/; max-age=0; SameSite=Lax';
+        resetSessionId();
       } catch (e) {}
       setIsAuthenticated(false);
       setData(null);
@@ -274,6 +278,10 @@ export default function AdminAnalyticsPage() {
       try {
         localStorage.removeItem('dormie_admin_active');
         localStorage.removeItem('dormie_is_admin');
+        sessionStorage.removeItem('dormie_admin_active');
+        sessionStorage.removeItem('dormie_is_admin');
+        document.cookie = 'dormie_role=; path=/; max-age=0; SameSite=Lax';
+        resetSessionId();
       } catch (err) {}
       setIsAuthenticated(false);
     } finally {

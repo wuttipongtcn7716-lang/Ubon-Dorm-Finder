@@ -2,8 +2,8 @@ import crypto from 'crypto';
 
 export const SESSION_COOKIE_NAME = 'admin_session';
 
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'dormie_admin_2026';
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin-dormie';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'dormie_ubu_admin_2026';
 const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || 'ubu_white_dorm_secret_key_2026';
 
 export interface AdminSessionPayload {

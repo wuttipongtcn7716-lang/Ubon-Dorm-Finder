@@ -168,5 +168,145 @@
     "identifierType": "session_id",
     "identifierValue": "ses_final_reset_1790027646684",
     "createdAt": "2026-09-21T21:54:06.701Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_setup_1790029177879",
+    "createdAt": "2026-09-21T22:19:37.957Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_reset_1790029177974",
+    "createdAt": "2026-09-21T22:19:38.225Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790029178237",
+    "createdAt": "2026-09-21T22:19:38.386Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790029178631",
+    "createdAt": "2026-09-21T22:19:38.641Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790029178675",
+    "createdAt": "2026-09-21T22:19:38.686Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "admin_ses_1790029178692_3",
+    "createdAt": "2026-09-21T22:19:38.706Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790029178710",
+    "createdAt": "2026-09-21T22:19:38.734Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790029178770",
+    "createdAt": "2026-09-21T22:19:38.782Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "pre_admin_ses_1790029178741",
+    "createdAt": "2026-09-21T22:19:38.832Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790029178841",
+    "createdAt": "2026-09-21T22:19:38.870Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_viewer_1790029179040",
+    "createdAt": "2026-09-21T22:19:39.053Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790029179060",
+    "createdAt": "2026-09-21T22:19:39.070Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790029179091",
+    "createdAt": "2026-09-21T22:19:39.101Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_reset2_1790029179107",
+    "createdAt": "2026-09-21T22:19:39.130Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790029179139",
+    "createdAt": "2026-09-21T22:19:39.161Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer_1790029179193",
+    "createdAt": "2026-09-21T22:19:39.205Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_final_reset_1790029188176",
+    "createdAt": "2026-09-21T22:19:48.249Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_final_reset_1790029188260",
+    "createdAt": "2026-09-21T22:19:48.271Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_srv_test_1790029350364",
+    "createdAt": "2026-09-21T22:22:30.376Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_srv_test_viewer",
+    "createdAt": "2026-09-21T22:22:30.407Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_srv_test_history",
+    "createdAt": "2026-09-21T22:22:30.627Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_srv_test_admin",
+    "createdAt": "2026-09-21T22:22:30.808Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_srv_test_1790029374465",
+    "createdAt": "2026-09-21T22:22:54.477Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_live_1790029471519",
+    "createdAt": "2026-09-21T22:24:31.541Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_viewer",
+    "createdAt": "2026-09-21T22:24:31.557Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "ses_admin_live",
+    "createdAt": "2026-09-21T22:24:31.868Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "s_473f9ac7-25e8-4394-93d6-7f5440a1a414",
+    "createdAt": "2026-09-21T22:25:41.146Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "s_0f2213ff-c4c2-4837-a3f9-5b3e9d0ec766",
+    "createdAt": "2026-09-21T22:26:47.241Z"
   }
 ]

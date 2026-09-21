@@ -54,5 +54,26 @@
     "createdBy": "admin",
     "createdAt": "2026-09-21T21:54:06.705Z",
     "note": "ระบบพร้อมใช้งาน - สถิติเริ่มต้นนับใหม่หลังจากปรับปรุง Anonymous & User Analytics ครบถ้วน"
+  },
+  {
+    "id": 32,
+    "resetAt": "2026-09-21T22:19:38.230Z",
+    "createdBy": "admin-dormie",
+    "createdAt": "2026-09-21T22:19:38.230Z",
+    "note": "Verification Test Matrix Baseline"
+  },
+  {
+    "id": 33,
+    "resetAt": "2026-09-21T22:19:39.133Z",
+    "createdBy": "admin-dormie",
+    "createdAt": "2026-09-21T22:19:39.133Z",
+    "note": "Post Verification Reset"
+  },
+  {
+    "id": 34,
+    "resetAt": "2026-09-21T22:19:48.274Z",
+    "createdBy": "admin-dormie",
+    "createdAt": "2026-09-21T22:19:48.274Z",
+    "note": "ระบบพร้อมใช้งาน - สถิติเริ่มต้นนับใหม่"
   }
 ]

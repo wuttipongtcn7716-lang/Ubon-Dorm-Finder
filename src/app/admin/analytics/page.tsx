@@ -53,7 +53,17 @@ export default function AdminAnalyticsPage() {
   const fetchHistory = useCallback(async () => {
     setIsHistoryLoading(true);
     try {
-      const res = await fetch('/api/admin/analytics/history', { cache: 'no-store' });
+      const visitorId = getVisitorId();
+      const sessionId = getSessionId();
+      const res = await fetch(`/api/admin/analytics/history?_t=${Date.now()}`, { 
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'x-visitor-id': visitorId,
+          'x-session-id': sessionId,
+        }
+      });
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.periods)) {
@@ -71,13 +81,35 @@ export default function AdminAnalyticsPage() {
     setIsResetting(true);
     setResetError(null);
     try {
+      const visitorId = getVisitorId();
+      const sessionId = getSessionId();
       const res = await fetch('/api/admin/analytics/reset', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'x-visitor-id': visitorId,
+          'x-session-id': sessionId,
+        },
+        body: JSON.stringify({
+          visitorId,
+          sessionId,
+          note: 'รีเซ็ตการแสดงผลสถิติ',
+        }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
         throw new Error(json.error || 'Failed to reset analytics display');
       }
+
+      // Mark client-side admin flags
+      try {
+        localStorage.setItem('dormie_admin_active', '1');
+        localStorage.setItem('dormie_is_admin', 'true');
+        sessionStorage.setItem('dormie_admin_active', '1');
+        document.cookie = 'dormie_role=admin; path=/; max-age=86400; SameSite=Lax';
+      } catch (e) {}
+
       setIsResetModalOpen(false);
       setIsViewingHistorical(false);
       setActiveHistoricalPeriod(null);
@@ -100,7 +132,16 @@ export default function AdminAnalyticsPage() {
     setIsViewingHistorical(true);
     setActiveHistoricalPeriod(period);
     try {
-      const res = await fetch(`/api/admin/analytics/history?periodId=${period.id}`, { cache: 'no-store' });
+      const visitorId = getVisitorId();
+      const sessionId = getSessionId();
+      const res = await fetch(`/api/admin/analytics/history?periodId=${period.id}&_t=${Date.now()}`, { 
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'x-visitor-id': visitorId,
+          'x-session-id': sessionId,
+        }
+      });
       if (!res.ok) throw new Error('Failed to load historical period');
       const json = await res.json();
       if (json.success && json.data) {
@@ -125,8 +166,16 @@ export default function AdminAnalyticsPage() {
     setIsLoading(true);
     setIsError(false);
     try {
-      const res = await fetch(`/api/admin/analytics?period=${period}`, {
+      const visitorId = getVisitorId();
+      const sessionId = getSessionId();
+      const res = await fetch(`/api/admin/analytics?period=${period}&_t=${Date.now()}`, {
         cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'x-visitor-id': visitorId,
+          'x-session-id': sessionId,
+        },
       });
 
       if (res.status === 401) {
@@ -143,6 +192,12 @@ export default function AdminAnalyticsPage() {
       if (json.success && json.data) {
         setData(json.data);
         setIsAuthenticated(true);
+        try {
+          localStorage.setItem('dormie_admin_active', '1');
+          localStorage.setItem('dormie_is_admin', 'true');
+          sessionStorage.setItem('dormie_admin_active', '1');
+          document.cookie = 'dormie_role=admin; path=/; max-age=86400; SameSite=Lax';
+        } catch (e) {}
       } else {
         throw new Error('Malformed response');
       }

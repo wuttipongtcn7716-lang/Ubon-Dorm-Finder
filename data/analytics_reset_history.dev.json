@@ -1,0 +1,16 @@
+[
+  {
+    "id": 22,
+    "resetAt": "2026-09-21T21:20:55.518Z",
+    "createdBy": "admin_test_user",
+    "createdAt": "2026-09-21T21:20:55.518Z",
+    "note": "Automated Reset Logic Test"
+  },
+  {
+    "id": 23,
+    "resetAt": "2026-09-21T21:21:29.964Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:21:29.964Z",
+    "note": "เริ่มนับสถิติใหม่หลังปรับปรุงระบบ Reset Logic สมบูรณ์"
+  }
+]

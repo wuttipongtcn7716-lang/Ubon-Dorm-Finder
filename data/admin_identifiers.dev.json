@@ -1,0 +1,22 @@
+[
+  {
+    "identifierType": "visitor_id",
+    "identifierValue": "admin_vis_1790025655533",
+    "createdAt": "2026-09-21T21:20:55.533Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "admin_ses_1790025655533",
+    "createdAt": "2026-09-21T21:20:55.535Z"
+  },
+  {
+    "identifierType": "visitor_id",
+    "identifierValue": "pre_admin_vis_1790025655541",
+    "createdAt": "2026-09-21T21:20:55.548Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "pre_admin_ses_1790025655541",
+    "createdAt": "2026-09-21T21:20:55.550Z"
+  }
+]

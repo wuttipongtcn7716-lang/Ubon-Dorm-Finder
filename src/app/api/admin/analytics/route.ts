@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
 import { isRequestAdminAuthenticated } from '@/lib/adminAuth';
-import { getAnalyticsDashboardData, PeriodType } from '@/lib/analyticsDb';
+import { getAnalyticsDashboardData, PeriodType, registerAdminIdentifier } from '@/lib/analyticsDb';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  'Pragma': 'no-cache',
+  'Expires': '0',
+};
 
 export async function GET(request: Request) {
   // Server-side Authentication Guard
@@ -11,9 +20,18 @@ export async function GET(request: Request) {
         error: 'Unauthorized: เฉพาะผู้ดูแลระบบเท่านั้นที่สามารถเข้าถึงข้อมูล Analytics ได้',
         authenticated: false 
       },
-      { status: 401 }
+      { 
+        status: 401,
+        headers: NO_CACHE_HEADERS,
+      }
     );
   }
+
+  // Auto-register admin visitor/session identifiers from request headers
+  const reqVis = request.headers.get('x-visitor-id');
+  const reqSes = request.headers.get('x-session-id');
+  if (reqVis) registerAdminIdentifier('visitor_id', reqVis);
+  if (reqSes) registerAdminIdentifier('session_id', reqSes);
 
   try {
     const { searchParams } = new URL(request.url);
@@ -27,15 +45,23 @@ export async function GET(request: Request) {
 
     const data = getAnalyticsDashboardData(period);
 
-    return NextResponse.json({
-      success: true,
-      data,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data,
+      },
+      {
+        headers: NO_CACHE_HEADERS,
+      }
+    );
   } catch (error) {
     console.error('Failed to load analytics dashboard data:', error);
     return NextResponse.json(
       { error: 'ไม่สามารถโหลดข้อมูลสถิติได้ กรุณาลองใหม่อีกครั้ง' },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: NO_CACHE_HEADERS,
+      }
     );
   }
 }

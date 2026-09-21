@@ -38,5 +38,40 @@
     "identifierType": "session_id",
     "identifierValue": "s_8d524e96-24af-458a-9d25-76adeeecac81",
     "createdAt": "2026-09-21T20:57:48.180Z"
+  },
+  {
+    "identifierType": "visitor_id",
+    "identifierValue": "admin_vis_1790025051592",
+    "createdAt": "2026-09-21T21:10:51.675Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "admin_ses_1790025051592",
+    "createdAt": "2026-09-21T21:10:51.691Z"
+  },
+  {
+    "identifierType": "visitor_id",
+    "identifierValue": "admin_live_vis_1790025800199",
+    "createdAt": "2026-09-21T21:23:20.222Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "admin_live_ses_1790025800199",
+    "createdAt": "2026-09-21T21:23:20.228Z"
+  },
+  {
+    "identifierType": "visitor_id",
+    "identifierValue": "admin_live_vis_1790025828415",
+    "createdAt": "2026-09-21T21:23:48.676Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "admin_live_ses_1790025828415",
+    "createdAt": "2026-09-21T21:23:48.686Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "s_e2f9bcc3-f1d1-4fec-90bd-f6ba841fdb76",
+    "createdAt": "2026-09-21T21:24:44.413Z"
   }
 ]

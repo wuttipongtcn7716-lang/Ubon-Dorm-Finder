@@ -1,0 +1,30 @@
+[
+  {
+    "id": 24,
+    "resetAt": "2026-09-21T21:23:20.297Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:23:20.297Z",
+    "note": "Live Server Test Reset"
+  },
+  {
+    "id": 25,
+    "resetAt": "2026-09-21T21:23:20.632Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:23:20.632Z",
+    "note": "Final clean reset after server test"
+  },
+  {
+    "id": 26,
+    "resetAt": "2026-09-21T21:23:49.100Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:23:49.100Z",
+    "note": "Live Server Test Reset"
+  },
+  {
+    "id": 27,
+    "resetAt": "2026-09-21T21:23:49.745Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:23:49.745Z",
+    "note": "Final clean reset after server test"
+  }
+]

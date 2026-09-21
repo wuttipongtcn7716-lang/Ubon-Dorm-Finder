@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
-import { recordEvent, AnalyticsEventType, isKnownAdminIdentifier } from '@/lib/analyticsDb';
+import { recordEvent, AnalyticsEventType, isKnownAdminIdentifier, registerAdminIdentifier } from '@/lib/analyticsDb';
 import { isRequestAdminAuthenticated } from '@/lib/adminAuth';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const ALLOWED_EVENTS: Set<AnalyticsEventType> = new Set<AnalyticsEventType>([
   'page_view',
@@ -12,17 +15,6 @@ const ALLOWED_EVENTS: Set<AnalyticsEventType> = new Set<AnalyticsEventType>([
 
 export async function POST(request: Request) {
   try {
-    // 1. Strict Admin Exclusion via Session Token
-    if (isRequestAdminAuthenticated(request)) {
-      return NextResponse.json({ ok: true, skipped: 'admin' });
-    }
-
-    // 2. Strict Admin Exclusion via Role Cookie
-    const cookieHeader = request.headers.get('cookie') || '';
-    if (cookieHeader.includes('dormie_role=admin') || cookieHeader.includes('admin_session=')) {
-      return NextResponse.json({ ok: true, skipped: 'admin' });
-    }
-
     let body: any = null;
     try {
       const text = await request.text();
@@ -33,6 +25,17 @@ export async function POST(request: Request) {
       try {
         body = await request.json();
       } catch {}
+    }
+
+    // 1. Strict Admin Exclusion via Session Token or Admin Cookies
+    const cookieHeader = request.headers.get('cookie') || '';
+    const isAdminAuth = isRequestAdminAuthenticated(request);
+    const hasAdminCookie = cookieHeader.includes('dormie_role=admin') || cookieHeader.includes('admin_session=');
+
+    if (isAdminAuth || hasAdminCookie) {
+      if (body?.visitorId) registerAdminIdentifier('visitor_id', body.visitorId);
+      if (body?.sessionId) registerAdminIdentifier('session_id', body.sessionId);
+      return NextResponse.json({ ok: true, skipped: 'admin' });
     }
 
     // 3. Exclude if body explicitly flags admin / system actor

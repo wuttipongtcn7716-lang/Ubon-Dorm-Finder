@@ -687,7 +687,16 @@ export function createResetRecord(createdBy = 'admin', note?: string): Analytics
     writeJsonResetHistory(list);
   }
 
-  // Update latest setting
+  // Always mirror reset history in JSON as fail-safe persistence
+  try {
+    const list = readJsonResetHistory();
+    if (!list.some(r => r.id === newRecord.id)) {
+      list.push(newRecord);
+      writeJsonResetHistory(list);
+    }
+  } catch (e) {}
+
+  // Update latest setting in both SQLite and JSON
   setAnalyticsSetting('analytics_display_reset_at', now);
 
   return newRecord;
@@ -696,7 +705,7 @@ export function createResetRecord(createdBy = 'admin', note?: string): Analytics
 export function getDisplayResetTimestamp(): string | null {
   if (useSqlite && sqliteDb) {
     try {
-      const row = sqliteDb.prepare('SELECT reset_at FROM analytics_reset_history ORDER BY datetime(reset_at) DESC LIMIT 1').get();
+      const row = sqliteDb.prepare('SELECT reset_at FROM analytics_reset_history ORDER BY id DESC LIMIT 1').get();
       if (row && row.reset_at) {
         return String(row.reset_at);
       }
@@ -827,7 +836,12 @@ export function recordEvent(event: AnalyticsEventInput): StoredAnalyticsEvent | 
 }
 
 /**
- * Calculate date range for the given period (using UTC ISO strings)
+ * Timezone & Localization for Thailand (Asia/Bangkok, UTC+7)
+ */
+const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+/**
+ * Calculate date range for the given period (using UTC ISO strings, Bangkok timezone for 'today')
  */
 function getPeriodDateRanges(period: PeriodType) {
   const now = new Date();
@@ -836,7 +850,15 @@ function getPeriodDateRanges(period: PeriodType) {
   let prevEnd: Date;
 
   if (period === 'today') {
-    currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    // Determine start of today in Asia/Bangkok (00:00:00 Bangkok time)
+    const nowBkk = new Date(now.getTime() + BANGKOK_OFFSET_MS);
+    const startOfTodayBkkUtcMs = Date.UTC(
+      nowBkk.getUTCFullYear(),
+      nowBkk.getUTCMonth(),
+      nowBkk.getUTCDate(),
+      0, 0, 0
+    ) - BANGKOK_OFFSET_MS;
+    currentStart = new Date(startOfTodayBkkUtcMs);
     prevEnd = new Date(currentStart.getTime() - 1);
     prevStart = new Date(currentStart.getTime() - 24 * 60 * 60 * 1000);
   } else if (period === '7d') {
@@ -861,10 +883,10 @@ function getPeriodDateRanges(period: PeriodType) {
   };
 }
 
-function calculatePercentChange(current: number, prev: number): number | null {
-  if (prev === 0) {
-    if (current === 0) return null;
-    return 100;
+function calculatePercentChange(current: number, prev: number, isPrevValid = true): number | null {
+  // If comparison period is invalid (e.g. before reset) or prev has 0 data, do not show misleading percentages
+  if (!isPrevValid || prev === 0) {
+    return null;
   }
   const change = ((current - prev) / prev) * 100;
   return Math.round(change * 10) / 10;
@@ -880,6 +902,7 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
 
   const currRange = applyResetToRange(currentStart, currentEnd, resetAt);
   const prevRange = applyResetToRange(prevStart, prevEnd, resetAt);
+  const isPrevValid = prevRange.isValid && (new Date(prevRange.start).getTime() <= new Date(prevRange.end).getTime());
 
   if (useSqlite && sqliteDb) {
     try {
@@ -920,22 +943,22 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
         uniqueVisitors: {
           value: curr.uniqueVisitors,
           prevValue: prev.uniqueVisitors,
-          changePercent: calculatePercentChange(curr.uniqueVisitors, prev.uniqueVisitors),
+          changePercent: calculatePercentChange(curr.uniqueVisitors, prev.uniqueVisitors, isPrevValid),
         },
         pageViews: {
           value: curr.pageViews,
           prevValue: prev.pageViews,
-          changePercent: calculatePercentChange(curr.pageViews, prev.pageViews),
+          changePercent: calculatePercentChange(curr.pageViews, prev.pageViews, isPrevValid),
         },
         searchEvents: {
           value: curr.searchEvents,
           prevValue: prev.searchEvents,
-          changePercent: calculatePercentChange(curr.searchEvents, prev.searchEvents),
+          changePercent: calculatePercentChange(curr.searchEvents, prev.searchEvents, isPrevValid),
         },
         dormitoryViews: {
           value: curr.dormitoryViews,
           prevValue: prev.dormitoryViews,
-          changePercent: calculatePercentChange(curr.dormitoryViews, prev.dormitoryViews),
+          changePercent: calculatePercentChange(curr.dormitoryViews, prev.dormitoryViews, isPrevValid),
         },
       };
     } catch (e) {
@@ -987,30 +1010,25 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
     uniqueVisitors: {
       value: curr.uniqueVisitors,
       prevValue: prev.uniqueVisitors,
-      changePercent: calculatePercentChange(curr.uniqueVisitors, prev.uniqueVisitors),
+      changePercent: calculatePercentChange(curr.uniqueVisitors, prev.uniqueVisitors, isPrevValid),
     },
     pageViews: {
       value: curr.pageViews,
       prevValue: prev.pageViews,
-      changePercent: calculatePercentChange(curr.pageViews, prev.pageViews),
+      changePercent: calculatePercentChange(curr.pageViews, prev.pageViews, isPrevValid),
     },
     searchEvents: {
       value: curr.searchEvents,
       prevValue: prev.searchEvents,
-      changePercent: calculatePercentChange(curr.searchEvents, prev.searchEvents),
+      changePercent: calculatePercentChange(curr.searchEvents, prev.searchEvents, isPrevValid),
     },
     dormitoryViews: {
       value: curr.dormitoryViews,
       prevValue: prev.dormitoryViews,
-      changePercent: calculatePercentChange(curr.dormitoryViews, prev.dormitoryViews),
+      changePercent: calculatePercentChange(curr.dormitoryViews, prev.dormitoryViews, isPrevValid),
     },
   };
 }
-
-/**
- * Timezone & Localization for Thailand (Asia/Bangkok, UTC+7)
- */
-const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 const THAI_MONTHS_SHORT = [
   'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',

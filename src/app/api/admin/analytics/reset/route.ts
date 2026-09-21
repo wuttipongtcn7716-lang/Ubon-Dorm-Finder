@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isRequestAdminAuthenticated, parseCookies, verifyAdminSessionToken, SESSION_COOKIE_NAME } from '@/lib/adminAuth';
-import { createResetRecord, getDisplayResetTimestamp, getResetHistory } from '@/lib/analyticsDb';
+import { createResetRecord, getDisplayResetTimestamp, getResetHistory, logAdminAudit } from '@/lib/analyticsDb';
 
 export async function GET(request: Request) {
   // Server-side Authentication Guard
@@ -58,6 +58,12 @@ export async function POST(request: Request) {
     } catch (e) {}
 
     const newRecord = createResetRecord(createdBy, note || 'รีเซ็ตการแสดงผลสถิติ');
+
+    // Log admin audit action (Requirement 14)
+    logAdminAudit(createdBy, 'RESET_ANALYTICS', {
+      resetRecordId: newRecord.id,
+      resetAt: newRecord.resetAt,
+    });
 
     return NextResponse.json({
       success: true,

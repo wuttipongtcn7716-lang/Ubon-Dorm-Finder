@@ -1,0 +1,42 @@
+[
+  {
+    "identifierType": "visitor_id",
+    "identifierValue": "admin_vis_1790024124037",
+    "createdAt": "2026-09-21T20:55:24.317Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "admin_ses_1790024124037",
+    "createdAt": "2026-09-21T20:55:24.320Z"
+  },
+  {
+    "identifierType": "visitor_id",
+    "identifierValue": "admin_vis_1790024153719",
+    "createdAt": "2026-09-21T20:55:53.734Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "admin_ses_1790024153719",
+    "createdAt": "2026-09-21T20:55:53.737Z"
+  },
+  {
+    "identifierType": "visitor_id",
+    "identifierValue": "admin_vis_1790024162346",
+    "createdAt": "2026-09-21T20:56:02.362Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "admin_ses_1790024162346",
+    "createdAt": "2026-09-21T20:56:02.365Z"
+  },
+  {
+    "identifierType": "visitor_id",
+    "identifierValue": "v_2f3c153e-2293-4ddb-9410-d8e97e28b92d",
+    "createdAt": "2026-09-21T20:57:48.175Z"
+  },
+  {
+    "identifierType": "session_id",
+    "identifierValue": "s_8d524e96-24af-458a-9d25-76adeeecac81",
+    "createdAt": "2026-09-21T20:57:48.180Z"
+  }
+]

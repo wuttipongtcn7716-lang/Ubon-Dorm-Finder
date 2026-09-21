@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { isRequestAdminAuthenticated } from '@/lib/adminAuth';
-import { getHistoricalPeriods, getHistoricalAnalyticsData } from '@/lib/analyticsDb';
+import { isRequestAdminAuthenticated, parseCookies, verifyAdminSessionToken, SESSION_COOKIE_NAME } from '@/lib/adminAuth';
+import { getHistoricalPeriods, getHistoricalAnalyticsData, logAdminAudit } from '@/lib/analyticsDb';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,10 +18,24 @@ export async function GET(request: Request) {
   }
 
   try {
+    let adminUsername = 'admin';
+    try {
+      const cookieHeader = request.headers.get('cookie') || '';
+      const cookies = parseCookies(cookieHeader);
+      const session = verifyAdminSessionToken(cookies[SESSION_COOKIE_NAME]);
+      if (session?.username) adminUsername = session.username;
+    } catch (e) {}
+
     const { searchParams } = new URL(request.url);
     const periodId = searchParams.get('periodId');
     const startParam = searchParams.get('start');
     const endParam = searchParams.get('end');
+
+    // Log admin audit action (Requirement 14)
+    logAdminAudit(adminUsername, 'VIEW_ANALYTICS_HISTORY', {
+      periodId: periodId || null,
+      customRange: endParam ? { start: startParam, end: endParam } : null,
+    });
 
     const periods = getHistoricalPeriods();
 

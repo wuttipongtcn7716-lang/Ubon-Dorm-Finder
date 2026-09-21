@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { recordEvent, AnalyticsEventType } from '@/lib/analyticsDb';
+import { recordEvent, AnalyticsEventType, isKnownAdminIdentifier } from '@/lib/analyticsDb';
+import { isRequestAdminAuthenticated } from '@/lib/adminAuth';
 
 const ALLOWED_EVENTS: Set<AnalyticsEventType> = new Set<AnalyticsEventType>([
   'page_view',
@@ -11,6 +12,17 @@ const ALLOWED_EVENTS: Set<AnalyticsEventType> = new Set<AnalyticsEventType>([
 
 export async function POST(request: Request) {
   try {
+    // 1. Strict Admin Exclusion via Session Token
+    if (isRequestAdminAuthenticated(request)) {
+      return NextResponse.json({ ok: true, skipped: 'admin' });
+    }
+
+    // 2. Strict Admin Exclusion via Role Cookie
+    const cookieHeader = request.headers.get('cookie') || '';
+    if (cookieHeader.includes('dormie_role=admin') || cookieHeader.includes('admin_session=')) {
+      return NextResponse.json({ ok: true, skipped: 'admin' });
+    }
+
     let body: any = null;
     try {
       const text = await request.text();
@@ -21,6 +33,22 @@ export async function POST(request: Request) {
       try {
         body = await request.json();
       } catch {}
+    }
+
+    // 3. Exclude if body explicitly flags admin / system actor
+    if (body?.actorType === 'admin' || body?.actorType === 'system' || body?.role === 'admin' || body?.isAdmin) {
+      return NextResponse.json({ ok: true, skipped: 'admin' });
+    }
+
+    // 4. Exclude any events targeting admin paths (e.g. /admin, /admin/analytics, /admin/login)
+    const targetPage = body?.page ? String(body.page) : '';
+    if (targetPage.startsWith('/admin')) {
+      return NextResponse.json({ ok: true, skipped: 'admin_path' });
+    }
+
+    // 5. Exclude if visitorId or sessionId is a registered Admin identifier
+    if (isKnownAdminIdentifier(body?.visitorId, body?.sessionId)) {
+      return NextResponse.json({ ok: true, skipped: 'admin' });
     }
 
     const { 
@@ -64,6 +92,7 @@ export async function POST(request: Request) {
       eventName,
       sessionId: String(sessionId).slice(0, 64),
       visitorId: String(visitorId).slice(0, 64),
+      actorType: 'user',
       userId: userId ? String(userId).slice(0, 64) : null,
       page: page ? String(page).slice(0, 255) : null,
       dormitoryId: typeof dormitoryId === 'number' ? dormitoryId : null,

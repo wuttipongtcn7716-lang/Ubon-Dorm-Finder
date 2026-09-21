@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { PeriodType, AnalyticsDashboardData, HistoricalPeriod } from '@/lib/analyticsDb';
 import AnalyticsChart from '@/components/admin/AnalyticsChart';
+import { getVisitorId, getSessionId } from '@/utils/analytics';
 
 const PERIOD_OPTIONS: { label: string; value: PeriodType }[] = [
   { label: 'วันนี้', value: 'today' },
@@ -80,7 +81,7 @@ export default function AdminAnalyticsPage() {
       setIsResetModalOpen(false);
       setIsViewingHistorical(false);
       setActiveHistoricalPeriod(null);
-      setResetSuccess('รีเซ็ตการแสดงผลสถิติเรียบร้อยแล้ว (Dashboard ปัจจุบันเริ่มนับใหม่ตั้งแต่ 0)');
+      setResetSuccess('รีเซ็ตสถิติเรียบร้อยแล้ว เริ่มนับข้อมูลใหม่ตั้งแต่เวลานี้');
       await fetchData(selectedPeriod);
       await fetchHistory();
       setTimeout(() => {
@@ -140,12 +141,13 @@ export default function AdminAnalyticsPage() {
 
       const json = await res.json();
       if (json.success && json.data) {
-        setIsAuthenticated(true);
         setData(json.data);
+        setIsAuthenticated(true);
       } else {
-        throw new Error(json.error || 'Failed to parse response');
+        throw new Error('Malformed response');
       }
     } catch (err) {
+      console.error('Error fetching analytics:', err);
       setIsError(true);
     } finally {
       setIsLoading(false);
@@ -155,7 +157,7 @@ export default function AdminAnalyticsPage() {
   useEffect(() => {
     fetchData(selectedPeriod);
     fetchHistory();
-  }, [selectedPeriod, fetchData, fetchHistory]);
+  }, [fetchData, selectedPeriod, fetchHistory]);
 
   const handleInPageLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,10 +170,18 @@ export default function AdminAnalyticsPage() {
     setLoginError(null);
 
     try {
+      const visitorId = getVisitorId();
+      const sessionId = getSessionId();
+
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: loginUsername, password: loginPassword }),
+        body: JSON.stringify({ 
+          username: loginUsername, 
+          password: loginPassword,
+          visitorId,
+          sessionId,
+        }),
       });
 
       const json = await res.json();
@@ -180,6 +190,11 @@ export default function AdminAnalyticsPage() {
         setLoginLoading(false);
         return;
       }
+
+      try {
+        localStorage.setItem('dormie_admin_active', '1');
+        localStorage.setItem('dormie_is_admin', 'true');
+      } catch (e) {}
 
       setIsAuthenticated(true);
       setLoginLoading(false);
@@ -194,9 +209,17 @@ export default function AdminAnalyticsPage() {
     setIsLoggingOut(true);
     try {
       await fetch('/api/admin/logout', { method: 'POST' });
+      try {
+        localStorage.removeItem('dormie_admin_active');
+        localStorage.removeItem('dormie_is_admin');
+      } catch (e) {}
       setIsAuthenticated(false);
       setData(null);
     } catch (e) {
+      try {
+        localStorage.removeItem('dormie_admin_active');
+        localStorage.removeItem('dormie_is_admin');
+      } catch (err) {}
       setIsAuthenticated(false);
     } finally {
       setIsLoggingOut(false);
@@ -391,39 +414,39 @@ export default function AdminAnalyticsPage() {
             </p>
           </div>
 
-          {/* Controls: History Button, Reset Button & Single Filter Dropdown */}
+          {/* Controls: Reset Button, History Button & Single Filter Dropdown */}
           <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
-            {/* View Reset History Button */}
-            <button
-              type="button"
-              onClick={() => {
-                fetchHistory();
-                setIsHistoryModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-bold rounded-xl bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-300/90 hover:border-blue-300 shadow-2xs transition cursor-pointer"
-              title="ดูข้อมูลสถิติที่ Reset ไปในอดีต"
-            >
-              <History className="w-3.5 h-3.5 text-blue-600" />
-              <span>ดูข้อมูลที่ Reset ไป</span>
-              {historyList.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black">
-                  {historyList.length}
-                </span>
-              )}
-            </button>
-
-            {/* Reset Display Button */}
+            {/* Reset Display Button (Primary Prominent Action - Requirement 7) */}
             <button
               type="button"
               onClick={() => {
                 setResetError(null);
                 setIsResetModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-bold rounded-xl bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-300/90 hover:border-rose-300 shadow-2xs transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition cursor-pointer"
               title="รีเซ็ตการแสดงผลสถิติบน Dashboard"
             >
-              <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+              <RotateCcw className="w-3.5 h-3.5" />
               <span>รีเซ็ตการแสดงผล</span>
+            </button>
+
+            {/* View Reset History Button (Requirement 8) */}
+            <button
+              type="button"
+              onClick={() => {
+                fetchHistory();
+                setIsHistoryModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300/90 shadow-2xs transition cursor-pointer"
+              title="ดูประวัติสถิติที่ผ่านมา"
+            >
+              <History className="w-3.5 h-3.5 text-blue-600" />
+              <span>ประวัติสถิติ</span>
+              {historyList.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black">
+                  {historyList.length}
+                </span>
+              )}
             </button>
 
             {/* Single Filter Dropdown (Hidden/Disabled in Historical Mode) */}
@@ -486,7 +509,7 @@ export default function AdminAnalyticsPage() {
               className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition cursor-pointer self-start sm:self-auto shrink-0"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>← กลับไปดูสถิติปัจจุบัน</span>
+              <span>กลับไปดูสถิติปัจจุบัน</span>
             </button>
           </div>
         )}
@@ -538,17 +561,17 @@ export default function AdminAnalyticsPage() {
           </div>
         )}
 
-        {/* Empty State Banner (If no events yet in this period) */}
+        {/* Empty State Banner (Requirement 20) */}
         {isCompletelyEmpty && !isError && (
-          <div className="p-6 rounded-3xl bg-amber-50/70 border border-amber-200/80 text-center space-y-2">
+          <div className="p-6 rounded-3xl bg-amber-50/70 border border-amber-200/80 text-center space-y-1.5">
             <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto mb-1">
               <BarChart2 className="w-5 h-5" />
             </div>
             <h2 className="font-bold text-amber-950 text-base">
-              ยังไม่มีข้อมูลการใช้งานในช่วงเวลานี้
+              ยังไม่มีข้อมูลการใช้งาน
             </h2>
             <p className="text-xs sm:text-sm text-amber-800/80 max-w-md mx-auto">
-              เมื่อมีผู้เข้าชมเว็บไซต์ ค้นหาหอพัก หรือกดดูรายละเอียด ระบบจะบันทึก Event และนำสถิติมาแสดงบนหน้านี้โดยอัตโนมัติ
+              เริ่มมีข้อมูลเมื่อมีผู้ใช้ใช้งานเว็บไซต์
             </p>
           </div>
         )}
@@ -785,7 +808,7 @@ export default function AdminAnalyticsPage() {
         </section>
       </main>
 
-      {/* Confirmation Modal for Reset Display */}
+      {/* Confirmation Modal for Reset Display (Requirement 7) */}
       {isResetModalOpen && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150"
@@ -793,59 +816,35 @@ export default function AdminAnalyticsPage() {
           aria-modal="true"
           aria-labelledby="reset-modal-title"
         >
-          <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
-            {/* Modal Icon & Header */}
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
-                <RotateCcw className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h3 id="reset-modal-title" className="text-lg font-black text-slate-900">
-                  รีเซ็ตการแสดงผลสถิติ?
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
-                  Dashboard จะเริ่มแสดงข้อมูลใหม่ตั้งแต่เวลานี้
-                </p>
-                <p className="text-xs text-slate-500">
-                  ข้อมูล Analytics เดิมจะไม่ถูกลบ และสามารถเปิดดูย้อนหลังได้
-                </p>
-              </div>
+          <div className="max-w-sm w-full bg-white rounded-3xl p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-1">
+              <RotateCcw className="w-6 h-6" />
             </div>
 
-            {/* Explanatory Bullet Card */}
-            <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-950 space-y-2">
-              <div className="flex items-center gap-1.5 font-bold text-amber-900">
-                <ShieldCheck className="w-4 h-4 text-amber-700" />
-                <span>คำชี้แจงความปลอดภัยของข้อมูล:</span>
-              </div>
-              <ul className="list-disc list-inside space-y-1 text-amber-900/90 pl-1">
-                <li>
-                  ตัวเลขบน Dashboard ปัจจุบันจะถูกปรับกลับเป็น <strong>0</strong> ทันที
-                </li>
-                <li>
-                  เมื่อมีผู้ใช้งานหรือการเข้าชมใหม่ ตัวเลขจะเริ่มนับเพิ่มขึ้นตามจริง
-                </li>
-                <li>
-                  <strong>ข้อมูล Analytics จริงในอดีตจะไม่ถูกลบ</strong> ออกจากฐานข้อมูล และสามารถกดดูย้อนหลังได้ตลอดเวลา
-                </li>
-              </ul>
+            <div className="space-y-1">
+              <h3 id="reset-modal-title" className="text-base sm:text-lg font-black text-slate-900">
+                เริ่มนับสถิติใหม่ตั้งแต่ตอนนี้?
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                ข้อมูลเดิมจะไม่ถูกลบ<br />และยังสามารถดูย้อนหลังได้
+              </p>
             </div>
 
             {/* Error in modal if any */}
             {resetError && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2 text-left">
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>{resetError}</span>
               </div>
             )}
 
-            {/* Buttons */}
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+            {/* Action Buttons: [ยกเลิก] [รีเซ็ต] */}
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
               <button
                 type="button"
                 disabled={isResetting}
                 onClick={() => setIsResetModalOpen(false)}
-                className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs sm:text-sm font-bold transition cursor-pointer disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs sm:text-sm font-bold transition cursor-pointer disabled:opacity-50"
               >
                 ยกเลิก
               </button>
@@ -853,7 +852,7 @@ export default function AdminAnalyticsPage() {
                 type="button"
                 disabled={isResetting}
                 onClick={handleConfirmReset}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-rose-600/20 transition cursor-pointer disabled:opacity-70"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-rose-600/20 transition cursor-pointer disabled:opacity-70"
               >
                 {isResetting ? (
                   <>
@@ -861,10 +860,7 @@ export default function AdminAnalyticsPage() {
                     <span>กำลังรีเซ็ต...</span>
                   </>
                 ) : (
-                  <>
-                    <RotateCcw className="w-4 h-4" />
-                    <span>ยืนยันการรีเซ็ต</span>
-                  </>
+                  <span>รีเซ็ต</span>
                 )}
               </button>
             </div>
@@ -872,7 +868,7 @@ export default function AdminAnalyticsPage() {
         </div>
       )}
 
-      {/* History Modal for Past Reset Periods */}
+      {/* History Modal for Past Reset Periods (Requirement 8 & 21) */}
       {isHistoryModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150"
@@ -880,98 +876,79 @@ export default function AdminAnalyticsPage() {
           aria-modal="true"
           aria-labelledby="history-modal-title"
         >
-          <div className="max-w-2xl w-full bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+          <div className="max-w-lg w-full bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150 max-h-[85vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                   <History className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 id="history-modal-title" className="text-lg font-black text-slate-900">
-                    ประวัติสถิติที่ Reset ไป
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    เลือกช่วงเวลาเพื่อเปิดดูข้อมูลสถิติย้อนหลัง (คำนวณจากฐานข้อมูลจริง)
-                  </p>
-                </div>
+                <h3 id="history-modal-title" className="text-base sm:text-lg font-black text-slate-900">
+                  ประวัติสถิติ
+                </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsHistoryModalOpen(false)}
-                className="w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                className="w-8 h-8 rounded-xl hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition cursor-pointer text-sm font-bold"
               >
                 ✕
               </button>
             </div>
 
             {/* Content List */}
-            <div className="overflow-y-auto space-y-3 pr-1 flex-1">
+            <div className="overflow-y-auto space-y-2.5 pr-1 flex-1">
               {isHistoryLoading ? (
-                <div className="py-12 text-center text-slate-500 text-xs flex flex-col items-center gap-2">
-                  <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                <div className="py-10 text-center text-slate-500 text-xs flex flex-col items-center gap-2">
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
                   <span>กำลังโหลดประวัติสถิติ...</span>
                 </div>
               ) : historyList.length === 0 ? (
-                <div className="py-12 text-center text-slate-400 text-xs sm:text-sm space-y-1">
-                  <p className="font-semibold text-slate-600">ยังไม่มีประวัติการ Reset สถิติในระบบ</p>
-                  <p className="text-xs text-slate-400">เมื่อมีการกด "รีเซ็ตการแสดงผล" ข้อมูลแต่ละช่วงจะปรากฏที่นี่</p>
+                <div className="py-10 text-center text-slate-400 text-xs sm:text-sm space-y-1">
+                  <p className="font-semibold text-slate-600">ยังไม่มีประวัติสถิติ</p>
+                  <p className="text-xs text-slate-400">เมื่อมีการกดรีเซ็ต ข้อมูลแต่ละช่วงจะถูกบันทึกที่นี่</p>
                 </div>
               ) : (
                 historyList.map((period, idx) => (
                   <div
                     key={period.id}
-                    className="p-4 rounded-2xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    className="p-3.5 rounded-2xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 transition flex items-center justify-between gap-3"
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-slate-900">
-                          {period.label}
-                        </span>
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
-                          {idx === 0 ? 'ช่วงก่อน Reset ล่าสุด' : `ช่วงที่ ${historyList.length - idx}`}
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {idx === 0 && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                            ล่าสุด
+                          </span>
+                        )}
+                        <span className="text-xs sm:text-sm font-bold text-slate-800">
+                          {new Date(period.endAt).toLocaleString('th-TH', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500">
-                        {period.startAt ? new Date(period.startAt).toLocaleString('th-TH') : 'เริ่มต้นบันทึกข้อมูล'} — {new Date(period.endAt).toLocaleString('th-TH')}
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {period.startAt ? new Date(period.startAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) : 'จุดเริ่มต้น'} — {new Date(period.endAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
                       </p>
-                      <div className="flex items-center gap-3 pt-1 text-xs text-slate-600 flex-wrap">
-                        <span>ผู้ใช้งาน: <strong className="text-slate-900">{period.summaryPreview.uniqueVisitors.toLocaleString()}</strong> คน</span>
-                        <span>•</span>
-                        <span>เข้าชม: <strong className="text-slate-900">{period.summaryPreview.pageViews.toLocaleString()}</strong> ครั้ง</span>
-                        <span>•</span>
-                        <span>ดูหอพัก: <strong className="text-slate-900">{period.summaryPreview.dormitoryViews.toLocaleString()}</strong> ครั้ง</span>
-                        <span>•</span>
-                        <span>ค้นหา: <strong className="text-slate-900">{period.summaryPreview.searchEvents.toLocaleString()}</strong> ครั้ง</span>
-                      </div>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => handleSelectHistoricalPeriod(period)}
-                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition cursor-pointer shrink-0"
+                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-2xs transition cursor-pointer shrink-0"
                     >
-                      <span>ดูข้อมูลช่วงนี้</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <span>ดูข้อมูล</span>
+                      <span>→</span>
                     </button>
                   </div>
                 ))
               )}
             </div>
 
-            {/* Footer */}
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span className="flex items-center gap-1 text-emerald-600 font-medium">
-                <ShieldCheck className="w-4 h-4 shrink-0" />
-                ข้อมูลทั้งหมดถูกเก็บรักษาอย่างปลอดภัย 100%
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsHistoryModalOpen(false)}
-                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold transition cursor-pointer"
-              >
-                ปิด
-              </button>
+            {/* Footer: Exactly 1 clean line (Requirement 21) */}
+            <div className="pt-3 border-t border-slate-100 text-center text-xs text-slate-500">
+              ข้อมูลเดิมจะถูกเก็บไว้และสามารถดูย้อนหลังได้
             </div>
           </div>
         </div>

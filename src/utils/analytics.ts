@@ -73,17 +73,61 @@ export function getSessionId(): string {
 }
 
 /**
+ * Check if current user is an authenticated Admin.
+ * Admin sessions are strictly excluded from all user analytics tracking (Requirement 11, 12, 13).
+ */
+export function isAdminUser(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    // 1. Any page inside /admin path
+    if (window.location.pathname.startsWith('/admin')) {
+      return true;
+    }
+    // 2. Client-side admin persistence flags
+    if (
+      localStorage.getItem('dormie_admin_active') === '1' ||
+      localStorage.getItem('dormie_is_admin') === 'true' ||
+      sessionStorage.getItem('dormie_admin_active') === '1'
+    ) {
+      return true;
+    }
+    // 3. Client cookies check
+    const cookie = document.cookie || '';
+    if (
+      cookie.split(';').some((c) => {
+        const trimmed = c.trim();
+        return (
+          trimmed.startsWith('dormie_role=admin') ||
+          trimmed.startsWith('admin_session=')
+        );
+      })
+    ) {
+      return true;
+    }
+  } catch (e) {}
+  return false;
+}
+
+/**
  * Main reusable tracking function.
  * Completely asynchronous and fail-safe (never crashes caller).
+ * Strictly excludes administrative users.
  */
 export function trackEvent(eventName: TrackableEvent, payload: EventPayload = {}): void {
   if (typeof window === 'undefined') return;
+
+  // Strict Admin Exclusion (Requirement 11, 12, 13)
+  // Admin actions (browsing, searching, viewing dorms) are NEVER recorded into user analytics
+  if (isAdminUser()) {
+    return;
+  }
 
   try {
     const data = {
       eventName,
       sessionId: getSessionId(),
       visitorId: getVisitorId(),
+      actorType: 'user',
       page: payload.page || (typeof window !== 'undefined' ? window.location.pathname : '/'),
       dormitoryId: payload.dormitoryId || null,
       dormitoryName: payload.dormitoryName || null,
@@ -94,12 +138,13 @@ export function trackEvent(eventName: TrackableEvent, payload: EventPayload = {}
 
     const jsonString = JSON.stringify(data);
 
-    // Send event asynchronously with keepalive
+    // Send event asynchronously with keepalive and credentials
     fetch('/api/analytics/track', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
       body: jsonString,
       keepalive: true,
     }).catch(() => {

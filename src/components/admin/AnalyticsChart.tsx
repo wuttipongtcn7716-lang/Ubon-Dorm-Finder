@@ -81,6 +81,10 @@ export default function AnalyticsChart({ data, isLoading }: AnalyticsChartProps)
     };
   }, [data]);
 
+  const isHourly = useMemo(() => {
+    return data.length > 0 && data.length <= 25 && data.some((d) => /^\d{2}:00$/.test(d.label));
+  }, [data]);
+
   if (isLoading) {
     return (
       <div className="w-full h-64 bg-slate-100/80 rounded-2xl animate-pulse flex items-center justify-center">
@@ -179,8 +183,8 @@ export default function AnalyticsChart({ data, isLoading }: AnalyticsChartProps)
           {/* Interactive Data Points */}
           {points.map((pt, idx) => {
             const isHovered = hoveredIndex === idx;
-            // Render circle on hover or at intervals for dense data
-            const showCircle = isHovered || data.length <= 14 || idx % Math.ceil(data.length / 10) === 0;
+            // Render circle on hover, on all points for hourly, or at intervals for dense data
+            const showCircle = isHovered || isHourly || data.length <= 14 || idx % Math.ceil(data.length / 10) === 0;
 
             return (
               <g key={idx}>
@@ -200,7 +204,7 @@ export default function AnalyticsChart({ data, isLoading }: AnalyticsChartProps)
                   <circle
                     cx={pt.x}
                     cy={pt.y}
-                    r={isHovered ? 6 : 3.5}
+                    r={isHovered ? 6 : (isHourly && data.length > 18 ? 2.5 : 3.5)}
                     fill={isHovered ? '#1d4ed8' : '#ffffff'}
                     stroke="#1d4ed8"
                     strokeWidth={isHovered ? 2.5 : 2}
@@ -212,11 +216,14 @@ export default function AnalyticsChart({ data, isLoading }: AnalyticsChartProps)
             );
           })}
 
-          {/* X-Axis Date Labels */}
+          {/* X-Axis Date/Time Labels */}
           {points.map((pt, idx) => {
             // Adaptive label stepping based on data length
             let showLabel = false;
-            if (data.length <= 7) {
+            if (isHourly) {
+              // Strictly show every 1 hour (no auto-skip)
+              showLabel = true;
+            } else if (data.length <= 7) {
               showLabel = true;
             } else if (data.length <= 14) {
               showLabel = idx % 2 === 0 || idx === data.length - 1;
@@ -235,8 +242,9 @@ export default function AnalyticsChart({ data, isLoading }: AnalyticsChartProps)
                 y={225}
                 textAnchor="middle"
                 fill="#64748b"
-                fontSize="11"
-                fontWeight="500"
+                fontSize={isHourly ? (data.length > 18 ? '8.5' : '9.5') : '11'}
+                fontWeight={isHourly ? '600' : '500'}
+                className="tabular-nums"
               >
                 {pt.data.label}
               </text>
@@ -248,21 +256,28 @@ export default function AnalyticsChart({ data, isLoading }: AnalyticsChartProps)
       {/* Floating Hover Tooltip */}
       {activePoint && (
         <div
-          className="absolute pointer-events-none transform -translate-x-1/2 -translate-y-full transition-all duration-100 z-10"
+          className="absolute pointer-events-none transform -translate-x-1/2 -translate-y-full transition-all duration-100 z-20"
           style={{
             left: `${(activePoint.x / 800) * 100}%`,
             top: `${(activePoint.y / 240) * 100}%`,
             marginTop: '-12px',
           }}
         >
-          <div className="bg-slate-900/95 text-white backdrop-blur-md px-3 py-2 rounded-xl shadow-xl border border-slate-700/60 text-xs whitespace-nowrap">
-            <div className="flex items-center gap-1.5 text-slate-300 text-[11px] mb-0.5">
-              <Calendar className="w-3 h-3 text-amber-400" />
-              <span>{activePoint.data.label}</span>
+          <div className="bg-slate-900/95 text-white backdrop-blur-md px-3.5 py-2.5 rounded-2xl shadow-xl border border-slate-700/60 text-xs whitespace-nowrap space-y-1">
+            <div className="flex items-center gap-1.5 text-slate-300 text-[11px]">
+              <Calendar className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="font-semibold text-slate-200">
+                {activePoint.data.fullDateLabel || activePoint.data.label}
+              </span>
             </div>
-            <div className="flex items-center gap-1.5 font-bold text-sm text-white">
-              <Users className="w-3.5 h-3.5 text-blue-400" />
-              <span>{activePoint.data.visitors.toLocaleString()} คน</span>
+            {activePoint.data.timeRangeLabel && (
+              <div className="text-[11px] text-amber-300 font-medium pl-5">
+                {activePoint.data.timeRangeLabel}
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-white pt-0.5 border-t border-slate-800">
+              <Users className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <span>ผู้ใช้งาน {activePoint.data.visitors.toLocaleString()} คน</span>
             </div>
           </div>
         </div>

@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminCredentials, createAdminSessionToken, SESSION_COOKIE_NAME } from '@/lib/adminAuth';
+import { logAdminAudit, registerAdminIdentifier } from '@/lib/analyticsDb';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { username, password } = body || {};
+    const { username, password, visitorId, sessionId } = body || {};
 
     if (!username || !password) {
       return NextResponse.json(
@@ -21,8 +22,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // Register this Admin's browser visitor ID and session ID to permanently exclude from User Analytics
+    if (visitorId && typeof visitorId === 'string') {
+      registerAdminIdentifier('visitor_id', visitorId);
+    }
+    if (sessionId && typeof sessionId === 'string') {
+      registerAdminIdentifier('session_id', sessionId);
+    }
+
     const token = createAdminSessionToken(username);
     const isProduction = process.env.NODE_ENV === 'production';
+
+    // Log admin audit action (Requirement 14)
+    logAdminAudit(username, 'LOGIN', {
+      userAgent: request.headers.get('user-agent') || 'unknown',
+      visitorId: visitorId || null,
+      sessionId: sessionId || null,
+    });
 
     const response = NextResponse.json({
       success: true,
@@ -30,7 +46,7 @@ export async function POST(request: Request) {
       user: { username, role: 'admin' },
     });
 
-    // Set secure HTTP-only cookie
+    // Set secure HTTP-only session cookie
     response.cookies.set({
       name: SESSION_COOKIE_NAME,
       value: token,
@@ -39,6 +55,17 @@ export async function POST(request: Request) {
       sameSite: 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60, // 7 days
+    });
+
+    // Set client-readable indicator cookie for immediate client-side tracking exclusion
+    response.cookies.set({
+      name: 'dormie_role',
+      value: 'admin',
+      httpOnly: false,
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60,
     });
 
     return response;

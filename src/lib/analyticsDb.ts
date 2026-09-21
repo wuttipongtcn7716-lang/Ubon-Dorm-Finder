@@ -8,10 +8,13 @@ export type AnalyticsEventType =
   | 'map_click' 
   | 'navigation_click';
 
+export type ActorType = 'user' | 'admin' | 'system';
+
 export interface AnalyticsEventInput {
   eventName: AnalyticsEventType;
   sessionId: string;
   visitorId: string;
+  actorType?: ActorType;
   userId?: string | null;
   page?: string | null;
   dormitoryId?: number | null;
@@ -26,6 +29,7 @@ export interface StoredAnalyticsEvent {
   eventName: AnalyticsEventType;
   sessionId: string;
   visitorId: string;
+  actorType?: ActorType;
   userId: string | null;
   page: string | null;
   dormitoryId: number | null;
@@ -55,6 +59,8 @@ export interface TimelineDataPoint {
   label: string;
   visitors: number;
   views: number;
+  fullDateLabel?: string;
+  timeRangeLabel?: string;
 }
 
 export interface TopDormitory {
@@ -74,6 +80,14 @@ export interface AnalyticsResetRecord {
   createdBy: string;   // e.g. 'admin'
   createdAt: string;   // ISO timestamp
   note?: string | null;
+}
+
+export interface AdminAuditLogRecord {
+  id: number;
+  adminId: string;
+  action: string;
+  createdAt: string;
+  metadata?: Record<string, any> | null;
 }
 
 export interface HistoricalPeriod {
@@ -122,19 +136,21 @@ export interface PublicStatisticsData {
  * - Production: uses analytics.prod.db (or /tmp/analytics.prod.db on Vercel serverless)
  * - Or explicit ANALYTICS_DB_PATH environment variable
  */
-export function resolveAnalyticsStorageConfig() {
+export function resolveAnalyticsStorageConfig(customDbPath?: string) {
   const nodeEnv = process.env.NODE_ENV || 'development';
   const isProd = nodeEnv === 'production';
   const isTest = nodeEnv === 'test';
   const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
-  if (process.env.ANALYTICS_DB_PATH) {
-    const explicit = process.env.ANALYTICS_DB_PATH;
-    const dbPath = path.isAbsolute(explicit) ? explicit : path.join(process.cwd(), explicit);
-    const jsonPath = dbPath.replace(/\.db$/, '.json');
+  const activeCustomPath = customDbPath || process.env.ANALYTICS_DB_PATH;
+  if (activeCustomPath) {
+    const dbPath = path.isAbsolute(activeCustomPath) ? activeCustomPath : path.join(process.cwd(), activeCustomPath);
+    const jsonPath = dbPath.replace(/\.db$/, '_events.json');
     const settingsJsonPath = dbPath.replace(/\.db$/, '_settings.json');
     const historyJsonPath = dbPath.replace(/\.db$/, '_history.json');
-    return { environment: nodeEnv, dbPath, jsonPath, settingsJsonPath, historyJsonPath, isProduction: isProd };
+    const auditJsonPath = dbPath.replace(/\.db$/, '_audit.json');
+    const adminIdentifiersJsonPath = dbPath.replace(/\.db$/, '_admin_identifiers.json');
+    return { environment: nodeEnv, dbPath, jsonPath, settingsJsonPath, historyJsonPath, auditJsonPath, adminIdentifiersJsonPath, isProduction: isProd };
   }
 
   let dataDir: string;
@@ -142,6 +158,8 @@ export function resolveAnalyticsStorageConfig() {
   let jsonFileName: string;
   let settingsFileName: string;
   let historyFileName: string;
+  let auditFileName: string;
+  let adminIdentifiersFileName: string;
 
   if (isProd) {
     dataDir = isServerless ? '/tmp' : path.join(process.cwd(), 'data');
@@ -149,18 +167,24 @@ export function resolveAnalyticsStorageConfig() {
     jsonFileName = 'analytics_events.prod.json';
     settingsFileName = 'analytics_settings.prod.json';
     historyFileName = 'analytics_reset_history.prod.json';
+    auditFileName = 'admin_audit_logs.prod.json';
+    adminIdentifiersFileName = 'admin_identifiers.prod.json';
   } else if (isTest) {
     dataDir = path.join(process.cwd(), 'data');
     dbFileName = 'analytics.test.db';
     jsonFileName = 'analytics_events.test.json';
     settingsFileName = 'analytics_settings.test.json';
     historyFileName = 'analytics_reset_history.test.json';
+    auditFileName = 'admin_audit_logs.test.json';
+    adminIdentifiersFileName = 'admin_identifiers.test.json';
   } else {
     dataDir = path.join(process.cwd(), 'data');
     dbFileName = 'analytics.dev.db';
     jsonFileName = 'analytics_events.dev.json';
     settingsFileName = 'analytics_settings.dev.json';
     historyFileName = 'analytics_reset_history.dev.json';
+    auditFileName = 'admin_audit_logs.dev.json';
+    adminIdentifiersFileName = 'admin_identifiers.dev.json';
   }
 
   return {
@@ -169,6 +193,8 @@ export function resolveAnalyticsStorageConfig() {
     jsonPath: path.join(dataDir, jsonFileName),
     settingsJsonPath: path.join(dataDir, settingsFileName),
     historyJsonPath: path.join(dataDir, historyFileName),
+    auditJsonPath: path.join(dataDir, auditFileName),
+    adminIdentifiersJsonPath: path.join(dataDir, adminIdentifiersFileName),
     isProduction: isProd,
   };
 }
@@ -202,6 +228,7 @@ try {
       event_name TEXT NOT NULL,
       session_id TEXT NOT NULL,
       visitor_id TEXT NOT NULL,
+      actor_type TEXT DEFAULT 'user',
       user_id TEXT,
       page TEXT,
       dormitory_id INTEGER,
@@ -222,12 +249,36 @@ try {
       created_at TEXT NOT NULL,
       note TEXT
     );
+    CREATE TABLE IF NOT EXISTS admin_audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      admin_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      metadata TEXT
+    );
+    CREATE TABLE IF NOT EXISTS admin_identifiers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      identifier_type TEXT NOT NULL,
+      identifier_value TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_event_name ON analytics_events(event_name);
     CREATE INDEX IF NOT EXISTS idx_created_at ON analytics_events(created_at);
     CREATE INDEX IF NOT EXISTS idx_visitor_id ON analytics_events(visitor_id);
     CREATE INDEX IF NOT EXISTS idx_dormitory_id ON analytics_events(dormitory_id);
     CREATE INDEX IF NOT EXISTS idx_reset_at ON analytics_reset_history(reset_at);
+    CREATE INDEX IF NOT EXISTS idx_audit_action ON admin_audit_logs(action);
+    CREATE INDEX IF NOT EXISTS idx_audit_created_at ON admin_audit_logs(created_at);
+    CREATE INDEX IF NOT EXISTS idx_admin_id_type_val ON admin_identifiers(identifier_type, identifier_value);
   `);
+
+  // Safely migrate existing databases: add actor_type column if not present
+  try {
+    sqliteDb.exec(`ALTER TABLE analytics_events ADD COLUMN actor_type TEXT DEFAULT 'user';`);
+  } catch (e) {}
+  try {
+    sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_actor_type ON analytics_events(actor_type);`);
+  } catch (e) {}
 
   // Migrate existing reset setting into reset history if history is currently empty
   try {
@@ -315,6 +366,210 @@ function writeJsonResetHistory(history: AnalyticsResetRecord[]) {
   } catch (err) {
     console.error('Failed to write JSON reset history:', err);
   }
+}
+
+// Helper: read JSON audit logs fallback
+function readJsonAuditLogs(): AdminAuditLogRecord[] {
+  try {
+    if (!fs.existsSync(activeConfig.auditJsonPath)) return [];
+    const raw = fs.readFileSync(activeConfig.auditJsonPath, 'utf-8');
+    return JSON.parse(raw);
+  } catch (err) {
+    return [];
+  }
+}
+
+// Helper: write JSON audit logs fallback
+function writeJsonAuditLogs(logs: AdminAuditLogRecord[]) {
+  try {
+    fs.writeFileSync(activeConfig.auditJsonPath, JSON.stringify(logs, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Failed to write JSON audit logs:', err);
+  }
+}
+
+// Helper: read JSON admin identifiers fallback
+function readJsonAdminIdentifiers(): { identifierType: string; identifierValue: string; createdAt: string }[] {
+  try {
+    if (!fs.existsSync(activeConfig.adminIdentifiersJsonPath)) return [];
+    const raw = fs.readFileSync(activeConfig.adminIdentifiersJsonPath, 'utf-8');
+    return JSON.parse(raw);
+  } catch (err) {
+    return [];
+  }
+}
+
+// Helper: write JSON admin identifiers fallback
+function writeJsonAdminIdentifiers(list: { identifierType: string; identifierValue: string; createdAt: string }[]) {
+  try {
+    fs.writeFileSync(activeConfig.adminIdentifiersJsonPath, JSON.stringify(list, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Failed to write JSON admin identifiers:', err);
+  }
+}
+
+/**
+ * Register a visitorId or sessionId as belonging to an authenticated Admin.
+ * Any existing or future events matching these identifiers will be strictly excluded from User Analytics.
+ */
+export function registerAdminIdentifier(type: 'visitor_id' | 'session_id', value: string): void {
+  if (!value || typeof value !== 'string') return;
+  const cleanVal = value.trim();
+  if (!cleanVal) return;
+
+  const now = new Date().toISOString();
+
+  if (useSqlite && sqliteDb) {
+    try {
+      sqliteDb.prepare(`
+        INSERT OR IGNORE INTO admin_identifiers (identifier_type, identifier_value, created_at)
+        VALUES (?, ?, ?)
+      `).run(type, cleanVal, now);
+
+      // Also tag any previously recorded events from this admin identifier as actor_type = 'admin'
+      sqliteDb.prepare(`
+        UPDATE analytics_events 
+        SET actor_type = 'admin' 
+        WHERE (visitor_id = ? OR session_id = ?) AND (actor_type = 'user' OR actor_type IS NULL)
+      `).run(cleanVal, cleanVal);
+    } catch (e) {
+      console.warn('Failed to register admin identifier in SQLite:', e);
+    }
+  }
+
+  // Fallback JSON persistence
+  try {
+    const list = readJsonAdminIdentifiers();
+    if (!list.some(item => item.identifierType === type && item.identifierValue === cleanVal)) {
+      list.push({ identifierType: type, identifierValue: cleanVal, createdAt: now });
+      writeJsonAdminIdentifiers(list);
+    }
+    // Tag existing JSON events
+    const events = readJsonEvents();
+    let updated = false;
+    events.forEach(ev => {
+      if ((ev.visitorId === cleanVal || ev.sessionId === cleanVal) && ev.actorType !== 'admin') {
+        ev.actorType = 'admin';
+        updated = true;
+      }
+    });
+    if (updated) {
+      writeJsonEvents(events);
+    }
+  } catch (e) {}
+}
+
+/**
+ * Get all known Admin visitor and session IDs
+ */
+export function getKnownAdminIdentifiers(): { visitorIds: Set<string>; sessionIds: Set<string> } {
+  const visitorIds = new Set<string>();
+  const sessionIds = new Set<string>();
+
+  if (useSqlite && sqliteDb) {
+    try {
+      const rows = sqliteDb.prepare(`SELECT identifier_type, identifier_value FROM admin_identifiers`).all();
+      for (const row of rows) {
+        if (row.identifier_type === 'visitor_id') visitorIds.add(String(row.identifier_value));
+        if (row.identifier_type === 'session_id') sessionIds.add(String(row.identifier_value));
+      }
+      return { visitorIds, sessionIds };
+    } catch (e) {}
+  }
+
+  try {
+    const list = readJsonAdminIdentifiers();
+    for (const item of list) {
+      if (item.identifierType === 'visitor_id') visitorIds.add(String(item.identifierValue));
+      if (item.identifierType === 'session_id') sessionIds.add(String(item.identifierValue));
+    }
+  } catch (e) {}
+
+  return { visitorIds, sessionIds };
+}
+
+/**
+ * Check if a given visitorId or sessionId belongs to an authenticated Admin
+ */
+export function isKnownAdminIdentifier(visitorId?: string | null, sessionId?: string | null): boolean {
+  if (!visitorId && !sessionId) return false;
+  const { visitorIds, sessionIds } = getKnownAdminIdentifiers();
+  if (visitorId && visitorIds.has(visitorId)) return true;
+  if (sessionId && sessionIds.has(sessionId)) return true;
+  return false;
+}
+
+/**
+ * Log an administrative action to admin_audit_logs table.
+ * Stored independently and strictly excluded from user analytics.
+ */
+export function logAdminAudit(
+  adminId: string, 
+  action: string, 
+  metadata?: Record<string, any>
+): AdminAuditLogRecord {
+  const createdAt = new Date().toISOString();
+  const metadataStr = metadata ? JSON.stringify(metadata) : null;
+
+  if (useSqlite && sqliteDb) {
+    try {
+      const info = sqliteDb.prepare(`
+        INSERT INTO admin_audit_logs (admin_id, action, created_at, metadata)
+        VALUES (?, ?, ?, ?)
+      `).run(adminId, action, createdAt, metadataStr);
+
+      return {
+        id: Number(info.lastInsertRowid),
+        adminId,
+        action,
+        createdAt,
+        metadata: metadata || null,
+      };
+    } catch (e) {
+      console.warn('SQLite logAdminAudit error, fallback to JSON:', e);
+    }
+  }
+
+  const list = readJsonAuditLogs();
+  const newRec: AdminAuditLogRecord = {
+    id: list.length > 0 ? Math.max(...list.map((x) => x.id)) + 1 : 1,
+    adminId,
+    action,
+    createdAt,
+    metadata: metadata || null,
+  };
+  list.push(newRec);
+  writeJsonAuditLogs(list);
+  return newRec;
+}
+
+/**
+ * Retrieve recent administrative audit logs.
+ */
+export function getAdminAuditLogs(limit = 100): AdminAuditLogRecord[] {
+  if (useSqlite && sqliteDb) {
+    try {
+      const rows = sqliteDb.prepare(`
+        SELECT id, admin_id as adminId, action, created_at as createdAt, metadata
+        FROM admin_audit_logs
+        ORDER BY id DESC
+        LIMIT ?
+      `).all(limit);
+
+      return rows.map((r: any) => ({
+        id: Number(r.id),
+        adminId: String(r.adminId),
+        action: String(r.action),
+        createdAt: String(r.createdAt),
+        metadata: r.metadata ? JSON.parse(r.metadata) : null,
+      }));
+    } catch (e) {
+      console.warn('SQLite getAdminAuditLogs error, fallback to JSON:', e);
+    }
+  }
+
+  const list = readJsonAuditLogs();
+  return list.slice(-limit).reverse();
 }
 
 export function getAnalyticsSetting(key: string): string | null {
@@ -497,7 +752,16 @@ export function applyResetToRange(
 /**
  * Record a new analytics event into the database
  */
-export function recordEvent(event: AnalyticsEventInput): StoredAnalyticsEvent {
+export function recordEvent(event: AnalyticsEventInput): StoredAnalyticsEvent | null {
+  // If explicitly admin or matches known admin identifiers, do NOT insert into user analytics
+  if (
+    event.actorType === 'admin' ||
+    isKnownAdminIdentifier(event.visitorId, event.sessionId)
+  ) {
+    return null;
+  }
+
+  const actorType: ActorType = event.actorType || 'user';
   const createdAt = event.createdAt || new Date().toISOString();
   const metadataStr = event.metadata ? JSON.stringify(event.metadata) : null;
 
@@ -505,13 +769,14 @@ export function recordEvent(event: AnalyticsEventInput): StoredAnalyticsEvent {
     try {
       const stmt = sqliteDb.prepare(`
         INSERT INTO analytics_events 
-        (event_name, session_id, visitor_id, user_id, page, dormitory_id, dormitory_name, search_keyword, metadata, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (event_name, session_id, visitor_id, actor_type, user_id, page, dormitory_id, dormitory_name, search_keyword, metadata, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const res = stmt.run(
         event.eventName,
         event.sessionId,
         event.visitorId,
+        actorType,
         event.userId || null,
         event.page || null,
         event.dormitoryId || null,
@@ -525,6 +790,7 @@ export function recordEvent(event: AnalyticsEventInput): StoredAnalyticsEvent {
         eventName: event.eventName,
         sessionId: event.sessionId,
         visitorId: event.visitorId,
+        actorType,
         userId: event.userId || null,
         page: event.page || null,
         dormitoryId: event.dormitoryId || null,
@@ -546,6 +812,7 @@ export function recordEvent(event: AnalyticsEventInput): StoredAnalyticsEvent {
     eventName: event.eventName,
     sessionId: event.sessionId,
     visitorId: event.visitorId,
+    actorType,
     userId: event.userId || null,
     page: event.page || null,
     dormitoryId: event.dormitoryId || null,
@@ -605,7 +872,7 @@ function calculatePercentChange(current: number, prev: number): number | null {
 
 /**
  * Get Summary of 4 Key Metrics with comparison
- * Uses datetime(...) in SQL for resilient date comparisons
+ * Excludes Admin activity strictly from user analytics
  */
 export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
   const { currentStart, currentEnd, prevStart, prevEnd } = getPeriodDateRanges(period);
@@ -633,6 +900,10 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
             SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views
           FROM analytics_events
           WHERE created_at >= ? AND created_at <= ?
+            AND (actor_type = 'user' OR actor_type IS NULL)
+            AND (user_id IS NULL OR user_id != 'admin')
+            AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
+            AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
         `).get(range.start, range.end);
         return {
           uniqueVisitors: Number(row?.unique_visitors || 0),
@@ -674,6 +945,7 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
 
   // Fallback implementation with JSON
   const events = readJsonEvents();
+  const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
   const inRange = (d: string, start: string, end: string) => {
     const t = new Date(d).getTime();
     return t >= new Date(start).getTime() && t <= new Date(end).getTime();
@@ -688,7 +960,14 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
         dormitoryViews: 0,
       };
     }
-    const subset = events.filter(e => inRange(e.createdAt, range.start, range.end));
+    const subset = events.filter(e => 
+      inRange(e.createdAt, range.start, range.end) &&
+      e.actorType !== 'admin' &&
+      e.actorType !== 'system' &&
+      (e.userId === null || e.userId !== 'admin') &&
+      !adminVis.has(e.visitorId) &&
+      !adminSes.has(e.sessionId)
+    );
     const visitors = new Set(subset.map(e => e.visitorId));
     const pageViews = subset.filter(e => e.eventName === 'page_view').length;
     const searchEvents = subset.filter(e => e.eventName === 'search').length;
@@ -729,21 +1008,39 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
 }
 
 /**
- * Format date for display in Thai locale (e.g., '14 ก.ย.')
+ * Timezone & Localization for Thailand (Asia/Bangkok, UTC+7)
  */
+const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
+
 const THAI_MONTHS_SHORT = [
   'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
   'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
 ];
 
+const THAI_MONTHS_FULL = [
+  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+];
+
 function formatThaiDateLabel(d: Date): string {
-  const day = d.getDate();
-  const month = THAI_MONTHS_SHORT[d.getMonth()];
+  const bkk = new Date(d.getTime() + BANGKOK_OFFSET_MS);
+  const day = bkk.getUTCDate();
+  const month = THAI_MONTHS_SHORT[bkk.getUTCMonth()];
   return `${day} ${month}`;
+}
+
+function formatThaiFullDate(d: Date): string {
+  const bkk = new Date(d.getTime() + BANGKOK_OFFSET_MS);
+  const day = bkk.getUTCDate();
+  const month = THAI_MONTHS_FULL[bkk.getUTCMonth()];
+  const year = bkk.getUTCFullYear() + 543;
+  return `${day} ${month} ${year}`;
 }
 
 /**
  * Get timeline data for Main Chart
+ * Period < 24h ('today') aggregates strictly by 1 hour (00:00 to 23:00) in Bangkok Time
+ * Period >= 24h ('7d', '30d', '90d') aggregates daily
  */
 export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
   const now = new Date();
@@ -751,17 +1048,28 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
   const resetAt = getDisplayResetTimestamp();
 
   if (period === 'today') {
-    // Generate 12 slots (every 2 hours) from 00:00 to 24:00
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-    const slots = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22];
+    // Determine start of today in Asia/Bangkok (00:00:00 Bangkok)
+    const nowBkk = new Date(now.getTime() + BANGKOK_OFFSET_MS);
+    const startOfTodayBkkUtc = Date.UTC(
+      nowBkk.getUTCFullYear(),
+      nowBkk.getUTCMonth(),
+      nowBkk.getUTCDate(),
+      0, 0, 0
+    ) - BANGKOK_OFFSET_MS;
 
-    for (const hour of slots) {
-      const slotStart = new Date(startOfDay.getTime() + hour * 3600 * 1000);
-      const slotEnd = new Date(startOfDay.getTime() + (hour + 2) * 3600 * 1000 - 1);
-      const label = `${String(hour).padStart(2, '0')}:00`;
-      const dateKey = slotStart.toISOString();
+    // Generate strictly every 1 hour (24 slots: 00:00, 01:00, ..., 23:00)
+    for (let hour = 0; hour < 24; hour++) {
+      const slotStartMs = startOfTodayBkkUtc + hour * 3600 * 1000;
+      const slotEndMs = slotStartMs + 3600 * 1000 - 1;
+      const slotStartDate = new Date(slotStartMs);
+      const slotEndDate = new Date(slotEndMs);
 
-      const range = applyResetToRange(slotStart.toISOString(), slotEnd.toISOString(), resetAt);
+      const hourStr = String(hour).padStart(2, '0');
+      const label = `${hourStr}:00`;
+      const fullDateLabel = formatThaiFullDate(slotStartDate);
+      const timeRangeLabel = `เวลา ${label}–${hourStr}:59`;
+
+      const range = applyResetToRange(slotStartDate.toISOString(), slotEndDate.toISOString(), resetAt);
 
       let visitors = 0;
       let views = 0;
@@ -771,10 +1079,14 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
           try {
             const row = sqliteDb.prepare(`
               SELECT 
-                COUNT(DISTINCT visitor_id) as visitors,
+                COUNT(DISTINCT session_id) as visitors,
                 COUNT(*) as views
               FROM analytics_events
               WHERE created_at >= ? AND created_at <= ?
+                AND (actor_type = 'user' OR actor_type IS NULL)
+                AND (user_id IS NULL OR user_id != 'admin')
+                AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
+                AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
             `).get(range.start, range.end);
             visitors = Number(row?.visitors || 0);
             views = Number(row?.views || 0);
@@ -783,20 +1095,31 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
           }
         } else {
           const events = readJsonEvents();
-          const inSlot = events.filter(e => {
+          const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+          const inSlot = events.filter((e) => {
             const t = new Date(e.createdAt).getTime();
-            return t >= new Date(range.start).getTime() && t <= new Date(range.end).getTime();
+            return (
+              t >= new Date(range.start).getTime() && 
+              t <= new Date(range.end).getTime() &&
+              e.actorType !== 'admin' &&
+              e.actorType !== 'system' &&
+              (e.userId === null || e.userId !== 'admin') &&
+              !adminVis.has(e.visitorId) &&
+              !adminSes.has(e.sessionId)
+            );
           });
-          visitors = new Set(inSlot.map(e => e.visitorId)).size;
+          visitors = new Set(inSlot.map((e) => e.sessionId)).size;
           views = inSlot.length;
         }
       }
 
       points.push({
-        date: dateKey,
+        date: slotStartDate.toISOString(),
         label,
         visitors,
         views,
+        fullDateLabel,
+        timeRangeLabel,
       });
     }
     return points;
@@ -804,15 +1127,25 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
 
   // For 7d, 30d, 90d: Generate daily data points
   const daysCount = period === '7d' ? 7 : period === '30d' ? 30 : 90;
-  const startDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (daysCount - 1), 0, 0, 0);
+  const nowBkk = new Date(now.getTime() + BANGKOK_OFFSET_MS);
+  const startDayBkkUtc = Date.UTC(
+    nowBkk.getUTCFullYear(),
+    nowBkk.getUTCMonth(),
+    nowBkk.getUTCDate() - (daysCount - 1),
+    0, 0, 0
+  ) - BANGKOK_OFFSET_MS;
 
   for (let i = 0; i < daysCount; i++) {
-    const cur = new Date(startDay.getTime() + i * 24 * 60 * 60 * 1000);
-    const dayStart = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate(), 0, 0, 0).toISOString();
-    const dayEnd = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate(), 23, 59, 59, 999).toISOString();
-    const label = formatThaiDateLabel(cur);
+    const dayStartMs = startDayBkkUtc + i * 24 * 60 * 60 * 1000;
+    const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000 - 1;
+    const dayStartDate = new Date(dayStartMs);
+    const dayEndDate = new Date(dayEndMs);
 
-    const range = applyResetToRange(dayStart, dayEnd, resetAt);
+    const label = formatThaiDateLabel(dayStartDate);
+    const fullDateLabel = formatThaiFullDate(dayStartDate);
+    const timeRangeLabel = 'ตลอดทั้งวัน (00:00–23:59)';
+
+    const range = applyResetToRange(dayStartDate.toISOString(), dayEndDate.toISOString(), resetAt);
 
     let visitors = 0;
     let views = 0;
@@ -822,10 +1155,14 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
         try {
           const row = sqliteDb.prepare(`
             SELECT 
-              COUNT(DISTINCT visitor_id) as visitors,
+              COUNT(DISTINCT session_id) as visitors,
               COUNT(*) as views
             FROM analytics_events
             WHERE created_at >= ? AND created_at <= ?
+              AND (actor_type = 'user' OR actor_type IS NULL)
+              AND (user_id IS NULL OR user_id != 'admin')
+              AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
+              AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
           `).get(range.start, range.end);
           visitors = Number(row?.visitors || 0);
           views = Number(row?.views || 0);
@@ -834,20 +1171,31 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
         }
       } else {
         const events = readJsonEvents();
-        const inDay = events.filter(e => {
+        const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+        const inDay = events.filter((e) => {
           const t = new Date(e.createdAt).getTime();
-          return t >= new Date(range.start).getTime() && t <= new Date(range.end).getTime();
+          return (
+            t >= new Date(range.start).getTime() && 
+            t <= new Date(range.end).getTime() &&
+            e.actorType !== 'admin' &&
+            e.actorType !== 'system' &&
+            (e.userId === null || e.userId !== 'admin') &&
+            !adminVis.has(e.visitorId) &&
+            !adminSes.has(e.sessionId)
+          );
         });
-        visitors = new Set(inDay.map(e => e.visitorId)).size;
+        visitors = new Set(inDay.map((e) => e.sessionId)).size;
         views = inDay.length;
       }
     }
 
     points.push({
-      date: dayStart.slice(0, 10),
+      date: dayStartDate.toISOString(),
       label,
       visitors,
       views,
+      fullDateLabel,
+      timeRangeLabel,
     });
   }
 
@@ -877,6 +1225,10 @@ export function getTopDormitories(period: PeriodType, limit = 5): TopDormitory[]
         WHERE event_name = 'dormitory_view'
           AND dormitory_id IS NOT NULL
           AND created_at >= ? AND created_at <= ?
+          AND (actor_type = 'user' OR actor_type IS NULL)
+          AND (user_id IS NULL OR user_id != 'admin')
+          AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
+          AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
         GROUP BY dormitory_id, dormitory_name
         ORDER BY count DESC
         LIMIT ?
@@ -893,11 +1245,17 @@ export function getTopDormitories(period: PeriodType, limit = 5): TopDormitory[]
   }
 
   const events = readJsonEvents();
+  const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
   const subset = events.filter(e => {
     const t = new Date(e.createdAt).getTime();
     return (
       e.eventName === 'dormitory_view' && 
       e.dormitoryId != null &&
+      e.actorType !== 'admin' &&
+      e.actorType !== 'system' &&
+      (e.userId === null || e.userId !== 'admin') &&
+      !adminVis.has(e.visitorId) &&
+      !adminSes.has(e.sessionId) &&
       t >= new Date(range.start).getTime() && 
       t <= new Date(range.end).getTime()
     );
@@ -942,6 +1300,10 @@ export function getTopSearchKeywords(period: PeriodType, limit = 5): TopSearch[]
           AND search_keyword IS NOT NULL
           AND TRIM(search_keyword) != ''
           AND created_at >= ? AND created_at <= ?
+          AND (actor_type = 'user' OR actor_type IS NULL)
+          AND (user_id IS NULL OR user_id != 'admin')
+          AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
+          AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
         GROUP BY LOWER(TRIM(search_keyword))
         ORDER BY count DESC
         LIMIT ?
@@ -957,12 +1319,18 @@ export function getTopSearchKeywords(period: PeriodType, limit = 5): TopSearch[]
   }
 
   const events = readJsonEvents();
+  const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
   const subset = events.filter(e => {
     const t = new Date(e.createdAt).getTime();
     return (
       e.eventName === 'search' && 
       e.searchKeyword && 
       e.searchKeyword.trim() !== '' &&
+      e.actorType !== 'admin' &&
+      e.actorType !== 'system' &&
+      (e.userId === null || e.userId !== 'admin') &&
+      !adminVis.has(e.visitorId) &&
+      !adminSes.has(e.sessionId) &&
       t >= new Date(range.start).getTime() && 
       t <= new Date(range.end).getTime()
     );
@@ -1022,14 +1390,22 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
             SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events,
             SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views
           FROM analytics_events
-          WHERE created_at >= ? AND created_at < ?`
+          WHERE created_at >= ? AND created_at < ?
+            AND (actor_type = 'user' OR actor_type IS NULL)
+            AND (user_id IS NULL OR user_id != 'admin')
+            AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
+            AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')`
         : `SELECT 
             COUNT(DISTINCT visitor_id) as unique_visitors,
             SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
             SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events,
             SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views
           FROM analytics_events
-          WHERE created_at < ?`;
+          WHERE created_at < ?
+            AND (actor_type = 'user' OR actor_type IS NULL)
+            AND (user_id IS NULL OR user_id != 'admin')
+            AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
+            AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')`;
 
       const params = startAt ? [startAt, endAt] : [endAt];
       const row = sqliteDb.prepare(sql).get(...params);
@@ -1045,11 +1421,15 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
   }
 
   const events = readJsonEvents();
+  const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
   const subset = events.filter((e) => {
     const t = new Date(e.createdAt).getTime();
     const endT = new Date(endAt).getTime();
     if (t >= endT) return false;
     if (startAt && t < new Date(startAt).getTime()) return false;
+    if (e.actorType === 'admin' || e.actorType === 'system') return false;
+    if (e.userId === 'admin') return false;
+    if (adminVis.has(e.visitorId) || adminSes.has(e.sessionId)) return false;
     return true;
   });
 
@@ -1158,14 +1538,28 @@ export function getHistoricalAnalyticsData(
     let earliestTime: number | null = null;
     if (useSqlite && sqliteDb) {
       try {
-        const row = sqliteDb.prepare('SELECT MIN(created_at) as min_date FROM analytics_events WHERE created_at < ?').get(endAt);
+        const row = sqliteDb.prepare(`
+          SELECT MIN(created_at) as min_date 
+          FROM analytics_events 
+          WHERE created_at < ? 
+            AND (actor_type = 'user' OR actor_type IS NULL)
+            AND (user_id IS NULL OR user_id != 'admin')
+        `).get(endAt);
         if (row && row.min_date) {
           earliestTime = new Date(row.min_date).getTime();
         }
       } catch (e) {}
     }
     if (!earliestTime) {
-      const events = readJsonEvents().filter((e) => new Date(e.createdAt).getTime() < endDate.getTime());
+      const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+      const events = readJsonEvents().filter((e) => 
+        new Date(e.createdAt).getTime() < endDate.getTime() &&
+        e.actorType !== 'admin' &&
+        e.actorType !== 'system' &&
+        (e.userId === null || e.userId !== 'admin') &&
+        !adminVis.has(e.visitorId) &&
+        !adminSes.has(e.sessionId)
+      );
       if (events.length > 0) {
         earliestTime = new Date(events[0].createdAt).getTime();
       }
@@ -1174,20 +1568,33 @@ export function getHistoricalAnalyticsData(
   }
 
   const timeline: TimelineDataPoint[] = [];
-  const spanDays = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (24 * 3600 * 1000)));
+  const durationMs = endDate.getTime() - startDate.getTime();
+  const isHourly = durationMs < 24 * 3600 * 1000;
 
-  if (spanDays <= 2) {
-    // 2-hour slots
-    const startOfSlot = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0);
-    const slots = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22];
+  if (isHourly) {
+    // Generate strictly every 1 hour (hourly buckets) in Asia/Bangkok Time
+    const startBkkMs = startDate.getTime() + BANGKOK_OFFSET_MS;
+    const flooredStartBkkMs = Math.floor(startBkkMs / (3600 * 1000)) * (3600 * 1000);
+    const startHourUtcMs = flooredStartBkkMs - BANGKOK_OFFSET_MS;
 
-    for (const hour of slots) {
-      const slotStart = new Date(startOfSlot.getTime() + hour * 3600 * 1000);
-      const slotEnd = new Date(startOfSlot.getTime() + (hour + 2) * 3600 * 1000 - 1);
-      if (slotStart.getTime() >= endDate.getTime()) break;
+    const endBkkMs = endDate.getTime() + BANGKOK_OFFSET_MS;
+    const ceiledEndBkkMs = Math.ceil(endBkkMs / (3600 * 1000)) * (3600 * 1000);
+    const endHourUtcMs = ceiledEndBkkMs - BANGKOK_OFFSET_MS;
 
-      const label = `${String(hour).padStart(2, '0')}:00`;
-      const dateKey = slotStart.toISOString();
+    const countHours = Math.max(1, Math.min(Math.round((endHourUtcMs - startHourUtcMs) / (3600 * 1000)), 24));
+
+    for (let i = 0; i < countHours; i++) {
+      const slotStartMs = startHourUtcMs + i * 3600 * 1000;
+      const slotEndMs = slotStartMs + 3600 * 1000 - 1;
+      const slotStartDate = new Date(slotStartMs);
+      const slotEndDate = new Date(slotEndMs);
+
+      const bkkDate = new Date(slotStartMs + BANGKOK_OFFSET_MS);
+      const bkkHour = bkkDate.getUTCHours();
+      const hourStr = String(bkkHour).padStart(2, '0');
+      const label = `${hourStr}:00`;
+      const fullDateLabel = formatThaiFullDate(slotStartDate);
+      const timeRangeLabel = `เวลา ${label}–${hourStr}:59`;
 
       let visitors = 0;
       let views = 0;
@@ -1196,41 +1603,67 @@ export function getHistoricalAnalyticsData(
         try {
           const row = sqliteDb.prepare(`
             SELECT 
-              COUNT(DISTINCT visitor_id) as visitors,
+              COUNT(DISTINCT session_id) as visitors,
               COUNT(*) as views
             FROM analytics_events
             WHERE created_at >= ? AND created_at <= ?
-          `).get(slotStart.toISOString(), slotEnd.toISOString());
+              AND (actor_type = 'user' OR actor_type IS NULL)
+              AND (user_id IS NULL OR user_id != 'admin')
+              AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
+              AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
+          `).get(slotStartDate.toISOString(), slotEndDate.toISOString());
           visitors = Number(row?.visitors || 0);
           views = Number(row?.views || 0);
         } catch (e) {}
       } else {
         const events = readJsonEvents();
-        const inSlot = events.filter(e => {
+        const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+        const inSlot = events.filter((e) => {
           const t = new Date(e.createdAt).getTime();
-          return t >= slotStart.getTime() && t <= slotEnd.getTime();
+          return (
+            t >= slotStartMs && 
+            t <= slotEndMs &&
+            e.actorType !== 'admin' &&
+            e.actorType !== 'system' &&
+            (e.userId === null || e.userId !== 'admin') &&
+            !adminVis.has(e.visitorId) &&
+            !adminSes.has(e.sessionId)
+          );
         });
-        visitors = new Set(inSlot.map(e => e.visitorId)).size;
+        visitors = new Set(inSlot.map((e) => e.sessionId)).size;
         views = inSlot.length;
       }
 
       timeline.push({
-        date: dateKey,
+        date: slotStartDate.toISOString(),
         label,
         visitors,
         views,
+        fullDateLabel,
+        timeRangeLabel,
       });
     }
   } else {
     // Daily points (capped at 60 days)
+    const spanDays = Math.max(1, Math.ceil(durationMs / (24 * 3600 * 1000)));
     const pointsCount = Math.min(spanDays, 60);
-    const actualStart = new Date(endDate.getTime() - pointsCount * 24 * 3600 * 1000);
+    const nowBkk = new Date(endDate.getTime() + BANGKOK_OFFSET_MS);
+    const startDayBkkUtc = Date.UTC(
+      nowBkk.getUTCFullYear(),
+      nowBkk.getUTCMonth(),
+      nowBkk.getUTCDate() - (pointsCount - 1),
+      0, 0, 0
+    ) - BANGKOK_OFFSET_MS;
 
     for (let i = 0; i < pointsCount; i++) {
-      const cur = new Date(actualStart.getTime() + i * 24 * 3600 * 1000);
-      const dayStart = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate(), 0, 0, 0).toISOString();
-      const dayEnd = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate(), 23, 59, 59, 999).toISOString();
-      const label = formatThaiDateLabel(cur);
+      const dayStartMs = startDayBkkUtc + i * 24 * 60 * 60 * 1000;
+      const dayEndMs = dayStartMs + 24 * 60 * 60 * 1000 - 1;
+      const dayStartDate = new Date(dayStartMs);
+      const dayEndDate = new Date(dayEndMs);
+
+      const label = formatThaiDateLabel(dayStartDate);
+      const fullDateLabel = formatThaiFullDate(dayStartDate);
+      const timeRangeLabel = 'ตลอดทั้งวัน (00:00–23:59)';
 
       let visitors = 0;
       let views = 0;
@@ -1239,29 +1672,44 @@ export function getHistoricalAnalyticsData(
         try {
           const row = sqliteDb.prepare(`
             SELECT 
-              COUNT(DISTINCT visitor_id) as visitors,
+              COUNT(DISTINCT session_id) as visitors,
               COUNT(*) as views
             FROM analytics_events
             WHERE created_at >= ? AND created_at <= ?
-          `).get(dayStart, dayEnd);
+              AND (actor_type = 'user' OR actor_type IS NULL)
+              AND (user_id IS NULL OR user_id != 'admin')
+              AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
+              AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
+          `).get(dayStartDate.toISOString(), dayEndDate.toISOString());
           visitors = Number(row?.visitors || 0);
           views = Number(row?.views || 0);
         } catch (e) {}
       } else {
         const events = readJsonEvents();
-        const inDay = events.filter(e => {
+        const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
+        const inDay = events.filter((e) => {
           const t = new Date(e.createdAt).getTime();
-          return t >= new Date(dayStart).getTime() && t <= new Date(dayEnd).getTime();
+          return (
+            t >= dayStartMs && 
+            t <= dayEndMs &&
+            e.actorType !== 'admin' &&
+            e.actorType !== 'system' &&
+            (e.userId === null || e.userId !== 'admin') &&
+            !adminVis.has(e.visitorId) &&
+            !adminSes.has(e.sessionId)
+          );
         });
-        visitors = new Set(inDay.map(e => e.visitorId)).size;
+        visitors = new Set(inDay.map((e) => e.sessionId)).size;
         views = inDay.length;
       }
 
       timeline.push({
-        date: dayStart.slice(0, 10),
+        date: dayStartDate.toISOString(),
         label,
         visitors,
         views,
+        fullDateLabel,
+        timeRangeLabel,
       });
     }
   }
@@ -1275,12 +1723,20 @@ export function getHistoricalAnalyticsData(
            FROM analytics_events
            WHERE event_name = 'dormitory_view' AND dormitory_id IS NOT NULL
              AND created_at >= ? AND created_at < ?
+             AND (actor_type = 'user' OR actor_type IS NULL)
+             AND (user_id IS NULL OR user_id != 'admin')
+             AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
+             AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
            GROUP BY dormitory_id, dormitory_name
            ORDER BY count DESC LIMIT 5`
         : `SELECT dormitory_id as id, dormitory_name as name, COUNT(*) as count
            FROM analytics_events
            WHERE event_name = 'dormitory_view' AND dormitory_id IS NOT NULL
              AND created_at < ?
+             AND (actor_type = 'user' OR actor_type IS NULL)
+             AND (user_id IS NULL OR user_id != 'admin')
+             AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
+             AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
            GROUP BY dormitory_id, dormitory_name
            ORDER BY count DESC LIMIT 5`;
       const params = startAt ? [startAt, endAt] : [endAt];
@@ -1294,10 +1750,20 @@ export function getHistoricalAnalyticsData(
       console.warn('SQLite top dorms history error:', e);
     }
   } else {
+    const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
     const events = readJsonEvents().filter(e => {
       const t = new Date(e.createdAt).getTime();
-      return e.eventName === 'dormitory_view' && e.dormitoryId != null &&
-        t < new Date(endAt).getTime() && (!startAt || t >= new Date(startAt).getTime());
+      return (
+        e.eventName === 'dormitory_view' && 
+        e.dormitoryId != null &&
+        e.actorType !== 'admin' &&
+        e.actorType !== 'system' &&
+        (e.userId === null || e.userId !== 'admin') &&
+        !adminVis.has(e.visitorId) &&
+        !adminSes.has(e.sessionId) &&
+        t < new Date(endAt).getTime() && 
+        (!startAt || t >= new Date(startAt).getTime())
+      );
     });
     const map = new Map<number, { name: string; count: number }>();
     for (const ev of events) {
@@ -1321,12 +1787,20 @@ export function getHistoricalAnalyticsData(
            FROM analytics_events
            WHERE event_name = 'search' AND search_keyword IS NOT NULL AND TRIM(search_keyword) != ''
              AND created_at >= ? AND created_at < ?
+             AND (actor_type = 'user' OR actor_type IS NULL)
+             AND (user_id IS NULL OR user_id != 'admin')
+             AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
+             AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
            GROUP BY LOWER(TRIM(search_keyword))
            ORDER BY count DESC LIMIT 5`
         : `SELECT LOWER(TRIM(search_keyword)) as keyword, COUNT(*) as count
            FROM analytics_events
            WHERE event_name = 'search' AND search_keyword IS NOT NULL AND TRIM(search_keyword) != ''
              AND created_at < ?
+             AND (actor_type = 'user' OR actor_type IS NULL)
+             AND (user_id IS NULL OR user_id != 'admin')
+             AND visitor_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'visitor_id')
+             AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
            GROUP BY LOWER(TRIM(search_keyword))
            ORDER BY count DESC LIMIT 5`;
       const params = startAt ? [startAt, endAt] : [endAt];
@@ -1339,10 +1813,21 @@ export function getHistoricalAnalyticsData(
       console.warn('SQLite top search history error:', e);
     }
   } else {
+    const { visitorIds: adminVis, sessionIds: adminSes } = getKnownAdminIdentifiers();
     const events = readJsonEvents().filter(e => {
       const t = new Date(e.createdAt).getTime();
-      return e.eventName === 'search' && e.searchKeyword && e.searchKeyword.trim() !== '' &&
-        t < new Date(endAt).getTime() && (!startAt || t >= new Date(startAt).getTime());
+      return (
+        e.eventName === 'search' && 
+        e.searchKeyword && 
+        e.searchKeyword.trim() !== '' &&
+        e.actorType !== 'admin' &&
+        e.actorType !== 'system' &&
+        (e.userId === null || e.userId !== 'admin') &&
+        !adminVis.has(e.visitorId) &&
+        !adminSes.has(e.sessionId) &&
+        t < new Date(endAt).getTime() && 
+        (!startAt || t >= new Date(startAt).getTime())
+      );
     });
     const map = new Map<string, number>();
     for (const ev of events) {

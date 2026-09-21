@@ -7,6 +7,7 @@ import {
   Building2, Lock, User, Eye, EyeOff, 
   ArrowRight, ShieldCheck, AlertCircle, Loader2 
 } from 'lucide-react';
+import { getVisitorId, getSessionId } from '@/utils/analytics';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -27,12 +28,20 @@ export default function AdminLoginPage() {
     setErrorMessage(null);
 
     try {
+      const visitorId = getVisitorId();
+      const sessionId = getSessionId();
+
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ 
+          username, 
+          password,
+          visitorId,
+          sessionId,
+        }),
       });
 
       const data = await res.json();
@@ -42,6 +51,11 @@ export default function AdminLoginPage() {
         setIsLoading(false);
         return;
       }
+
+      try {
+        localStorage.setItem('dormie_admin_active', '1');
+        localStorage.setItem('dormie_is_admin', 'true');
+      } catch (e) {}
 
       // Login successful, redirect to admin analytics
       router.push('/admin/analytics');

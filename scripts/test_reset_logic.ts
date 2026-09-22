@@ -25,15 +25,15 @@ async function runResetLogicVerificationSuite() {
 
   // Test 1: Reset Baseline
   console.log('--- Test Suite 1: Immediate Post-Reset State (Zero Baseline) ---');
-  const resetRecord = createResetRecord('admin_test_user', 'Automated Reset Logic Test');
+  const resetRecord = await createResetRecord('admin_test_user', 'Automated Reset Logic Test');
   assert(Boolean(resetRecord.id), 'Reset record created with valid ID');
   assert(Boolean(resetRecord.resetAt), 'Reset record created with valid resetAt');
   
-  const currentResetAt = getDisplayResetTimestamp();
+  const currentResetAt = await getDisplayResetTimestamp();
   assert(currentResetAt === resetRecord.resetAt, `getDisplayResetTimestamp returns latest resetAt (${currentResetAt})`);
 
   for (const period of ['today', '7d', '30d', '90d'] as const) {
-    const data = getAnalyticsDashboardData(period);
+    const data = await getAnalyticsDashboardData(period);
     assert(data.summary.uniqueVisitors.value === 0, `[${period}] uniqueVisitors is strictly 0 immediately after reset`);
     assert(data.summary.pageViews.value === 0, `[${period}] pageViews is strictly 0 immediately after reset`);
     assert(data.summary.searchEvents.value === 0, `[${period}] searchEvents is strictly 0 immediately after reset`);
@@ -58,27 +58,27 @@ async function runResetLogicVerificationSuite() {
   console.log('\n--- Test Suite 2: Admin Activity Post-Reset (Must NOT be Counted) ---');
   const adminVis = `admin_vis_${Date.now()}`;
   const adminSes = `admin_ses_${Date.now()}`;
-  registerAdminIdentifier('visitor_id', adminVis);
-  registerAdminIdentifier('session_id', adminSes);
+  await registerAdminIdentifier('visitor_id', adminVis);
+  await registerAdminIdentifier('session_id', adminSes);
 
-  assert(isKnownAdminIdentifier(adminVis, adminSes), 'Admin identifier registered successfully');
+  assert(await isKnownAdminIdentifier(adminVis, adminSes), 'Admin identifier registered successfully');
 
   // Attempt to record admin actions
-  recordEvent({
+  await recordEvent({
     eventName: 'page_view',
     visitorId: adminVis,
     sessionId: adminSes,
     actorType: 'admin',
     page: '/admin/analytics',
   });
-  recordEvent({
+  await recordEvent({
     eventName: 'search',
     visitorId: adminVis,
     sessionId: adminSes,
     actorType: 'admin',
     searchKeyword: 'หอพักใกล้ ม.อุบล',
   });
-  recordEvent({
+  await recordEvent({
     eventName: 'dormitory_view',
     visitorId: adminVis,
     sessionId: adminSes,
@@ -87,7 +87,7 @@ async function runResetLogicVerificationSuite() {
     dormitoryName: 'หอพักทดสอบ',
   });
 
-  const postAdminData = getAnalyticsDashboardData('today');
+  const postAdminData = await getAnalyticsDashboardData('today');
   assert(postAdminData.summary.uniqueVisitors.value === 0, 'Unique visitors remains 0 after admin activity');
   assert(postAdminData.summary.pageViews.value === 0, 'Page views remains 0 after admin activity');
   assert(postAdminData.summary.searchEvents.value === 0, 'Search events remains 0 after admin activity');
@@ -101,14 +101,14 @@ async function runResetLogicVerificationSuite() {
   const preAdminSes = `pre_admin_ses_${Date.now()}`;
   
   // Record as innocent 'user' traffic first
-  recordEvent({
+  await recordEvent({
     eventName: 'page_view',
     visitorId: preAdminVis,
     sessionId: preAdminSes,
     actorType: 'user',
     page: '/',
   });
-  recordEvent({
+  await recordEvent({
     eventName: 'dormitory_view',
     visitorId: preAdminVis,
     sessionId: preAdminSes,
@@ -118,15 +118,15 @@ async function runResetLogicVerificationSuite() {
   });
 
   // Verify it momentarily showed 1
-  const momentaryData = getAnalyticsDashboardData('today');
+  const momentaryData = await getAnalyticsDashboardData('today');
   assert(momentaryData.summary.uniqueVisitors.value === 1, 'Pre-login traffic is initially counted as 1 user');
 
   // Now user authenticates as Admin
-  registerAdminIdentifier('visitor_id', preAdminVis);
-  registerAdminIdentifier('session_id', preAdminSes);
+  await registerAdminIdentifier('visitor_id', preAdminVis);
+  await registerAdminIdentifier('session_id', preAdminSes);
 
   // Re-check dashboard: pre-login activity must be purged
-  const purgedData = getAnalyticsDashboardData('today');
+  const purgedData = await getAnalyticsDashboardData('today');
   assert(purgedData.summary.uniqueVisitors.value === 0, 'Pre-login traffic retroactively purged after admin registration');
   assert(purgedData.summary.dormitoryViews.value === 0, 'Pre-login dorm views retroactively purged');
   assert(purgedData.topDormitories.length === 0, 'Top dorms retroactively purged');
@@ -136,28 +136,28 @@ async function runResetLogicVerificationSuite() {
   const realUserVis = `real_user_${Date.now()}`;
   const realUserSes = `real_user_sess_${Date.now()}`;
 
-  recordEvent({
+  await recordEvent({
     eventName: 'page_view',
     visitorId: realUserVis,
     sessionId: realUserSes,
     actorType: 'user',
     page: '/',
   });
-  recordEvent({
+  await recordEvent({
     eventName: 'page_view',
     visitorId: realUserVis,
     sessionId: realUserSes,
     actorType: 'user',
     page: '/search',
   });
-  recordEvent({
+  await recordEvent({
     eventName: 'search',
     visitorId: realUserVis,
     sessionId: realUserSes,
     actorType: 'user',
     searchKeyword: 'หอพักหญิง ปลอดภัย',
   });
-  recordEvent({
+  await recordEvent({
     eventName: 'dormitory_view',
     visitorId: realUserVis,
     sessionId: realUserSes,
@@ -166,7 +166,7 @@ async function runResetLogicVerificationSuite() {
     dormitoryName: 'หอพักร่มเย็น ม.อุบล',
   });
 
-  const realUserData = getAnalyticsDashboardData('today');
+  const realUserData = await getAnalyticsDashboardData('today');
   assert(realUserData.summary.uniqueVisitors.value === 1, 'Real user: uniqueVisitors is 1');
   assert(realUserData.summary.pageViews.value === 2, 'Real user: pageViews is 2');
   assert(realUserData.summary.searchEvents.value === 1, 'Real user: searchEvents is 1');
@@ -178,9 +178,9 @@ async function runResetLogicVerificationSuite() {
 
   // Test 5: Historical Integrity (Zero Data Loss)
   console.log('\n--- Test Suite 5: Historical Analytics Integrity ---');
-  const history = getResetHistory();
+  const history = await getResetHistory();
   assert(history.length >= 1, `Reset history contains at least 1 record (found ${history.length})`);
-  const periods = getHistoricalPeriods();
+  const periods = await getHistoricalPeriods();
   assert(periods.length >= 1, `Historical periods contains at least 1 historical segment (found ${periods.length})`);
 
   console.log('\n================================================================');

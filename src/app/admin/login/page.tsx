@@ -53,8 +53,7 @@ export default function AdminLoginPage() {
       }
 
       try {
-        localStorage.setItem('dormie_admin_active', '1');
-        localStorage.setItem('dormie_is_admin', 'true');
+        sessionStorage.setItem('dormie_admin_active', '1');
       } catch (e) {}
 
       // Login successful, redirect to admin analytics

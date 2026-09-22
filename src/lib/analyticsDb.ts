@@ -1,5 +1,22 @@
 import fs from 'fs';
 import path from 'path';
+import {
+  isPostgresConfigured,
+  pgRecordEvent,
+  pgGetAnalyticsSummary,
+  pgGetTimelineData,
+  pgGetTopDormitories,
+  pgGetTopSearchKeywords,
+  pgGetResetHistory,
+  pgCreateResetRecord,
+  pgGetDisplayResetTimestamp,
+  pgLogAdminAudit,
+  pgGetAdminAuditLogs,
+  pgRegisterAdminIdentifier,
+  pgIsKnownAdminIdentifier,
+  pgGetHistoricalPeriods,
+  pgGetHistoricalAnalyticsData,
+} from './postgresDb';
 
 export type AnalyticsEventType = 
   | 'page_view' 
@@ -131,70 +148,59 @@ export interface PublicStatisticsData {
 }
 
 /**
- * Storage Resolution: Strictly isolates Development/Test and Production databases.
+ * Runtime Environment Detection
+ * On Vercel or in Production, PostgreSQL via DATABASE_URL is MANDATORY.
+ * Local SQLite is strictly restricted to local development and test environments.
+ */
+export const isProductionRuntime = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
+
+export function assertPostgresConfiguredInProduction(): void {
+  if (isProductionRuntime && !isPostgresConfigured()) {
+    const errMsg = '🚨 [CRITICAL PRODUCTION ERROR] DATABASE_URL is not configured in Production environment! Refusing to fall back to ephemeral /tmp or SQLite storage.';
+    console.error(errMsg);
+    throw new Error(errMsg);
+  }
+}
+
+/**
+ * Storage Resolution for Local Development & Testing:
  * - Test/Development: uses analytics.dev.db or analytics.test.db in ./data/
- * - Production: uses analytics.prod.db (or /tmp/analytics.prod.db on Vercel serverless)
- * - Or explicit ANALYTICS_DB_PATH environment variable
+ * - Custom Path: uses ANALYTICS_DB_PATH
+ * - NEVER uses /tmp
  */
 export function resolveAnalyticsStorageConfig(customDbPath?: string) {
   const nodeEnv = process.env.NODE_ENV || 'development';
   const isProd = nodeEnv === 'production';
   const isTest = nodeEnv === 'test';
-  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
   const activeCustomPath = customDbPath || process.env.ANALYTICS_DB_PATH;
-  if (activeCustomPath) {
-    const dbPath = path.isAbsolute(activeCustomPath) ? activeCustomPath : path.join(process.cwd(), activeCustomPath);
-    const jsonPath = dbPath.replace(/\.db$/, '_events.json');
-    const settingsJsonPath = dbPath.replace(/\.db$/, '_settings.json');
-    const historyJsonPath = dbPath.replace(/\.db$/, '_history.json');
-    const auditJsonPath = dbPath.replace(/\.db$/, '_audit.json');
-    const adminIdentifiersJsonPath = dbPath.replace(/\.db$/, '_admin_identifiers.json');
-    return { environment: nodeEnv, dbPath, jsonPath, settingsJsonPath, historyJsonPath, auditJsonPath, adminIdentifiersJsonPath, isProduction: isProd };
-  }
-
   let dataDir: string;
-  let dbFileName: string;
-  let jsonFileName: string;
-  let settingsFileName: string;
-  let historyFileName: string;
-  let auditFileName: string;
-  let adminIdentifiersFileName: string;
+  let dbPath: string;
 
-  if (isProd) {
-    dataDir = isServerless ? '/tmp' : path.join(process.cwd(), 'data');
-    dbFileName = 'analytics.prod.db';
-    jsonFileName = 'analytics_events.prod.json';
-    settingsFileName = 'analytics_settings.prod.json';
-    historyFileName = 'analytics_reset_history.prod.json';
-    auditFileName = 'admin_audit_logs.prod.json';
-    adminIdentifiersFileName = 'admin_identifiers.prod.json';
-  } else if (isTest) {
-    dataDir = path.join(process.cwd(), 'data');
-    dbFileName = 'analytics.test.db';
-    jsonFileName = 'analytics_events.test.json';
-    settingsFileName = 'analytics_settings.test.json';
-    historyFileName = 'analytics_reset_history.test.json';
-    auditFileName = 'admin_audit_logs.test.json';
-    adminIdentifiersFileName = 'admin_identifiers.test.json';
+  if (activeCustomPath) {
+    dbPath = path.isAbsolute(activeCustomPath) ? activeCustomPath : path.join(process.cwd(), activeCustomPath);
+    dataDir = path.dirname(dbPath);
   } else {
     dataDir = path.join(process.cwd(), 'data');
-    dbFileName = 'analytics.dev.db';
-    jsonFileName = 'analytics_events.dev.json';
-    settingsFileName = 'analytics_settings.dev.json';
-    historyFileName = 'analytics_reset_history.dev.json';
-    auditFileName = 'admin_audit_logs.dev.json';
-    adminIdentifiersFileName = 'admin_identifiers.dev.json';
+    const dbFileName = isTest ? 'analytics.test.db' : isProd ? 'analytics.prod.db' : 'analytics.dev.db';
+    dbPath = path.join(dataDir, dbFileName);
   }
+
+  const envSuffix = isProd ? 'prod.json' : isTest ? 'test.json' : 'dev.json';
+  const jsonPath = path.join(dataDir, `analytics_events.${envSuffix}`);
+  const settingsJsonPath = path.join(dataDir, `analytics_settings.${envSuffix}`);
+  const historyJsonPath = path.join(dataDir, `analytics_reset_history.${envSuffix}`);
+  const auditJsonPath = path.join(dataDir, `admin_audit_logs.${envSuffix}`);
+  const adminIdentifiersJsonPath = path.join(dataDir, `admin_identifiers.${envSuffix}`);
 
   return {
     environment: nodeEnv,
-    dbPath: path.join(dataDir, dbFileName),
-    jsonPath: path.join(dataDir, jsonFileName),
-    settingsJsonPath: path.join(dataDir, settingsFileName),
-    historyJsonPath: path.join(dataDir, historyFileName),
-    auditJsonPath: path.join(dataDir, auditFileName),
-    adminIdentifiersJsonPath: path.join(dataDir, adminIdentifiersFileName),
+    dbPath,
+    jsonPath,
+    settingsJsonPath,
+    historyJsonPath,
+    auditJsonPath,
+    adminIdentifiersJsonPath,
     isProduction: isProd,
   };
 }
@@ -202,23 +208,25 @@ export function resolveAnalyticsStorageConfig(customDbPath?: string) {
 const activeConfig = resolveAnalyticsStorageConfig();
 const activeDbDir = path.dirname(activeConfig.dbPath);
 
-// Ensure storage directory exists
-if (!fs.existsSync(activeDbDir)) {
-  try {
-    fs.mkdirSync(activeDbDir, { recursive: true });
-  } catch (err) {
-    console.warn('Failed to create storage directory:', err);
-  }
-}
-
-// In-memory / file-persisted engine with SQLite acceleration when available
+// In-memory / file-persisted engine with SQLite acceleration ONLY for local development / testing
 let sqliteDb: any = null;
 let useSqlite = false;
 
-try {
-  // Dynamically load node:sqlite if available in runtime
-  const { DatabaseSync } = require('node:sqlite');
-  sqliteDb = new DatabaseSync(activeConfig.dbPath);
+// In Production, SQLite and local JSON are strictly prohibited
+if (!isProductionRuntime && !isPostgresConfigured()) {
+  // Ensure storage directory exists
+  if (!fs.existsSync(activeDbDir)) {
+    try {
+      fs.mkdirSync(activeDbDir, { recursive: true });
+    } catch (err) {
+      console.warn('Failed to create storage directory:', err);
+    }
+  }
+
+  try {
+    // Dynamically load node:sqlite if available in runtime
+    const { DatabaseSync } = require('node:sqlite');
+    sqliteDb = new DatabaseSync(activeConfig.dbPath);
   
   // Create schema & indexes
   sqliteDb.exec(`
@@ -307,6 +315,7 @@ try {
     }
   }
 }
+}
 
 // Helper: read JSON fallback
 function readJsonEvents(): StoredAnalyticsEvent[] {
@@ -368,6 +377,86 @@ function writeJsonResetHistory(history: AnalyticsResetRecord[]) {
   }
 }
 
+/**
+ * Two-way Synchronization between SQLite and JSON for Reset History
+ * Merges any legacy history files (e.g. analytics.dev_history.json) and ensures 100% data integrity
+ */
+export function syncResetHistoryStorage(): void {
+  try {
+    const jsonList = readJsonResetHistory();
+    const legacyHistoryPath = activeConfig.dbPath.replace(/\.db$/, '_history.json');
+    let legacyList: AnalyticsResetRecord[] = [];
+    if (fs.existsSync(legacyHistoryPath)) {
+      try {
+        const raw = fs.readFileSync(legacyHistoryPath, 'utf-8');
+        legacyList = JSON.parse(raw);
+      } catch (e) {}
+    }
+
+    const mergedMap = new Map<string, AnalyticsResetRecord>();
+    for (const item of legacyList) {
+      if (item && item.resetAt) mergedMap.set(item.resetAt, item);
+    }
+    for (const item of jsonList) {
+      if (item && item.resetAt) mergedMap.set(item.resetAt, item);
+    }
+
+    if (useSqlite && sqliteDb) {
+      const sqliteRows = sqliteDb.prepare('SELECT id, reset_at, created_by, created_at, note FROM analytics_reset_history').all();
+      for (const row of sqliteRows) {
+        if (row && row.reset_at) {
+          mergedMap.set(String(row.reset_at), {
+            id: Number(row.id),
+            resetAt: String(row.reset_at),
+            createdBy: String(row.created_by || 'admin'),
+            createdAt: String(row.created_at || row.reset_at),
+            note: row.note ? String(row.note) : null,
+          });
+        }
+      }
+
+      // Insert any records from JSON/legacy into SQLite that are missing
+      const existingSqliteResetAts = new Set(sqliteRows.map((r: any) => String(r.reset_at)));
+      mergedMap.forEach((rec, resetAt) => {
+        if (!existingSqliteResetAts.has(resetAt)) {
+          sqliteDb.prepare(`
+            INSERT INTO analytics_reset_history (reset_at, created_by, created_at, note)
+            VALUES (?, ?, ?, ?)
+          `).run(rec.resetAt, rec.createdBy || 'admin', rec.createdAt || rec.resetAt, rec.note || null);
+          existingSqliteResetAts.add(resetAt);
+        }
+      });
+
+      // Read complete sorted records from SQLite and mirror 100% to JSON
+      const allRows = sqliteDb.prepare(`
+        SELECT id, reset_at as resetAt, created_by as createdBy, created_at as createdAt, note
+        FROM analytics_reset_history
+        ORDER BY datetime(reset_at) ASC
+      `).all();
+      const finalHistory: AnalyticsResetRecord[] = allRows.map((r: any) => ({
+        id: Number(r.id),
+        resetAt: String(r.resetAt),
+        createdBy: String(r.createdBy || 'admin'),
+        createdAt: String(r.createdAt || r.resetAt),
+        note: r.note ? String(r.note) : null,
+      }));
+      writeJsonResetHistory(finalHistory);
+    } else {
+      const sorted = Array.from(mergedMap.values()).sort(
+        (a, b) => new Date(a.resetAt).getTime() - new Date(b.resetAt).getTime()
+      );
+      writeJsonResetHistory(sorted);
+    }
+  } catch (err) {
+    console.warn('syncResetHistoryStorage error:', err);
+  }
+}
+
+// Perform initial synchronization only in local development / testing
+if (!isProductionRuntime && !isPostgresConfigured()) {
+  syncResetHistoryStorage();
+}
+
 // Helper: read JSON audit logs fallback
 function readJsonAuditLogs(): AdminAuditLogRecord[] {
   try {
@@ -412,7 +501,15 @@ function writeJsonAdminIdentifiers(list: { identifierType: string; identifierVal
  * Register a visitorId or sessionId as belonging to an authenticated Admin.
  * Any existing or future events matching these identifiers will be strictly excluded from User Analytics.
  */
-export function registerAdminIdentifier(type: 'visitor_id' | 'session_id', value: string): void {
+export async function registerAdminIdentifier(type: 'visitor_id' | 'session_id', value: string): Promise<void> {
+  if (isPostgresConfigured()) {
+    return pgRegisterAdminIdentifier(type, value);
+  }
+  assertPostgresConfiguredInProduction();
+  return registerAdminIdentifierSync(type, value);
+}
+
+export function registerAdminIdentifierSync(type: 'visitor_id' | 'session_id', value: string): void {
   if (!value || typeof value !== 'string') return;
   const cleanVal = value.trim();
   if (!cleanVal) return;
@@ -492,8 +589,12 @@ export function getKnownAdminIdentifiers(): { visitorIds: Set<string>; sessionId
 /**
  * Check if a given sessionId belongs to an authenticated Admin session
  */
-export function isKnownAdminIdentifier(visitorId?: string | null, sessionId?: string | null): boolean {
+export async function isKnownAdminIdentifier(visitorId?: string | null, sessionId?: string | null): Promise<boolean> {
   if (!sessionId) return false;
+  if (isPostgresConfigured()) {
+    return pgIsKnownAdminIdentifier(sessionId);
+  }
+  assertPostgresConfiguredInProduction();
   const { sessionIds } = getKnownAdminIdentifiers();
   return sessionIds.has(sessionId);
 }
@@ -502,7 +603,19 @@ export function isKnownAdminIdentifier(visitorId?: string | null, sessionId?: st
  * Log an administrative action to admin_audit_logs table.
  * Stored independently and strictly excluded from user analytics.
  */
-export function logAdminAudit(
+export async function logAdminAudit(
+  adminId: string, 
+  action: string, 
+  metadata?: Record<string, any>
+): Promise<AdminAuditLogRecord> {
+  if (isPostgresConfigured()) {
+    return pgLogAdminAudit(adminId, action, metadata);
+  }
+  assertPostgresConfiguredInProduction();
+  return logAdminAuditSync(adminId, action, metadata);
+}
+
+export function logAdminAuditSync(
   adminId: string, 
   action: string, 
   metadata?: Record<string, any>
@@ -545,7 +658,15 @@ export function logAdminAudit(
 /**
  * Retrieve recent administrative audit logs.
  */
-export function getAdminAuditLogs(limit = 100): AdminAuditLogRecord[] {
+export async function getAdminAuditLogs(limit = 100): Promise<AdminAuditLogRecord[]> {
+  if (isPostgresConfigured()) {
+    return pgGetAdminAuditLogs(limit);
+  }
+  assertPostgresConfiguredInProduction();
+  return getAdminAuditLogsSync(limit);
+}
+
+export function getAdminAuditLogsSync(limit = 100): AdminAuditLogRecord[] {
   if (useSqlite && sqliteDb) {
     try {
       const rows = sqliteDb.prepare(`
@@ -610,7 +731,15 @@ export function setAnalyticsSetting(key: string, value: string): void {
 /**
  * Get full history of all Reset Points
  */
-export function getResetHistory(): AnalyticsResetRecord[] {
+export async function getResetHistory(): Promise<AnalyticsResetRecord[]> {
+  if (isPostgresConfigured()) {
+    return pgGetResetHistory();
+  }
+  assertPostgresConfiguredInProduction();
+  return getResetHistorySync();
+}
+
+export function getResetHistorySync(): AnalyticsResetRecord[] {
   if (useSqlite && sqliteDb) {
     try {
       const rows = sqliteDb.prepare(`
@@ -618,13 +747,15 @@ export function getResetHistory(): AnalyticsResetRecord[] {
         FROM analytics_reset_history
         ORDER BY datetime(reset_at) DESC
       `).all();
-      return rows.map((r: any) => ({
-        id: Number(r.id),
-        resetAt: String(r.resetAt),
-        createdBy: String(r.createdBy || 'admin'),
-        createdAt: String(r.createdAt || r.resetAt),
-        note: r.note ? String(r.note) : null,
-      }));
+      if (rows && rows.length > 0) {
+        return rows.map((r: any) => ({
+          id: Number(r.id),
+          resetAt: String(r.resetAt),
+          createdBy: String(r.createdBy || 'admin'),
+          createdAt: String(r.createdAt || r.resetAt),
+          note: r.note ? String(r.note) : null,
+        }));
+      }
     } catch (e) {
       console.warn('SQLite getResetHistory error, fallback to JSON:', e);
     }
@@ -640,7 +771,15 @@ export function getResetHistory(): AnalyticsResetRecord[] {
  * - Updates the latest reset timestamp
  * - All historical events in analytics_events remain 100% intact
  */
-export function createResetRecord(createdBy = 'admin', note?: string): AnalyticsResetRecord {
+export async function createResetRecord(createdBy = 'admin', note?: string): Promise<AnalyticsResetRecord> {
+  if (isPostgresConfigured()) {
+    return pgCreateResetRecord(createdBy, note);
+  }
+  assertPostgresConfiguredInProduction();
+  return createResetRecordSync(createdBy, note);
+}
+
+export function createResetRecordSync(createdBy = 'admin', note?: string): AnalyticsResetRecord {
   const now = new Date().toISOString();
   let newRecord: AnalyticsResetRecord;
 
@@ -658,10 +797,27 @@ export function createResetRecord(createdBy = 'admin', note?: string): Analytics
         createdAt: now,
         note: note || null,
       };
+
+      // Fully mirror complete sorted SQLite history to JSON
+      try {
+        const allRows = sqliteDb.prepare(`
+          SELECT id, reset_at as resetAt, created_by as createdBy, created_at as createdAt, note
+          FROM analytics_reset_history
+          ORDER BY datetime(reset_at) ASC
+        `).all();
+        const fullHistory: AnalyticsResetRecord[] = allRows.map((r: any) => ({
+          id: Number(r.id),
+          resetAt: String(r.resetAt),
+          createdBy: String(r.createdBy || 'admin'),
+          createdAt: String(r.createdAt || r.resetAt),
+          note: r.note ? String(r.note) : null,
+        }));
+        writeJsonResetHistory(fullHistory);
+      } catch (err) {}
     } catch (e) {
       console.warn('SQLite createResetRecord error, fallback to JSON:', e);
       const list = readJsonResetHistory();
-      const newId = list.length > 0 ? list[list.length - 1].id + 1 : 1;
+      const newId = list.length > 0 ? Math.max(...list.map(r => r.id)) + 1 : 1;
       newRecord = {
         id: newId,
         resetAt: now,
@@ -674,7 +830,7 @@ export function createResetRecord(createdBy = 'admin', note?: string): Analytics
     }
   } else {
     const list = readJsonResetHistory();
-    const newId = list.length > 0 ? list[list.length - 1].id + 1 : 1;
+    const newId = list.length > 0 ? Math.max(...list.map(r => r.id)) + 1 : 1;
     newRecord = {
       id: newId,
       resetAt: now,
@@ -686,22 +842,21 @@ export function createResetRecord(createdBy = 'admin', note?: string): Analytics
     writeJsonResetHistory(list);
   }
 
-  // Always mirror reset history in JSON as fail-safe persistence
-  try {
-    const list = readJsonResetHistory();
-    if (!list.some(r => r.id === newRecord.id)) {
-      list.push(newRecord);
-      writeJsonResetHistory(list);
-    }
-  } catch (e) {}
-
   // Update latest setting in both SQLite and JSON
   setAnalyticsSetting('analytics_display_reset_at', now);
 
   return newRecord;
 }
 
-export function getDisplayResetTimestamp(): string | null {
+export async function getDisplayResetTimestamp(): Promise<string | null> {
+  if (isPostgresConfigured()) {
+    return pgGetDisplayResetTimestamp();
+  }
+  assertPostgresConfiguredInProduction();
+  return getDisplayResetTimestampSync();
+}
+
+export function getDisplayResetTimestampSync(): string | null {
   if (useSqlite && sqliteDb) {
     try {
       const row = sqliteDb.prepare('SELECT reset_at FROM analytics_reset_history ORDER BY id DESC LIMIT 1').get();
@@ -721,7 +876,7 @@ export function getDisplayResetTimestamp(): string | null {
 }
 
 export function setDisplayResetTimestamp(timestamp?: string): string {
-  const rec = createResetRecord('admin', 'รีเซ็ตการแสดงผล');
+  const rec = createResetRecordSync('admin', 'รีเซ็ตการแสดงผล');
   return rec.resetAt;
 }
 
@@ -760,11 +915,19 @@ export function applyResetToRange(
 /**
  * Record a new analytics event into the database
  */
-export function recordEvent(event: AnalyticsEventInput): StoredAnalyticsEvent | null {
+export async function recordEvent(event: AnalyticsEventInput): Promise<StoredAnalyticsEvent | null> {
+  if (isPostgresConfigured()) {
+    return pgRecordEvent(event);
+  }
+  assertPostgresConfiguredInProduction();
+  return recordEventSync(event);
+}
+
+export function recordEventSync(event: AnalyticsEventInput): StoredAnalyticsEvent | null {
   // If explicitly admin or matches known admin identifiers, do NOT insert into user analytics
   if (
     event.actorType === 'admin' ||
-    isKnownAdminIdentifier(event.visitorId, event.sessionId)
+    (event.sessionId && getKnownAdminIdentifiers().sessionIds.has(event.sessionId))
   ) {
     return null;
   }
@@ -897,7 +1060,7 @@ function calculatePercentChange(current: number, prev: number, isPrevValid = tru
  */
 export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
   const { currentStart, currentEnd, prevStart, prevEnd } = getPeriodDateRanges(period);
-  const resetAt = getDisplayResetTimestamp();
+  const resetAt = getDisplayResetTimestampSync();
 
   const currRange = applyResetToRange(currentStart, currentEnd, resetAt);
   const prevRange = applyResetToRange(prevStart, prevEnd, resetAt);
@@ -924,7 +1087,7 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
           WHERE created_at >= ? AND created_at <= ?
             AND (actor_type IS NULL OR actor_type != 'admin')
             AND (user_id IS NULL OR user_id != 'admin')
-            AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
+            AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL)
         `).get(range.start, range.end);
         return {
           uniqueVisitors: Number(row?.unique_visitors || 0),
@@ -1060,7 +1223,7 @@ function formatThaiFullDate(d: Date): string {
 export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
   const now = new Date();
   const points: TimelineDataPoint[] = [];
-  const resetAt = getDisplayResetTimestamp();
+  const resetAt = getDisplayResetTimestampSync();
 
   if (period === 'today') {
     // Determine start of today in Asia/Bangkok (00:00:00 Bangkok)
@@ -1100,7 +1263,7 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
               WHERE created_at >= ? AND created_at <= ?
                 AND (actor_type IS NULL OR actor_type != 'admin')
                 AND (user_id IS NULL OR user_id != 'admin')
-                AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
+                AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL)
             `).get(range.start, range.end);
             visitors = Number(row?.visitors || 0);
             views = Number(row?.views || 0);
@@ -1174,7 +1337,7 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
             WHERE created_at >= ? AND created_at <= ?
               AND (actor_type IS NULL OR actor_type != 'admin')
               AND (user_id IS NULL OR user_id != 'admin')
-              AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
+              AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL)
           `).get(range.start, range.end);
           visitors = Number(row?.visitors || 0);
           views = Number(row?.views || 0);
@@ -1218,7 +1381,7 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
  */
 export function getTopDormitories(period: PeriodType, limit = 5): TopDormitory[] {
   const { currentStart, currentEnd } = getPeriodDateRanges(period);
-  const resetAt = getDisplayResetTimestamp();
+  const resetAt = getDisplayResetTimestampSync();
   const range = applyResetToRange(currentStart, currentEnd, resetAt);
 
   if (!range.isValid) {
@@ -1238,7 +1401,7 @@ export function getTopDormitories(period: PeriodType, limit = 5): TopDormitory[]
           AND created_at >= ? AND created_at <= ?
           AND (actor_type IS NULL OR actor_type != 'admin')
           AND (user_id IS NULL OR user_id != 'admin')
-          AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
+          AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL)
         GROUP BY dormitory_id, dormitory_name
         ORDER BY count DESC
         LIMIT ?
@@ -1291,7 +1454,7 @@ export function getTopDormitories(period: PeriodType, limit = 5): TopDormitory[]
  */
 export function getTopSearchKeywords(period: PeriodType, limit = 5): TopSearch[] {
   const { currentStart, currentEnd } = getPeriodDateRanges(period);
-  const resetAt = getDisplayResetTimestamp();
+  const resetAt = getDisplayResetTimestampSync();
   const range = applyResetToRange(currentStart, currentEnd, resetAt);
 
   if (!range.isValid) {
@@ -1311,7 +1474,7 @@ export function getTopSearchKeywords(period: PeriodType, limit = 5): TopSearch[]
           AND created_at >= ? AND created_at <= ?
           AND (actor_type IS NULL OR actor_type != 'admin')
           AND (user_id IS NULL OR user_id != 'admin')
-          AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')
+          AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL)
         GROUP BY LOWER(TRIM(search_keyword))
         ORDER BY count DESC
         LIMIT ?
@@ -1359,14 +1522,35 @@ export function getTopSearchKeywords(period: PeriodType, limit = 5): TopSearch[]
  * Query complete Analytics Dashboard Data for given period
  * NO Mockup Data: queries strictly from real events in database.
  */
-export function getAnalyticsDashboardData(period: PeriodType): AnalyticsDashboardData {
+export async function getAnalyticsDashboardData(period: PeriodType): Promise<AnalyticsDashboardData> {
+  if (isPostgresConfigured()) {
+    const [summary, timeline, topDormitories, topSearches, displayResetAt] = await Promise.all([
+      pgGetAnalyticsSummary(period),
+      pgGetTimelineData(period),
+      pgGetTopDormitories(period, 5),
+      pgGetTopSearchKeywords(period, 5),
+      pgGetDisplayResetTimestamp(),
+    ]);
+
+    return {
+      period,
+      summary,
+      timeline,
+      topDormitories,
+      topSearches,
+      displayResetAt,
+    };
+  }
+
+  assertPostgresConfiguredInProduction();
+
   return {
     period,
     summary: getAnalyticsSummary(period),
     timeline: getTimelineData(period),
     topDormitories: getTopDormitories(period, 5),
     topSearches: getTopSearchKeywords(period, 5),
-    displayResetAt: getDisplayResetTimestamp(),
+    displayResetAt: getDisplayResetTimestampSync(),
   };
 }
 
@@ -1400,7 +1584,7 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
           WHERE created_at >= ? AND created_at < ?
             AND (actor_type IS NULL OR actor_type != 'admin')
             AND (user_id IS NULL OR user_id != 'admin')
-            AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')`
+            AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL)`
         : `SELECT 
             COUNT(DISTINCT visitor_id) as unique_visitors,
             SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
@@ -1410,7 +1594,7 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
           WHERE created_at < ?
             AND (actor_type IS NULL OR actor_type != 'admin')
             AND (user_id IS NULL OR user_id != 'admin')
-            AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id')`;
+            AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL)`;
 
       const params = startAt ? [startAt, endAt] : [endAt];
       const row = sqliteDb.prepare(sql).get(...params);
@@ -1453,8 +1637,16 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
 /**
  * Get all historical segments created by previous resets
  */
-export function getHistoricalPeriods(): HistoricalPeriod[] {
-  const history = getResetHistory(); // already sorted DESC
+export async function getHistoricalPeriods(): Promise<HistoricalPeriod[]> {
+  if (isPostgresConfigured()) {
+    return pgGetHistoricalPeriods();
+  }
+  assertPostgresConfiguredInProduction();
+  return getHistoricalPeriodsSync();
+}
+
+export function getHistoricalPeriodsSync(): HistoricalPeriod[] {
+  const history = getResetHistorySync(); // already sorted DESC
   if (history.length === 0) {
     return [];
   }
@@ -1502,7 +1694,23 @@ export function getHistoricalPeriods(): HistoricalPeriod[] {
  * Get full analytics dashboard data for a specific historical time window [startAt, endAt)
  * Strictly queries real events from database without mock data.
  */
-export function getHistoricalAnalyticsData(
+export async function getHistoricalAnalyticsData(
+  startAt: string | null,
+  endAt: string,
+  periodInfo?: { id?: string; label?: string }
+): Promise<AnalyticsDashboardData> {
+  if (isPostgresConfigured()) {
+    return pgGetHistoricalAnalyticsData(
+      startAt, 
+      endAt, 
+      periodInfo ? { id: periodInfo.id || 'custom', label: periodInfo.label || '' } : undefined
+    );
+  }
+  assertPostgresConfiguredInProduction();
+  return getHistoricalAnalyticsDataSync(startAt, endAt, periodInfo);
+}
+
+export function getHistoricalAnalyticsDataSync(
   startAt: string | null,
   endAt: string,
   periodInfo?: { id?: string; label?: string }
@@ -1841,7 +2049,7 @@ export function getHistoricalAnalyticsData(
     timeline,
     topDormitories,
     topSearches,
-    displayResetAt: getDisplayResetTimestamp(),
+    displayResetAt: getDisplayResetTimestampSync(),
     historicalPeriod: {
       id: periodInfo?.id || 'historical',
       label: periodInfo?.label || 'ข้อมูลสถิติย้อนหลัง',

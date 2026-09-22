@@ -104,8 +104,6 @@ export default function AdminAnalyticsPage() {
 
       // Mark client-side admin flags
       try {
-        localStorage.setItem('dormie_admin_active', '1');
-        localStorage.setItem('dormie_is_admin', 'true');
         sessionStorage.setItem('dormie_admin_active', '1');
         document.cookie = 'dormie_role=admin; path=/; max-age=86400; SameSite=Lax';
       } catch (e) {}
@@ -193,8 +191,6 @@ export default function AdminAnalyticsPage() {
         setData(json.data);
         setIsAuthenticated(true);
         try {
-          localStorage.setItem('dormie_admin_active', '1');
-          localStorage.setItem('dormie_is_admin', 'true');
           sessionStorage.setItem('dormie_admin_active', '1');
           document.cookie = 'dormie_role=admin; path=/; max-age=86400; SameSite=Lax';
         } catch (e) {}
@@ -247,8 +243,7 @@ export default function AdminAnalyticsPage() {
       }
 
       try {
-        localStorage.setItem('dormie_admin_active', '1');
-        localStorage.setItem('dormie_is_admin', 'true');
+        sessionStorage.setItem('dormie_admin_active', '1');
       } catch (e) {}
 
       setIsAuthenticated(true);

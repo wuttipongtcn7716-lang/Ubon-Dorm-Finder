@@ -47,6 +47,7 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
 
   const watchIdRef = useRef<number | null>(null);
   const fallbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastWatchGpsRef = useRef<{ lat: number; lng: number } | null>(null);
   const isWhite = Boolean(dorm.isWhiteDorm || dorm.status === 'ผ่าน' || dorm.evalResult === 'ผ่าน');
 
   const showToast = useCallback((msg: string) => {
@@ -102,6 +103,7 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
           if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
           const uLat = pos.coords.latitude;
           const uLng = pos.coords.longitude;
+          lastWatchGpsRef.current = { lat: uLat, lng: uLng };
           setUserLocation({ lat: uLat, lng: uLng });
           // Set origin to GPS if no origin selected yet (null) or if already using GPS
           setCurrentOrigin((prev) => {
@@ -167,18 +169,40 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
           }
           const uLat = pos.coords.latitude;
           const uLng = pos.coords.longitude;
-          setUserLocation({ lat: uLat, lng: uLng });
-          setCurrentOrigin((prev) => {
-            if (prev === null || prev.type === 'gps') {
-              return {
-                name: 'ตำแหน่ง GPS ของคุณ',
-                lat: uLat,
-                lng: uLng,
-                type: 'gps',
-              };
+
+          let shouldUpdateOrigin = true;
+          if (lastWatchGpsRef.current) {
+            const R = 6371e3;
+            const dLat = ((uLat - lastWatchGpsRef.current.lat) * Math.PI) / 180;
+            const dLng = ((uLng - lastWatchGpsRef.current.lng) * Math.PI) / 180;
+            const a =
+              Math.sin(dLat / 2) ** 2 +
+              Math.cos((uLat * Math.PI) / 180) *
+                Math.cos((lastWatchGpsRef.current.lat * Math.PI) / 180) *
+                Math.sin(dLng / 2) ** 2;
+            const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            if (dist < 15) {
+              shouldUpdateOrigin = false;
             }
-            return prev; // Don't overwrite manual selection
-          });
+          }
+
+          setUserLocation({ lat: uLat, lng: uLng });
+
+          if (shouldUpdateOrigin) {
+            lastWatchGpsRef.current = { lat: uLat, lng: uLng };
+            setCurrentOrigin((prev) => {
+              if (prev === null || prev.type === 'gps') {
+                return {
+                  name: 'ตำแหน่ง GPS ของคุณ',
+                  lat: uLat,
+                  lng: uLng,
+                  type: 'gps',
+                };
+              }
+              return prev; // Don't overwrite manual selection
+            });
+          }
+
           setGpsTimestamp(new Date());
           setGpsStatus('acquired');
           setGpsErrorMessage(null);
@@ -199,9 +223,13 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
     requestGPS();
 
     return () => {
-      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current);
+        fallbackTimerRef.current = null;
+      }
       if (watchIdRef.current !== null && navigator.geolocation) {
         navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
       }
     };
   }, [requestGPS, dorm?.id, dorm?.name]);

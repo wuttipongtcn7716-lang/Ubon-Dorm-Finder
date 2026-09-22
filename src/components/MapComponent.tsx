@@ -340,15 +340,31 @@ export interface OriginPointData {
 function MapEventsHandler({
   isPickingManualOrigin,
   onPickManualOrigin,
+  onUserInteraction,
 }: {
   isPickingManualOrigin: boolean;
   onPickManualOrigin: (lat: number, lng: number) => void;
+  onUserInteraction?: () => void;
 }) {
   useMapEvents({
     click(e) {
       console.log(`Map Clicked Coordinates -> Latitude: ${e.latlng.lat}, Longitude: ${e.latlng.lng}`);
       if (isPickingManualOrigin) {
         onPickManualOrigin(e.latlng.lat, e.latlng.lng);
+      }
+    },
+    dragstart() {
+      onUserInteraction?.();
+    },
+    movestart(e) {
+      // Only treat as user pan if it was initiated by a user gesture event
+      if ((e as any).originalEvent) {
+        onUserInteraction?.();
+      }
+    },
+    zoomstart(e) {
+      if ((e as any).originalEvent) {
+        onUserInteraction?.();
       }
     },
   });
@@ -474,6 +490,10 @@ function UnifiedActionDock({
 function LeafletMapInstanceCapture({ onMapReady }: { onMapReady: (map: L.Map) => void }) {
   const map = useMap();
   useEffect(() => {
+    // Disable legacy tap handler if present to ensure fluid mobile gesture panning
+    if ((map as any).tap) {
+      (map as any).tap.disable();
+    }
     onMapReady(map);
   }, [map, onMapReady]);
   return null;
@@ -745,6 +765,7 @@ function MultiRoadRoutingLayer({
   const lastDestinationsKeyRef = useRef<string>('');
   const hasInitialFitRef = useRef<boolean>(false);
   const lastForceFitKeyRef = useRef<number | null>(null);
+  const lastCalculatedOriginRef = useRef<{ lat: number; lng: number; mode?: string; label?: string } | null>(null);
 
   useEffect(() => {
     if (!map || !originLocation || destinations.length === 0) {
@@ -775,6 +796,30 @@ function MultiRoadRoutingLayer({
       cleanStartLat = cleanStartLng;
       cleanStartLng = temp;
     }
+
+    // Distance threshold: ignore micro GPS movements (< 25 meters) to avoid route flicker & wasteful re-queries
+    const lastCalc = lastCalculatedOriginRef.current;
+    if (lastCalc && !destsChanged && originLocation.mode === 'gps' && lastCalc.mode === 'gps') {
+      const R = 6371e3;
+      const dLat = ((cleanStartLat - lastCalc.lat) * Math.PI) / 180;
+      const dLng = ((cleanStartLng - lastCalc.lng) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos((cleanStartLat * Math.PI) / 180) *
+          Math.cos((lastCalc.lat * Math.PI) / 180) *
+          Math.sin(dLng / 2) ** 2;
+      const distMeters = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      if (distMeters < 25) {
+        return; // Movement below 25 meters - keep existing route stable
+      }
+    }
+
+    lastCalculatedOriginRef.current = {
+      lat: cleanStartLat,
+      lng: cleanStartLng,
+      mode: originLocation.mode,
+      label: originLocation.label,
+    };
 
     // Apply offset adjustment to origin if it's a database/stored point
     const originNeedsOffset = originLocation.mode !== 'gps' && originLocation.mode !== 'custom';
@@ -1000,9 +1045,9 @@ function MultiRoadRoutingLayer({
         const fitKey = `${destKeys}-${forceFitKey || 0}`;
 
         const isInteracting = (map.dragging as any)?.moving() || (map as any)._animatingZoom;
-        const forceFitTriggered = Boolean(forceFitKey && forceFitKey !== lastForceFitKeyRef.current);
-        // Item 4: ปิดการซูมแผนที่อัตโนมัติเมื่อมีการเพิ่ม/ลบสถานที่เปรียบเทียบ ให้คงระยะซูมเดิมไว้เสมอ
-        const shouldFit = !hasInitialFitRef.current;
+        // Prevent automatic fitBounds on live GPS tracking updates (only on manual selection or non-GPS initial fit)
+        const isGpsOrigin = originLocation.mode === 'gps';
+        const shouldFit = !hasInitialFitRef.current && !isGpsOrigin;
 
         if (allCoords.length > 1 && shouldFit && lastFitKeyRef.current !== fitKey && !isInteracting) {
           hasInitialFitRef.current = true;
@@ -1168,6 +1213,21 @@ export default function MapComponent({
   // Maps 1: Main Leaflet Map Instance
   const [leafletMap, setLeafletMap] = useState<L.Map | null>(null);
 
+  // Mobile/Tablet Camera Follow Mode: true on initial acquire or explicit locate button click; false when user drags/pans map
+  const [followGPS, setFollowGPSState] = useState<boolean>(true);
+  const followGPSRef = useRef<boolean>(true);
+
+  const setFollowGPS = useCallback((val: boolean) => {
+    followGPSRef.current = val;
+    setFollowGPSState(val);
+  }, []);
+
+  const handleUserMapInteraction = useCallback(() => {
+    if (followGPSRef.current) {
+      setFollowGPS(false);
+    }
+  }, [setFollowGPS]);
+
   const handleRetryMap = useCallback(() => {
     setMapError(null);
     setIsMapReady(false);
@@ -1285,12 +1345,24 @@ export default function MapComponent({
       };
       isSyncingFromParentRef.current = true;
       setOriginPoint(customOrigin);
-      const needsOffset = customOrigin.mode !== 'gps' && customOrigin.mode !== 'custom';
-      const [adjLat, adjLng] = needsOffset ? adjustLatLng(customOrigin.lat, customOrigin.lng) : [customOrigin.lat, customOrigin.lng];
-      setTargetFlyCenter([adjLat, adjLng]);
-      setForceFitKey(Date.now());
+      const isGps = customOrigin.mode === 'gps';
+      if (!isGps) {
+        // Manual origin (gate, dormitory, or custom coordinate picked by user)
+        setFollowGPS(false);
+        const needsOffset = customOrigin.mode !== 'custom';
+        const [adjLat, adjLng] = needsOffset ? adjustLatLng(customOrigin.lat, customOrigin.lng) : [customOrigin.lat, customOrigin.lng];
+        setTargetFlyCenter([adjLat, adjLng]);
+        setForceFitKey(Date.now());
+      } else {
+        // GPS Origin: only recenter camera on first GPS acquisition or if followGPS mode is actively ON
+        if (!hasInitialZoomedRef.current || followGPSRef.current) {
+          hasInitialZoomedRef.current = true;
+          setTargetFlyCenter([customOrigin.lat, customOrigin.lng]);
+        }
+        // NEVER trigger forceFitKey on live GPS jitter to prevent camera bouncing!
+      }
     }
-  }, [customOrigin, adjustLatLng]);
+  }, [customOrigin, adjustLatLng, setFollowGPS]);
 
   // Notify parent component on origin change — but NOT when we just synced from parent
   useEffect(() => {
@@ -1316,13 +1388,13 @@ export default function MapComponent({
         uLng = temp;
       }
       setLiveGpsLocation({ lat: uLat, lng: uLng });
-      // Only flyTo on the very first GPS arrival
-      if (!hasInitialZoomedRef.current) {
+      // Only flyTo on the very first GPS arrival if in follow mode
+      if (!hasInitialZoomedRef.current && (!customOrigin || customOrigin.mode === 'gps')) {
         hasInitialZoomedRef.current = true;
         setTargetFlyCenter([uLat, uLng]);
       }
     }
-  }, [userLocation]);
+  }, [userLocation, customOrigin]);
 
   // NOTE: GPS fetching (getCurrentPosition / watchPosition) is handled exclusively
   // by NavigationModal.tsx — removed from MapComponent to prevent dual GPS race conditions.
@@ -1548,6 +1620,7 @@ export default function MapComponent({
   }, [isPermissionModalOpen, isOriginModalOpen, isAddPoiDropdownOpen, isCategoryDropdownOpen, selectedPlace]);
 
   const handleSetOriginToGps = () => {
+    setFollowGPS(true);
     if (liveGpsLocation) {
       setOriginPoint({
         mode: 'gps',
@@ -1556,20 +1629,29 @@ export default function MapComponent({
         label: 'ตำแหน่ง GPS ของคุณ',
       });
       setTargetFlyCenter([liveGpsLocation.lat, liveGpsLocation.lng]);
+      if (leafletMap) {
+        leafletMap.flyTo([liveGpsLocation.lat, liveGpsLocation.lng], 16, { animate: true, duration: 1.0 });
+      }
     } else {
       handleRequestLiveGps();
       navigator.geolocation.getCurrentPosition((pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
         setOriginPoint({
           mode: 'gps',
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
+          lat,
+          lng,
           label: 'ตำแหน่ง GPS ของคุณ',
         });
-        setTargetFlyCenter([pos.coords.latitude, pos.coords.longitude]);
+        setTargetFlyCenter([lat, lng]);
+        if (leafletMap) {
+          leafletMap.flyTo([lat, lng], 16, { animate: true, duration: 1.0 });
+        }
       });
     }
     setIsOriginModalOpen(false);
-    setForceFitKey(Date.now());
+    setGpsToast('📍 ตำแหน่ง GPS สดของคุณ');
+    setTimeout(() => setGpsToast(null), 3000);
   };
 
   const handleSetOriginToDorm = (dorm: Dormitory) => {
@@ -2547,6 +2629,8 @@ export default function MapComponent({
             zoomControl={false}
             attributionControl={true}
             scrollWheelZoom={true}
+            touchZoom={true}
+            dragging={true}
             style={{ width: '100%', height: '100%' }}
             className="w-full h-full flex-1"
           >
@@ -2599,10 +2683,11 @@ export default function MapComponent({
             {/* Map Center & Pan Handler */}
             <MapController targetCenter={targetFlyCenter} />
 
-            {/* Map Click Handler for Custom Origin Picking */}
+            {/* Map Click & User Drag/Gesture Handler */}
             <MapEventsHandler
               isPickingManualOrigin={isPickingManualOrigin}
               onPickManualOrigin={handlePickManualOriginOnMap}
+              onUserInteraction={handleUserMapInteraction}
             />
 
             {/* User Live GPS Marker */}

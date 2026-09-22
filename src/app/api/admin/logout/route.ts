@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     const adminUsername = session?.username || 'admin';
 
     // Log admin audit action (Requirement 14)
-    logAdminAudit(adminUsername, 'LOGOUT');
+    await logAdminAudit(adminUsername, 'LOGOUT');
   } catch (e) {}
 
   const response = NextResponse.json({

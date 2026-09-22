@@ -1,0 +1,296 @@
+[
+  {
+    "id": 1,
+    "resetAt": "2026-09-20T14:23:04.398Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-20T14:23:04.398Z",
+    "note": "รีเซ็ตเริ่มต้น"
+  },
+  {
+    "id": 2,
+    "resetAt": "2026-09-20T14:50:19.222Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-20T14:50:19.222Z",
+    "note": "รีเซ็ตการแสดงผลสถิติ"
+  },
+  {
+    "id": 3,
+    "resetAt": "2026-09-20T14:50:33.003Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-20T14:50:33.003Z",
+    "note": "รีเซ็ตการแสดงผลสถิติ"
+  },
+  {
+    "id": 4,
+    "resetAt": "2026-09-20T14:50:46.251Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-20T14:50:46.251Z",
+    "note": "รีเซ็ตการแสดงผลสถิติ"
+  },
+  {
+    "id": 5,
+    "resetAt": "2026-09-20T15:13:03.335Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-20T15:13:03.335Z",
+    "note": "รีเซ็ตการแสดงผลสถิติ"
+  },
+  {
+    "id": 6,
+    "resetAt": "2026-09-20T15:15:07.720Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-20T15:15:07.720Z",
+    "note": "รีเซ็ตการแสดงผลสถิติ"
+  },
+  {
+    "id": 7,
+    "resetAt": "2026-09-20T15:15:46.536Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-20T15:15:46.536Z",
+    "note": "รีเซ็ตการแสดงผลสถิติ"
+  },
+  {
+    "id": 8,
+    "resetAt": "2026-09-21T20:31:50.458Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T20:31:50.458Z",
+    "note": "Overhaul automated test reset"
+  },
+  {
+    "id": 9,
+    "resetAt": "2026-09-21T20:32:09.404Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T20:32:09.404Z",
+    "note": "รีเซ็ตการแสดงผลสถิติ"
+  },
+  {
+    "id": 10,
+    "resetAt": "2026-09-21T20:34:43.945Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T20:34:43.945Z",
+    "note": "รีเซ็ตการแสดงผลสถิติ"
+  },
+  {
+    "id": 11,
+    "resetAt": "2026-09-21T20:36:29.505Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T20:36:29.505Z",
+    "note": "Overhaul automated test reset"
+  },
+  {
+    "id": 12,
+    "resetAt": "2026-09-21T20:40:26.698Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T20:40:26.698Z",
+    "note": "Overhaul automated test reset"
+  },
+  {
+    "id": 13,
+    "resetAt": "2026-09-21T20:40:31.401Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T20:40:31.401Z",
+    "note": "รีเซ็ตการแสดงผลสถิติ"
+  },
+  {
+    "id": 14,
+    "resetAt": "2026-09-21T20:54:29.835Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T20:54:29.835Z",
+    "note": "เริ่มนับสถิติใหม่หลังปรับปรุงแยก Admin"
+  },
+  {
+    "id": 15,
+    "resetAt": "2026-09-21T20:55:24.549Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T20:55:24.549Z",
+    "note": "Baseline reset for deep admin exclusion test"
+  },
+  {
+    "id": 16,
+    "resetAt": "2026-09-21T20:55:35.284Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T20:55:35.284Z",
+    "note": "Overhaul automated test reset"
+  },
+  {
+    "id": 17,
+    "resetAt": "2026-09-21T20:55:48.619Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T20:55:48.619Z",
+    "note": "Overhaul automated test reset"
+  },
+  {
+    "id": 18,
+    "resetAt": "2026-09-21T20:55:53.762Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T20:55:53.762Z",
+    "note": "Baseline reset for deep admin exclusion test"
+  },
+  {
+    "id": 19,
+    "resetAt": "2026-09-21T20:56:02.391Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T20:56:02.391Z",
+    "note": "Baseline reset for deep admin exclusion test"
+  },
+  {
+    "id": 20,
+    "resetAt": "2026-09-21T20:56:12.351Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T20:56:12.351Z",
+    "note": "เริ่มนับสถิติใหม่หลังปรับปรุงแยก Admin"
+  },
+  {
+    "id": 21,
+    "resetAt": "2026-09-21T21:10:51.734Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:10:51.734Z",
+    "note": "Baseline reset for deep admin exclusion test"
+  },
+  {
+    "id": 22,
+    "resetAt": "2026-09-21T21:20:55.518Z",
+    "createdBy": "admin_test_user",
+    "createdAt": "2026-09-21T21:20:55.518Z",
+    "note": "Automated Reset Logic Test"
+  },
+  {
+    "id": 23,
+    "resetAt": "2026-09-21T21:21:29.964Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:21:29.964Z",
+    "note": "เริ่มนับสถิติใหม่หลังปรับปรุงระบบ Reset Logic สมบูรณ์"
+  },
+  {
+    "id": 24,
+    "resetAt": "2026-09-21T21:23:20.297Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:23:20.297Z",
+    "note": "Live Server Test Reset"
+  },
+  {
+    "id": 25,
+    "resetAt": "2026-09-21T21:23:20.632Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:23:20.632Z",
+    "note": "Final clean reset after server test"
+  },
+  {
+    "id": 26,
+    "resetAt": "2026-09-21T21:23:49.100Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:23:49.100Z",
+    "note": "Live Server Test Reset"
+  },
+  {
+    "id": 27,
+    "resetAt": "2026-09-21T21:23:49.745Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:23:49.745Z",
+    "note": "Final clean reset after server test"
+  },
+  {
+    "id": 28,
+    "resetAt": "2026-09-21T21:53:50.451Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:53:50.451Z",
+    "note": "Verification Test Matrix Baseline"
+  },
+  {
+    "id": 29,
+    "resetAt": "2026-09-21T21:53:56.959Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:53:56.959Z",
+    "note": "Verification Test Matrix Baseline"
+  },
+  {
+    "id": 30,
+    "resetAt": "2026-09-21T21:53:57.560Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:53:57.560Z",
+    "note": "Post Verification Reset"
+  },
+  {
+    "id": 31,
+    "resetAt": "2026-09-21T21:54:06.705Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-21T21:54:06.705Z",
+    "note": "ระบบพร้อมใช้งาน - สถิติเริ่มต้นนับใหม่หลังจากปรับปรุง Anonymous & User Analytics ครบถ้วน"
+  },
+  {
+    "id": 32,
+    "resetAt": "2026-09-21T22:19:38.230Z",
+    "createdBy": "admin-dormie",
+    "createdAt": "2026-09-21T22:19:38.230Z",
+    "note": "Verification Test Matrix Baseline"
+  },
+  {
+    "id": 33,
+    "resetAt": "2026-09-21T22:19:39.133Z",
+    "createdBy": "admin-dormie",
+    "createdAt": "2026-09-21T22:19:39.133Z",
+    "note": "Post Verification Reset"
+  },
+  {
+    "id": 34,
+    "resetAt": "2026-09-21T22:19:48.274Z",
+    "createdBy": "admin-dormie",
+    "createdAt": "2026-09-21T22:19:48.274Z",
+    "note": "ระบบพร้อมใช้งาน - สถิติเริ่มต้นนับใหม่"
+  },
+  {
+    "id": 35,
+    "resetAt": "2026-09-22T17:08:17.893Z",
+    "createdBy": "admin-verifier",
+    "createdAt": "2026-09-22T17:08:17.893Z",
+    "note": "Verification test reset point"
+  },
+  {
+    "id": 36,
+    "resetAt": "2026-09-22T17:09:05.056Z",
+    "createdBy": "admin-verifier",
+    "createdAt": "2026-09-22T17:09:05.056Z",
+    "note": "Verification test reset point"
+  },
+  {
+    "id": 37,
+    "resetAt": "2026-09-22T17:09:31.083Z",
+    "createdBy": "admin-verifier",
+    "createdAt": "2026-09-22T17:09:31.083Z",
+    "note": "Verification test reset point"
+  },
+  {
+    "id": 38,
+    "resetAt": "2026-09-22T17:09:46.688Z",
+    "createdBy": "admin-verifier",
+    "createdAt": "2026-09-22T17:09:46.688Z",
+    "note": "Verification test reset point"
+  },
+  {
+    "id": 39,
+    "resetAt": "2026-09-22T17:50:34.759Z",
+    "createdBy": "admin_test_user",
+    "createdAt": "2026-09-22T17:50:34.759Z",
+    "note": "Automated Reset Logic Test"
+  },
+  {
+    "id": 40,
+    "resetAt": "2026-09-22T18:10:52.268Z",
+    "createdBy": "admin_test_user",
+    "createdAt": "2026-09-22T18:10:52.268Z",
+    "note": "Automated Reset Logic Test"
+  },
+  {
+    "id": 41,
+    "resetAt": "2026-09-22T18:11:08.656Z",
+    "createdBy": "admin_system",
+    "createdAt": "2026-09-22T18:11:08.656Z",
+    "note": "Test Suite Baseline"
+  },
+  {
+    "id": 42,
+    "resetAt": "2026-09-22T18:11:08.674Z",
+    "createdBy": "admin",
+    "createdAt": "2026-09-22T18:11:08.674Z",
+    "note": "Testing Reset Non-Destructive"
+  }
+]

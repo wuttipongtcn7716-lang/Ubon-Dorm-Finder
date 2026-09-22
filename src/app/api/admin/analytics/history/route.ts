@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
   // Register admin session if passed in request headers
   const reqSes = request.headers.get('x-session-id');
-  if (reqSes) registerAdminIdentifier('session_id', reqSes);
+  if (reqSes) await registerAdminIdentifier('session_id', reqSes);
 
   try {
     let adminUsername = 'admin';
@@ -46,12 +46,12 @@ export async function GET(request: Request) {
     const endParam = searchParams.get('end');
 
     // Log admin audit action (Requirement 14)
-    logAdminAudit(adminUsername, 'VIEW_ANALYTICS_HISTORY', {
+    await logAdminAudit(adminUsername, 'VIEW_ANALYTICS_HISTORY', {
       periodId: periodId || null,
       customRange: endParam ? { start: startParam, end: endParam } : null,
     });
 
-    const periods = getHistoricalPeriods();
+    const periods = await getHistoricalPeriods();
 
     // Case 1: Specific historical period requested by ID
     if (periodId) {
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
         );
       }
 
-      const data = getHistoricalAnalyticsData(targetPeriod.startAt, targetPeriod.endAt, {
+      const data = await getHistoricalAnalyticsData(targetPeriod.startAt, targetPeriod.endAt, {
         id: targetPeriod.id,
         label: targetPeriod.label,
       });
@@ -85,7 +85,7 @@ export async function GET(request: Request) {
 
     // Case 2: Specific custom range requested by start & end ISO strings
     if (endParam) {
-      const data = getHistoricalAnalyticsData(startParam || null, endParam, {
+      const data = await getHistoricalAnalyticsData(startParam || null, endParam, {
         id: 'custom_range',
         label: `ช่วง ${startParam || 'เริ่มต้น'} ถึง ${endParam}`,
       });

@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '50', 10);
-    const logs = getAdminAuditLogs(Math.min(limit, 200));
+    const logs = await getAdminAuditLogs(Math.min(limit, 200));
 
     return NextResponse.json({
       success: true,

@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const authenticated = isRequestAdminAuthenticated(request);
   if (authenticated) {
     const reqSes = request.headers.get('x-session-id');
-    if (reqSes) registerAdminIdentifier('session_id', reqSes);
+    if (reqSes) await registerAdminIdentifier('session_id', reqSes);
   }
   return NextResponse.json(
     { authenticated },

@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const hasAdminCookie = cookieHeader.includes('dormie_role=admin') || cookieHeader.includes('admin_session=');
 
     if (isAdminAuth || hasAdminCookie) {
-      if (body?.sessionId) registerAdminIdentifier('session_id', body.sessionId);
+      if (body?.sessionId) await registerAdminIdentifier('session_id', body.sessionId);
       return NextResponse.json({ ok: true, skipped: 'admin' });
     }
 
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     }
 
     // 4. Exclude if sessionId is a registered Admin session
-    if (isKnownAdminIdentifier(undefined, body?.sessionId)) {
+    if (await isKnownAdminIdentifier(undefined, body?.sessionId)) {
       return NextResponse.json({ ok: true, skipped: 'admin' });
     }
 
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
 
     const effectiveActorType = actorType || (userId ? 'user' : 'anonymous');
 
-    recordEvent({
+    await recordEvent({
       eventName,
       sessionId: String(sessionId).slice(0, 64),
       visitorId: String(visitorId).slice(0, 64),
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
       dormitoryName: dormitoryName ? String(dormitoryName).slice(0, 150) : null,
       searchKeyword: searchKeyword ? String(searchKeyword).trim().slice(0, 255) : null,
       metadata: typeof metadata === 'object' && metadata !== null ? metadata : null,
-      createdAt: createdAt || new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     });
 
     return NextResponse.json({ ok: true });

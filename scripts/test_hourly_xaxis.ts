@@ -20,7 +20,7 @@ async function testHourlyXAxis() {
 
   // Test 1: getTimelineData('today')
   console.log('\n--- Test 1: getTimelineData("today") ---');
-  const todayTimeline = getTimelineData('today');
+  const todayTimeline = await getTimelineData('today');
   assert(todayTimeline.length === 24, `Timeline for "today" has exactly 24 points (got ${todayTimeline.length})`);
   
   const expectedLabels = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
@@ -39,7 +39,7 @@ async function testHourlyXAxis() {
 
   // Test 2: getTimelineData('7d')
   console.log('\n--- Test 2: getTimelineData("7d") ---');
-  const weekTimeline = getTimelineData('7d');
+  const weekTimeline = await getTimelineData('7d');
   assert(weekTimeline.length === 7, `Timeline for "7d" has exactly 7 daily points (got ${weekTimeline.length})`);
   assert(weekTimeline.every(p => p.timeRangeLabel === 'ตลอดทั้งวัน (00:00–23:59)'), `Daily points have "ตลอดทั้งวัน (00:00–23:59)" label`);
 
@@ -50,7 +50,7 @@ async function testHourlyXAxis() {
   const tStartUtc = Date.UTC(2026, 8, 22, 13, 30, 0); // 20:30 Bangkok (13:30 UTC)
   const tEndUtc = Date.UTC(2026, 8, 22, 19, 30, 0);   // 02:30 Bangkok (+1 day in BKK: 23 Sep 02:30)
   
-  const histData = getHistoricalAnalyticsData(new Date(tStartUtc).toISOString(), new Date(tEndUtc).toISOString());
+  const histData = await getHistoricalAnalyticsData(new Date(tStartUtc).toISOString(), new Date(tEndUtc).toISOString());
   assert(histData.timeline.length > 0, `Historical timeline returned points`);
   
   // Check that labels cross midnight in order: 20:00, 21:00, 22:00, 23:00, 00:00, 01:00, 02:00

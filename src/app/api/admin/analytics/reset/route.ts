@@ -29,10 +29,10 @@ export async function GET(request: Request) {
 
   // Register admin session if passed in headers
   const reqSes = request.headers.get('x-session-id');
-  if (reqSes) registerAdminIdentifier('session_id', reqSes);
+  if (reqSes) await registerAdminIdentifier('session_id', reqSes);
 
-  const resetAt = getDisplayResetTimestamp();
-  const history = getResetHistory();
+  const resetAt = await getDisplayResetTimestamp();
+  const history = await getResetHistory();
   return NextResponse.json(
     {
       success: true,
@@ -97,12 +97,12 @@ export async function POST(request: Request) {
     } catch (e) {}
 
     // Immediately register Admin session identifier
-    if (sessionId) registerAdminIdentifier('session_id', sessionId);
+    if (sessionId) await registerAdminIdentifier('session_id', sessionId);
 
-    const newRecord = createResetRecord(createdBy, note || 'รีเซ็ตการแสดงผลสถิติ');
+    const newRecord = await createResetRecord(createdBy, note || 'รีเซ็ตการแสดงผลสถิติ');
 
     // Log admin audit action (Requirement 14)
-    logAdminAudit(createdBy, 'RESET_ANALYTICS', {
+    await logAdminAudit(createdBy, 'RESET_ANALYTICS', {
       resetRecordId: newRecord.id,
       resetAt: newRecord.resetAt,
     });

@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
   // Auto-register admin session identifier from request headers
   const reqSes = request.headers.get('x-session-id');
-  if (reqSes) registerAdminIdentifier('session_id', reqSes);
+  if (reqSes) await registerAdminIdentifier('session_id', reqSes);
 
   try {
     const { searchParams } = new URL(request.url);
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
       ? (rawPeriod as PeriodType) 
       : '7d';
 
-    const data = getAnalyticsDashboardData(period);
+    const data = await getAnalyticsDashboardData(period);
 
     return NextResponse.json(
       {

@@ -24,14 +24,14 @@ export async function POST(request: Request) {
 
     // Register this Admin's active session ID to exclude from User Analytics
     if (sessionId && typeof sessionId === 'string') {
-      registerAdminIdentifier('session_id', sessionId);
+      await registerAdminIdentifier('session_id', sessionId);
     }
 
     const token = createAdminSessionToken(username);
     const isProduction = process.env.NODE_ENV === 'production';
 
     // Log admin audit action (Requirement 14)
-    logAdminAudit(username, 'LOGIN', {
+    await logAdminAudit(username, 'LOGIN', {
       userAgent: request.headers.get('user-agent') || 'unknown',
       visitorId: visitorId || null,
       sessionId: sessionId || null,

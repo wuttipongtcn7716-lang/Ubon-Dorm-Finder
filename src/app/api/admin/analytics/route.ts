@@ -74,9 +74,9 @@ export async function GET(request: Request) {
             matchingEnvKeys: Object.keys(process.env).filter(
               k => k.includes('URL') || k.includes('DB') || k.includes('POSTGRES') || k.includes('DATA') || k.includes('SUPABASE')
             ),
-            vercelProjectName: process.env.VERCEL_PROJECT_NAME,
-            vercelEnv: process.env.VERCEL_ENV,
-            vercelTargetEnv: process.env.VERCEL_TARGET_ENV,
+            repoOwner: process.env.VERCEL_GIT_REPO_OWNER || null,
+            repoSlug: process.env.VERCEL_GIT_REPO_SLUG || null,
+            projectProductionUrl: process.env.VERCEL_PROJECT_PRODUCTION_URL || null,
             allAvailableKeyNames: Object.keys(process.env).sort(),
           }
         }

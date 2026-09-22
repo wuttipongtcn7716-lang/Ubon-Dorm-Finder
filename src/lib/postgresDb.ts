@@ -76,6 +76,9 @@ export function getPgPool(): Pool | null {
   }
 }
 
+let lastInitError: string | null = null;
+let lastQueryError: string | null = null;
+
 /**
  * Ensure PostgreSQL schema exists and run one-time historical migration if empty
  */
@@ -85,7 +88,10 @@ export async function ensurePostgresInitialized(): Promise<void> {
 
   initPromise = (async () => {
     const p = getPgPool();
-    if (!p) return;
+    if (!p) {
+      lastInitError = 'Pool is not available';
+      return;
+    }
 
     try {
       await p.query(`
@@ -196,7 +202,9 @@ export async function ensurePostgresInitialized(): Promise<void> {
       }
 
       isInitialized = true;
-    } catch (err) {
+      lastInitError = null;
+    } catch (err: any) {
+      lastInitError = err?.message || String(err);
       console.error('[PostgreSQL] Initialization Error:', err);
     } finally {
       initPromise = null;
@@ -204,6 +212,82 @@ export async function ensurePostgresInitialized(): Promise<void> {
   })();
 
   return initPromise;
+}
+
+export async function pgDiagnosticCheck() {
+  const connStr = getPostgresConnectionString();
+  const p = getPgPool();
+  if (!p) {
+    return { ok: false, error: 'Pool is null', hasConnStr: Boolean(connStr) };
+  }
+
+  let client: PoolClient | null = null;
+  try {
+    client = await p.connect();
+    const versionRes = await client.query('SELECT version()');
+    
+    // Check tables in public schema
+    const tablesRes = await client.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+    `);
+    const tables = tablesRes.rows.map(r => r.table_name);
+
+    // Try ensuring initialized
+    let initErr = null;
+    try {
+      await ensurePostgresInitialized();
+    } catch (ie: any) {
+      initErr = ie?.message || String(ie);
+    }
+
+    let eventsCount = -1;
+    let resetCount = -1;
+    let auditCount = -1;
+    let eventsErr = null;
+
+    try {
+      const e = await client.query('SELECT COUNT(*) as c FROM analytics_events');
+      eventsCount = parseInt(e.rows[0]?.c, 10);
+    } catch (ee: any) {
+      eventsErr = ee?.message || String(ee);
+    }
+
+    try {
+      const r = await client.query('SELECT COUNT(*) as c FROM analytics_reset_history');
+      resetCount = parseInt(r.rows[0]?.c, 10);
+    } catch {}
+
+    try {
+      const a = await client.query('SELECT COUNT(*) as c FROM admin_audit_logs');
+      auditCount = parseInt(a.rows[0]?.c, 10);
+    } catch {}
+
+    return {
+      ok: true,
+      version: versionRes.rows[0]?.version,
+      tables,
+      eventsCount,
+      resetCount,
+      auditCount,
+      initErr,
+      eventsErr,
+      lastInitError,
+      lastQueryError,
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      error: err?.message || String(err),
+      code: err?.code,
+      name: err?.name,
+    };
+  } finally {
+    if (client) {
+      try { client.release(); } catch {}
+    }
+  }
 }
 
 /**
@@ -381,7 +465,8 @@ export async function pgRecordEvent(event: AnalyticsEventInput): Promise<StoredA
       metadata: r.metadata ? JSON.stringify(r.metadata) : null,
       createdAt: new Date(r.created_at).toISOString(),
     };
-  } catch (err) {
+  } catch (err: any) {
+    lastQueryError = err?.message || String(err);
     console.error('[PostgreSQL] pgRecordEvent error:', err);
     return null;
   }

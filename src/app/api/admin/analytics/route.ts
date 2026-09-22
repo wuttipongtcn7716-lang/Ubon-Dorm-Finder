@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { isRequestAdminAuthenticated } from '@/lib/adminAuth';
 import { getAnalyticsDashboardData, PeriodType, registerAdminIdentifier } from '@/lib/analyticsDb';
+import { getPostgresConnectionString, isPostgresConfigured, pgDiagnosticCheck } from '@/lib/postgresDb';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -48,11 +49,13 @@ export async function GET(request: Request) {
       : '7d';
 
     const data = await getAnalyticsDashboardData(period);
+    const diagnostics = await pgDiagnosticCheck();
 
     return NextResponse.json(
       {
         success: true,
         data,
+        diagnostics,
       },
       {
         headers: NO_CACHE_HEADERS,

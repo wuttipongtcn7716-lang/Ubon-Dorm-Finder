@@ -74,6 +74,7 @@ export async function GET(request: Request) {
             matchingEnvKeys: Object.keys(process.env).filter(
               k => k.includes('URL') || k.includes('DB') || k.includes('POSTGRES') || k.includes('DATA') || k.includes('SUPABASE')
             ),
+            allAvailableKeyNames: Object.keys(process.env).sort(),
           }
         }
       },

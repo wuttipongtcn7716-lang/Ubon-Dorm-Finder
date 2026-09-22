@@ -2,9 +2,22 @@ import crypto from 'crypto';
 
 export const SESSION_COOKIE_NAME = 'admin_session';
 
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin-dormie';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'dormie_ubu_admin_2026';
-const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || 'ubu_white_dorm_secret_key_2026';
+function cleanEnv(val?: string): string {
+  if (!val) return '';
+  return val.replace(/^["']|["']$/g, '').trim();
+}
+
+export function getExpectedAdminUsername(): string {
+  return cleanEnv(process.env.ADMIN_USERNAME) || 'admin-dormie';
+}
+
+export function getExpectedAdminPassword(): string {
+  return cleanEnv(process.env.ADMIN_PASSWORD) || 'dormie_ubu_admin_2026';
+}
+
+export function getAdminSessionSecret(): string {
+  return cleanEnv(process.env.ADMIN_SESSION_SECRET) || 'ubu_white_dorm_secret_key_2026';
+}
 
 export interface AdminSessionPayload {
   username: string;
@@ -15,29 +28,55 @@ export interface AdminSessionPayload {
 
 /**
  * Verify given username & password against server environment credentials
+ * Supports both plaintext comparison and SHA-256 hash comparison.
  */
 export function verifyAdminCredentials(username?: string, password?: string): boolean {
   if (!username || !password) return false;
-  return username.trim() === ADMIN_USERNAME.trim() && password.trim() === ADMIN_PASSWORD.trim();
+  const u = username.trim();
+  const p = password.trim();
+
+  const expectedUser = getExpectedAdminUsername();
+  const expectedPass = getExpectedAdminPassword();
+
+  if (u !== expectedUser) {
+    return false;
+  }
+
+  // 1. Direct plaintext match (dormie_ubu_admin_2026)
+  if (p === expectedPass) {
+    return true;
+  }
+
+  // 2. SHA-256 hash match (if ADMIN_PASSWORD in environment is stored as SHA-256 hash)
+  try {
+    const passSha256 = crypto.createHash('sha256').update(p).digest('hex');
+    if (passSha256.toLowerCase() === expectedPass.toLowerCase()) {
+      return true;
+    }
+  } catch (e) {}
+
+  return false;
 }
 
 /**
  * Create a cryptographically signed HMAC token for Admin session
  */
-export function createAdminSessionToken(username: string = ADMIN_USERNAME): string {
+export function createAdminSessionToken(username?: string): string {
+  const adminUser = username || getExpectedAdminUsername();
   const now = Math.floor(Date.now() / 1000);
   const exp = now + 7 * 24 * 60 * 60; // Valid for 7 days
 
   const payload: AdminSessionPayload = {
-    username,
+    username: adminUser,
     role: 'admin',
     iat: now,
     exp,
   };
 
+  const secret = getAdminSessionSecret();
   const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const signature = crypto
-    .createHmac('sha256', ADMIN_SESSION_SECRET)
+    .createHmac('sha256', secret)
     .update(payloadBase64)
     .digest('base64url');
 
@@ -55,8 +94,9 @@ export function verifyAdminSessionToken(token?: string | null): AdminSessionPayl
     if (parts.length !== 2) return null;
 
     const [payloadBase64, providedSig] = parts;
+    const secret = getAdminSessionSecret();
     const expectedSig = crypto
-      .createHmac('sha256', ADMIN_SESSION_SECRET)
+      .createHmac('sha256', secret)
       .update(payloadBase64)
       .digest('base64url');
 

@@ -14,8 +14,12 @@ const NO_CACHE_HEADERS = {
 export async function GET(request: Request) {
   const authenticated = isRequestAdminAuthenticated(request);
   if (authenticated) {
-    const reqSes = request.headers.get('x-session-id');
-    if (reqSes) await registerAdminIdentifier('session_id', reqSes);
+    try {
+      const reqSes = request.headers.get('x-session-id');
+      if (reqSes) await registerAdminIdentifier('session_id', reqSes);
+    } catch (e) {
+      console.warn('[Admin Verify] Failed to register session identifier:', e);
+    }
   }
   return NextResponse.json(
     { authenticated },

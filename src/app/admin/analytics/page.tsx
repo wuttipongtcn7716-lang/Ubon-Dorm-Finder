@@ -650,10 +650,10 @@ export default function AdminAnalyticsPage() {
               isLoading={isLoading}
             />
 
-            {/* Card 2: Page Views */}
+            {/* Card 2: Sessions */}
             <SummaryCard
-              title="การเข้าชม"
-              subtitle="Page Views"
+              title="การเข้าใช้งาน"
+              subtitle="Sessions"
               value={data?.summary.pageViews.value}
               changePercent={data?.summary.pageViews.changePercent}
               icon={<Eye className="w-5 h-5 text-indigo-600" />}

@@ -1079,8 +1079,8 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
         }
         const row = sqliteDb.prepare(`
           SELECT 
-            COUNT(DISTINCT session_id) as unique_visitors,
-            SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
+            COUNT(DISTINCT visitor_id) as unique_visitors,
+            COUNT(DISTINCT session_id) as page_views,
             SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events,
             SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views
           FROM analytics_events
@@ -1152,12 +1152,12 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
       !adminSes.has(e.sessionId)
     );
     const visitors = new Set(subset.map(e => e.visitorId));
-    const pageViews = subset.filter(e => e.eventName === 'page_view').length;
+    const sessions = new Set(subset.map(e => e.sessionId));
     const searchEvents = subset.filter(e => e.eventName === 'search').length;
     const dormViews = subset.filter(e => e.eventName === 'dormitory_view').length;
     return {
       uniqueVisitors: visitors.size,
-      pageViews,
+      pageViews: sessions.size,
       searchEvents,
       dormitoryViews: dormViews,
     };
@@ -1257,8 +1257,8 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
           try {
             const row = sqliteDb.prepare(`
               SELECT 
-                COUNT(DISTINCT session_id) as visitors,
-                COUNT(*) as views
+                COUNT(DISTINCT visitor_id) as visitors,
+                COUNT(DISTINCT session_id) as views
               FROM analytics_events
               WHERE created_at >= ? AND created_at <= ?
                 AND (actor_type IS NULL OR actor_type != 'admin')
@@ -1284,8 +1284,8 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
               !adminSes.has(e.sessionId)
             );
           });
-          visitors = new Set(inSlot.map((e) => e.sessionId)).size;
-          views = inSlot.length;
+          visitors = new Set(inSlot.map((e) => e.visitorId)).size;
+          views = new Set(inSlot.map((e) => e.sessionId)).size;
         }
       }
 
@@ -1331,8 +1331,8 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
         try {
           const row = sqliteDb.prepare(`
             SELECT 
-              COUNT(DISTINCT session_id) as visitors,
-              COUNT(*) as views
+              COUNT(DISTINCT visitor_id) as visitors,
+              COUNT(DISTINCT session_id) as views
             FROM analytics_events
             WHERE created_at >= ? AND created_at <= ?
               AND (actor_type IS NULL OR actor_type != 'admin')
@@ -1358,8 +1358,8 @@ export function getTimelineData(period: PeriodType): TimelineDataPoint[] {
             !adminSes.has(e.sessionId)
           );
         });
-        visitors = new Set(inDay.map((e) => e.sessionId)).size;
-        views = inDay.length;
+        visitors = new Set(inDay.map((e) => e.visitorId)).size;
+        views = new Set(inDay.map((e) => e.sessionId)).size;
       }
     }
 
@@ -1576,8 +1576,8 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
     try {
       const sql = startAt
         ? `SELECT 
-            COUNT(DISTINCT session_id) as unique_visitors,
-            SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
+            COUNT(DISTINCT visitor_id) as unique_visitors,
+            COUNT(DISTINCT session_id) as page_views,
             SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events,
             SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views
           FROM analytics_events
@@ -1586,8 +1586,8 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
             AND (user_id IS NULL OR user_id != 'admin')
             AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL)`
         : `SELECT 
-            COUNT(DISTINCT session_id) as unique_visitors,
-            SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
+            COUNT(DISTINCT visitor_id) as unique_visitors,
+            COUNT(DISTINCT session_id) as page_views,
             SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events,
             SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views
           FROM analytics_events
@@ -1623,12 +1623,12 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
   });
 
   const visitors = new Set(subset.map((e) => e.visitorId));
-  const pageViews = subset.filter((e) => e.eventName === 'page_view').length;
+  const sessions = new Set(subset.map((e) => e.sessionId));
   const searchEvents = subset.filter((e) => e.eventName === 'search').length;
   const dormViews = subset.filter((e) => e.eventName === 'dormitory_view').length;
   return {
     uniqueVisitors: visitors.size,
-    pageViews,
+    pageViews: sessions.size,
     searchEvents,
     dormitoryViews: dormViews,
   };

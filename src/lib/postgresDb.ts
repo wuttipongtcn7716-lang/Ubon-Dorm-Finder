@@ -700,8 +700,8 @@ export async function pgGetAnalyticsSummary(period: PeriodType): Promise<Analyti
     }
     const res = await p.query(
       `SELECT 
-         COUNT(DISTINCT session_id) as unique_visitors,
-         SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
+         COUNT(DISTINCT visitor_id) as unique_visitors,
+         COUNT(DISTINCT session_id) as page_views,
          SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events,
          SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views
        FROM analytics_events
@@ -791,8 +791,8 @@ export async function pgGetTimelineData(period: PeriodType): Promise<TimelineDat
           const effectiveStart = resetTime && slotStartUtc.getTime() < resetTime ? resetAt! : slotStartStr;
           const res = await p.query(
             `SELECT 
-               COUNT(DISTINCT session_id) as visitors,
-               COUNT(*) as views
+               COUNT(DISTINCT visitor_id) as visitors,
+               COUNT(DISTINCT session_id) as views
              FROM analytics_events
              WHERE created_at >= $1 AND created_at <= $2
                AND (actor_type IS NULL OR actor_type != 'admin')
@@ -847,8 +847,8 @@ export async function pgGetTimelineData(period: PeriodType): Promise<TimelineDat
         const effectiveStart = resetTime && dayStartUtc.getTime() < resetTime ? resetAt! : dayStartStr;
         const res = await p.query(
           `SELECT 
-             COUNT(DISTINCT session_id) as visitors,
-             COUNT(*) as views
+             COUNT(DISTINCT visitor_id) as visitors,
+             COUNT(DISTINCT session_id) as views
            FROM analytics_events
            WHERE created_at >= $1 AND created_at <= $2
              AND (actor_type IS NULL OR actor_type != 'admin')
@@ -985,8 +985,8 @@ export async function pgGetRangeSummaryCounts(startAt: string | null, endAt: str
   try {
     const query = startAt
       ? `SELECT 
-           COUNT(DISTINCT session_id) as unique_visitors,
-           SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
+           COUNT(DISTINCT visitor_id) as unique_visitors,
+           COUNT(DISTINCT session_id) as page_views,
            SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views,
            SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events
          FROM analytics_events
@@ -998,8 +998,8 @@ export async function pgGetRangeSummaryCounts(startAt: string | null, endAt: str
              WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL
            )`
       : `SELECT 
-           COUNT(DISTINCT session_id) as unique_visitors,
-           SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
+           COUNT(DISTINCT visitor_id) as unique_visitors,
+           COUNT(DISTINCT session_id) as page_views,
            SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views,
            SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events
          FROM analytics_events

@@ -29,7 +29,13 @@ export async function GET(request: Request) {
 
   // Auto-register admin session identifier from request headers
   const reqSes = request.headers.get('x-session-id');
-  if (reqSes) await registerAdminIdentifier('session_id', reqSes);
+  if (reqSes) {
+    try {
+      await registerAdminIdentifier('session_id', reqSes);
+    } catch (err) {
+      console.warn('Failed to register admin session identifier:', err);
+    }
+  }
 
   try {
     const { searchParams } = new URL(request.url);
@@ -52,10 +58,25 @@ export async function GET(request: Request) {
         headers: NO_CACHE_HEADERS,
       }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to load analytics dashboard data:', error);
     return NextResponse.json(
-      { error: 'ไม่สามารถโหลดข้อมูลสถิติได้ กรุณาลองใหม่อีกครั้ง' },
+      { 
+        error: 'ไม่สามารถโหลดข้อมูลสถิติได้ กรุณาลองใหม่อีกครั้ง',
+        debug: {
+          message: error?.message || String(error),
+          name: error?.name,
+          envInfo: {
+            hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
+            databaseUrlLength: process.env.DATABASE_URL?.length || 0,
+            hasPostgresUrl: Boolean(process.env.POSTGRES_URL),
+            hasPrismaUrl: Boolean(process.env.POSTGRES_PRISMA_URL),
+            matchingEnvKeys: Object.keys(process.env).filter(
+              k => k.includes('URL') || k.includes('DB') || k.includes('POSTGRES') || k.includes('DATA') || k.includes('SUPABASE')
+            ),
+          }
+        }
+      },
       { 
         status: 500,
         headers: NO_CACHE_HEADERS,

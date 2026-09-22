@@ -21,21 +21,32 @@ let initPromise: Promise<void> | null = null;
 
 const BANGKOK_OFFSET_MS = 7 * 60 * 60 * 1000;
 
-export function isPostgresConfigured(): boolean {
-  return Boolean(
-    process.env.DATABASE_URL || 
-    process.env.POSTGRES_URL || 
-    process.env.POSTGRES_PRISMA_URL
-  );
+export function cleanConnectionString(str?: string | null): string | null {
+  if (!str) return null;
+  let cleaned = str.trim();
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) || 
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+  return cleaned || null;
 }
 
 export function getPostgresConnectionString(): string | null {
-  return (
+  const raw = 
     process.env.DATABASE_URL || 
     process.env.POSTGRES_URL || 
     process.env.POSTGRES_PRISMA_URL || 
-    null
-  );
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.SUPABASE_DB_URL ||
+    process.env.SUPABASE_DATABASE_URL ||
+    process.env.database_url;
+  return cleanConnectionString(raw);
+}
+
+export function isPostgresConfigured(): boolean {
+  return Boolean(getPostgresConnectionString());
 }
 
 export function getPgPool(): Pool | null {
@@ -43,21 +54,26 @@ export function getPgPool(): Pool | null {
   const connectionString = getPostgresConnectionString();
   if (!connectionString) return null;
 
-  pool = new Pool({
-    connectionString,
-    ssl: connectionString.includes('localhost') || connectionString.includes('127.0.0.1')
-      ? false
-      : { rejectUnauthorized: false },
-    max: 10,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
-  });
+  try {
+    pool = new Pool({
+      connectionString,
+      ssl: connectionString.includes('localhost') || connectionString.includes('127.0.0.1')
+        ? false
+        : { rejectUnauthorized: false },
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
+    });
 
-  pool.on('error', (err) => {
-    console.error('Unexpected PostgreSQL Pool Error:', err);
-  });
+    pool.on('error', (err) => {
+      console.error('Unexpected PostgreSQL Pool Error:', err);
+    });
 
-  return pool;
+    return pool;
+  } catch (err) {
+    console.error('[PostgreSQL] Failed to instantiate Pool:', err);
+    return null;
+  }
 }
 
 /**

@@ -10,7 +10,6 @@ import NavigationModal from './NavigationModal';
 import { Sparkles, Compass, Heart } from 'lucide-react';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useDormFiltersSync } from '@/hooks/useDormFiltersSync';
-import { trackPageView } from '@/utils/analytics';
 
 interface DormExplorerProps {
   initialDorms: Dormitory[];
@@ -46,7 +45,6 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
     if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
       window.history.scrollRestoration = 'manual';
     }
-    trackPageView('/');
   }, []);
 
   const uniqueZones = useMemo(() => {

@@ -122,6 +122,9 @@ export function isAdminUser(): boolean {
   return false;
 }
 
+// Client-side in-memory deduplication cache to prevent React StrictMode/rerender duplicates
+const recentEvents = new Map<string, number>();
+
 /**
  * Main reusable tracking function.
  * Completely asynchronous and fail-safe (never crashes caller).
@@ -136,6 +139,26 @@ export function trackEvent(eventName: TrackableEvent, payload: EventPayload = {}
     return;
   }
 
+  const normalizedPage = payload.page || (typeof window !== 'undefined' ? window.location.pathname : '/');
+  const normalizedKeyword = payload.searchKeyword ? payload.searchKeyword.trim().toLowerCase() : '';
+  const dormId = payload.dormitoryId ? String(payload.dormitoryId) : '';
+
+  // Client-side Deduplication: prevent identical event from firing within 1500ms
+  const dedupKey = `${eventName}:${normalizedPage}:${dormId}:${normalizedKeyword}`;
+  const now = Date.now();
+  const lastTime = recentEvents.get(dedupKey) || 0;
+  if (now - lastTime < 1500) {
+    return;
+  }
+  recentEvents.set(dedupKey, now);
+
+  // Periodic cleanup of recentEvents cache
+  if (recentEvents.size > 100) {
+    recentEvents.forEach((t, k) => {
+      if (now - t > 10000) recentEvents.delete(k);
+    });
+  }
+
   try {
     const data = {
       eventName,
@@ -143,7 +166,7 @@ export function trackEvent(eventName: TrackableEvent, payload: EventPayload = {}
       visitorId: getVisitorId(),
       actorType: 'anonymous',
       userId: null,
-      page: payload.page || (typeof window !== 'undefined' ? window.location.pathname : '/'),
+      page: normalizedPage,
       dormitoryId: payload.dormitoryId || null,
       dormitoryName: payload.dormitoryName || null,
       searchKeyword: payload.searchKeyword ? payload.searchKeyword.trim() : null,
@@ -163,13 +186,7 @@ export function trackEvent(eventName: TrackableEvent, payload: EventPayload = {}
       body: jsonString,
       keepalive: true,
     }).catch(() => {
-      // Fallback to sendBeacon if fetch fails during unload
-      try {
-        if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-          const blob = new Blob([jsonString], { type: 'application/json' });
-          navigator.sendBeacon('/api/analytics/track', blob);
-        }
-      } catch {}
+      // Fail-safe: do not trigger duplicate fallback on fetch failure
     });
   } catch (err) {
     // Silent fail-safe: never crash UI

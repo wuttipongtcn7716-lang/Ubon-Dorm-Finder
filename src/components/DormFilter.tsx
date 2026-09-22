@@ -137,12 +137,6 @@ export default function DormFilter({
             type="search"
             value={safeFilters.searchTerm}
             onChange={(e) => updateFilter('searchTerm', e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleSearchSubmit();
-              }
-            }}
             placeholder="ค้นหาชื่อหอพัก, โซน หรือทำเลใกล้เคียง..."
             aria-label="ค้นหาชื่อหอพัก โซน หรือทำเลใกล้เคียง"
             className="w-full pl-10 pr-9 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white transition"

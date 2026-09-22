@@ -430,6 +430,45 @@ export async function pgRecordEvent(event: AnalyticsEventInput): Promise<StoredA
   const createdAt = event.createdAt || new Date().toISOString();
 
   try {
+    // Server-side Idempotency & Deduplication (Requirement 11, 12):
+    // Prevent duplicate inserts within 2 seconds for identical user action in the same session
+    const dupCheck = await p.query(
+      `SELECT id, event_name, session_id, visitor_id, actor_type, user_id, page, dormitory_id, dormitory_name, search_keyword, metadata, created_at 
+       FROM analytics_events 
+       WHERE session_id = $1 
+         AND event_name = $2 
+         AND (page = $3 OR ($3 IS NULL AND page IS NULL))
+         AND (dormitory_id = $4 OR ($4 IS NULL AND dormitory_id IS NULL))
+         AND (search_keyword = $5 OR ($5 IS NULL AND search_keyword IS NULL))
+         AND created_at >= NOW() - INTERVAL '2 seconds'
+       LIMIT 1`,
+      [
+        event.sessionId,
+        event.eventName,
+        event.page || null,
+        event.dormitoryId || null,
+        event.searchKeyword ? event.searchKeyword.trim() : null,
+      ]
+    );
+
+    if (dupCheck.rows.length > 0) {
+      const dup = dupCheck.rows[0];
+      return {
+        id: Number(dup.id),
+        eventName: dup.event_name,
+        sessionId: dup.session_id,
+        visitorId: dup.visitor_id,
+        actorType: dup.actor_type,
+        userId: dup.user_id,
+        page: dup.page,
+        dormitoryId: dup.dormitory_id,
+        dormitoryName: dup.dormitory_name,
+        searchKeyword: dup.search_keyword,
+        metadata: dup.metadata ? JSON.stringify(dup.metadata) : null,
+        createdAt: new Date(dup.created_at).toISOString(),
+      };
+    }
+
     const res = await p.query(
       `INSERT INTO analytics_events
        (event_name, session_id, visitor_id, actor_type, user_id, page, dormitory_id, dormitory_name, search_keyword, metadata, created_at)
@@ -661,7 +700,7 @@ export async function pgGetAnalyticsSummary(period: PeriodType): Promise<Analyti
     }
     const res = await p.query(
       `SELECT 
-         COUNT(DISTINCT visitor_id) as unique_visitors,
+         COUNT(DISTINCT session_id) as unique_visitors,
          SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
          SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events,
          SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views
@@ -752,7 +791,7 @@ export async function pgGetTimelineData(period: PeriodType): Promise<TimelineDat
           const effectiveStart = resetTime && slotStartUtc.getTime() < resetTime ? resetAt! : slotStartStr;
           const res = await p.query(
             `SELECT 
-               COUNT(DISTINCT visitor_id) as visitors,
+               COUNT(DISTINCT session_id) as visitors,
                COUNT(*) as views
              FROM analytics_events
              WHERE created_at >= $1 AND created_at <= $2
@@ -808,7 +847,7 @@ export async function pgGetTimelineData(period: PeriodType): Promise<TimelineDat
         const effectiveStart = resetTime && dayStartUtc.getTime() < resetTime ? resetAt! : dayStartStr;
         const res = await p.query(
           `SELECT 
-             COUNT(DISTINCT visitor_id) as visitors,
+             COUNT(DISTINCT session_id) as visitors,
              COUNT(*) as views
            FROM analytics_events
            WHERE created_at >= $1 AND created_at <= $2
@@ -946,7 +985,7 @@ export async function pgGetRangeSummaryCounts(startAt: string | null, endAt: str
   try {
     const query = startAt
       ? `SELECT 
-           COUNT(DISTINCT visitor_id) as unique_visitors,
+           COUNT(DISTINCT session_id) as unique_visitors,
            SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
            SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views,
            SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events
@@ -959,7 +998,7 @@ export async function pgGetRangeSummaryCounts(startAt: string | null, endAt: str
              WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL
            )`
       : `SELECT 
-           COUNT(DISTINCT visitor_id) as unique_visitors,
+           COUNT(DISTINCT session_id) as unique_visitors,
            SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
            SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views,
            SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events

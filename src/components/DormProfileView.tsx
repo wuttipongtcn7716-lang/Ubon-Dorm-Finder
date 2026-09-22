@@ -18,7 +18,7 @@ import ShareButton from '@/components/ShareButton';
 import { getNearbyLandmarks } from '@/data/landmarks';
 import { useFavorites } from '@/hooks/useFavorites';
 import { parseThaiDateToIso, formatThaiDateFull } from '@/utils/dateUtils';
-import { trackPageView, trackDormitoryView, trackNavigationClick, trackMapClick } from '@/utils/analytics';
+import { trackDormitoryView, trackMapClick } from '@/utils/analytics';
 
 interface DormProfileViewProps {
   dorm: Dormitory;
@@ -173,17 +173,20 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
     }
   };
 
-  // Track dormitory detail view on mount
+  const lastTrackedDormId = useRef<number | null>(null);
+
+  // Track dormitory detail view on mount (exactly once per dorm)
   useEffect(() => {
-    trackPageView(`/dorm/${dorm.id}`);
-    trackDormitoryView(dorm.id, dorm.name);
+    if (lastTrackedDormId.current !== dorm.id) {
+      lastTrackedDormId.current = dorm.id;
+      trackDormitoryView(dorm.id, dorm.name);
+    }
   }, [dorm.id, dorm.name]);
 
   const [isLaunchingNav, setIsLaunchingNav] = useState(false);
 
   const handleStartNavigation = () => {
     trackMapClick(dorm.id, dorm.name);
-    trackNavigationClick(dorm.id, dorm.name);
     setIsLaunchingNav(true);
     setIsNavOpen(true);
     setTimeout(() => setIsLaunchingNav(false), 1000);

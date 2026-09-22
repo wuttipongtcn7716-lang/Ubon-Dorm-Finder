@@ -1079,7 +1079,7 @@ export function getAnalyticsSummary(period: PeriodType): AnalyticsSummary {
         }
         const row = sqliteDb.prepare(`
           SELECT 
-            COUNT(DISTINCT visitor_id) as unique_visitors,
+            COUNT(DISTINCT session_id) as unique_visitors,
             SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
             SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events,
             SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views
@@ -1576,7 +1576,7 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
     try {
       const sql = startAt
         ? `SELECT 
-            COUNT(DISTINCT visitor_id) as unique_visitors,
+            COUNT(DISTINCT session_id) as unique_visitors,
             SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
             SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events,
             SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views
@@ -1586,7 +1586,7 @@ export function getRangeSummaryCounts(startAt: string | null, endAt: string) {
             AND (user_id IS NULL OR user_id != 'admin')
             AND session_id NOT IN (SELECT identifier_value FROM admin_identifiers WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL)`
         : `SELECT 
-            COUNT(DISTINCT visitor_id) as unique_visitors,
+            COUNT(DISTINCT session_id) as unique_visitors,
             SUM(CASE WHEN event_name = 'page_view' THEN 1 ELSE 0 END) as page_views,
             SUM(CASE WHEN event_name = 'search' THEN 1 ELSE 0 END) as search_events,
             SUM(CASE WHEN event_name = 'dormitory_view' THEN 1 ELSE 0 END) as dorm_views

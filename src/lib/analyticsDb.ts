@@ -1524,12 +1524,12 @@ export function getTopSearchKeywords(period: PeriodType, limit = 5): TopSearch[]
  */
 export async function getAnalyticsDashboardData(period: PeriodType): Promise<AnalyticsDashboardData> {
   if (isPostgresConfigured()) {
-    const [summary, timeline, topDormitories, topSearches, displayResetAt] = await Promise.all([
-      pgGetAnalyticsSummary(period),
-      pgGetTimelineData(period),
-      pgGetTopDormitories(period, 5),
-      pgGetTopSearchKeywords(period, 5),
-      pgGetDisplayResetTimestamp(),
+    const displayResetAt = await pgGetDisplayResetTimestamp();
+    const [summary, timeline, topDormitories, topSearches] = await Promise.all([
+      pgGetAnalyticsSummary(period, displayResetAt),
+      pgGetTimelineData(period, displayResetAt),
+      pgGetTopDormitories(period, 5, displayResetAt),
+      pgGetTopSearchKeywords(period, 5, displayResetAt),
     ]);
 
     return {

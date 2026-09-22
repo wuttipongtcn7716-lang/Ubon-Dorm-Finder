@@ -207,8 +207,11 @@ export default function AdminAnalyticsPage() {
 
   useEffect(() => {
     fetchData(selectedPeriod);
+  }, [fetchData, selectedPeriod]);
+
+  useEffect(() => {
     fetchHistory();
-  }, [fetchData, selectedPeriod, fetchHistory]);
+  }, [fetchHistory]);
 
   const handleInPageLogin = async (e: React.FormEvent) => {
     e.preventDefault();

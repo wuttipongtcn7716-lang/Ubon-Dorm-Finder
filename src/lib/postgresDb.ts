@@ -149,6 +149,8 @@ export async function ensurePostgresInitialized(): Promise<void> {
         CREATE INDEX IF NOT EXISTS idx_admin_id_type_val ON admin_identifiers(identifier_type, identifier_value);
         CREATE INDEX IF NOT EXISTS idx_audit_action ON admin_audit_logs(action);
         CREATE INDEX IF NOT EXISTS idx_audit_created_at ON admin_audit_logs(created_at);
+        CREATE INDEX IF NOT EXISTS idx_events_created_actor ON analytics_events(created_at, actor_type);
+        CREATE INDEX IF NOT EXISTS idx_events_event_created ON analytics_events(event_name, created_at);
       `);
 
       // One-time automatic migration of Reset History if table is empty
@@ -214,7 +216,16 @@ export async function ensurePostgresInitialized(): Promise<void> {
   return initPromise;
 }
 
+let cachedDiagnostics: any = null;
+let diagnosticsCachedAt = 0;
+const DIAGNOSTICS_CACHE_TTL = 60 * 1000; // 60 seconds
+
 export async function pgDiagnosticCheck() {
+  const now = Date.now();
+  if (cachedDiagnostics && now - diagnosticsCachedAt < DIAGNOSTICS_CACHE_TTL) {
+    return cachedDiagnostics;
+  }
+
   const connStr = getPostgresConnectionString();
   const p = getPgPool();
   if (!p) {
@@ -264,7 +275,7 @@ export async function pgDiagnosticCheck() {
       auditCount = parseInt(a.rows[0]?.c, 10);
     } catch {}
 
-    return {
+    const result = {
       ok: true,
       version: versionRes.rows[0]?.version,
       tables,
@@ -276,6 +287,9 @@ export async function pgDiagnosticCheck() {
       lastInitError,
       lastQueryError,
     };
+    cachedDiagnostics = result;
+    diagnosticsCachedAt = now;
+    return result;
   } catch (err: any) {
     return {
       ok: false,
@@ -290,6 +304,8 @@ export async function pgDiagnosticCheck() {
   }
 }
 
+const registeredAdminSet = new Set<string>();
+
 /**
  * Register an admin identifier in PostgreSQL
  */
@@ -297,6 +313,9 @@ export async function pgRegisterAdminIdentifier(type: 'session_id' | 'visitor_id
   if (!value || typeof value !== 'string') return;
   const cleanVal = value.trim();
   if (!cleanVal) return;
+
+  const cacheKey = `${type}:${cleanVal}`;
+  if (registeredAdminSet.has(cacheKey)) return;
 
   await ensurePostgresInitialized();
   const p = getPgPool();
@@ -319,6 +338,7 @@ export async function pgRegisterAdminIdentifier(type: 'session_id' | 'visitor_id
         [cleanVal]
       );
     }
+    registeredAdminSet.add(cacheKey);
   } catch (err) {
     console.error('[PostgreSQL] pgRegisterAdminIdentifier error:', err);
   }
@@ -583,18 +603,19 @@ export async function pgCreateResetRecord(createdBy = 'admin', note?: string): P
     // Update settings table
     await p.query(
       `INSERT INTO analytics_settings (key, value, updated_at)
-       VALUES ('analytics_display_reset_at', $1, $2)
+       VALUES ('last_reset_timestamp', $1, $2)
        ON CONFLICT (key) DO UPDATE SET value = $1, updated_at = $2`,
       [now, now]
     );
 
-    const r = res.rows[0];
+    clearHistoricalPeriodsCache();
+
     return {
-      id: Number(r.id),
-      resetAt: new Date(r.reset_at).toISOString(),
-      createdBy: String(r.created_by),
-      createdAt: new Date(r.created_at).toISOString(),
-      note: r.note ? String(r.note) : null,
+      id: Number(res.rows[0].id),
+      resetAt: new Date(res.rows[0].reset_at).toISOString(),
+      createdBy: String(res.rows[0].created_by || 'admin'),
+      createdAt: new Date(res.rows[0].created_at).toISOString(),
+      note: res.rows[0].note ? String(res.rows[0].note) : null,
     };
   } catch (err) {
     console.error('[PostgreSQL] pgCreateResetRecord error:', err);
@@ -676,7 +697,7 @@ function calculatePercentChange(current: number, prev: number, isPrevValid = tru
 /**
  * Get Analytics Summary from PostgreSQL
  */
-export async function pgGetAnalyticsSummary(period: PeriodType): Promise<AnalyticsSummary> {
+export async function pgGetAnalyticsSummary(period: PeriodType, cachedResetAt?: string | null): Promise<AnalyticsSummary> {
   await ensurePostgresInitialized();
   const p = getPgPool();
   const emptySummary: AnalyticsSummary = {
@@ -688,7 +709,7 @@ export async function pgGetAnalyticsSummary(period: PeriodType): Promise<Analyti
   if (!p) return emptySummary;
 
   const { currentStart, currentEnd, prevStart, prevEnd } = getPeriodDateRanges(period);
-  const resetAt = await pgGetDisplayResetTimestamp();
+  const resetAt = cachedResetAt !== undefined ? cachedResetAt : await pgGetDisplayResetTimestamp();
 
   const currRange = applyResetToRange(currentStart, currentEnd, resetAt);
   const prevRange = applyResetToRange(prevStart, prevEnd, resetAt);
@@ -724,8 +745,10 @@ export async function pgGetAnalyticsSummary(period: PeriodType): Promise<Analyti
   };
 
   try {
-    const current = await getCounts(currRange);
-    const prev = await getCounts(prevRange);
+    const [current, prev] = await Promise.all([
+      getCounts(currRange),
+      isPrevValid ? getCounts(prevRange) : Promise.resolve({ uniqueVisitors: 0, pageViews: 0, searchEvents: 0, dormitoryViews: 0 }),
+    ]);
 
     return {
       uniqueVisitors: {
@@ -758,13 +781,13 @@ export async function pgGetAnalyticsSummary(period: PeriodType): Promise<Analyti
 /**
  * Get Timeline Data from PostgreSQL
  */
-export async function pgGetTimelineData(period: PeriodType): Promise<TimelineDataPoint[]> {
+export async function pgGetTimelineData(period: PeriodType, cachedResetAt?: string | null): Promise<TimelineDataPoint[]> {
   await ensurePostgresInitialized();
   const p = getPgPool();
   if (!p) return [];
 
   const { currentStart, currentEnd } = getPeriodDateRanges(period);
-  const resetAt = await pgGetDisplayResetTimestamp();
+  const resetAt = cachedResetAt !== undefined ? cachedResetAt : await pgGetDisplayResetTimestamp();
   const range = applyResetToRange(currentStart, currentEnd, resetAt);
   const resetTime = resetAt ? new Date(resetAt).getTime() : null;
 
@@ -772,6 +795,39 @@ export async function pgGetTimelineData(period: PeriodType): Promise<TimelineDat
     if (period === 'today') {
       const startBkk = new Date(new Date(currentStart).getTime() + BANGKOK_OFFSET_MS);
       const points: TimelineDataPoint[] = [];
+
+      // Single grouped query for 24 hours
+      const effectiveStart = resetTime && new Date(currentStart).getTime() < resetTime ? resetAt! : currentStart;
+      const countsMap = new Map<number, { visitors: number; views: number }>();
+
+      if (range.isValid) {
+        try {
+          const res = await p.query(
+            `SELECT 
+               EXTRACT(HOUR FROM (created_at + INTERVAL '7 hours'))::integer as slot_hour,
+               COUNT(DISTINCT visitor_id) as visitors,
+               COUNT(DISTINCT session_id) as views
+             FROM analytics_events
+             WHERE created_at >= $1 AND created_at <= $2
+               AND (actor_type IS NULL OR actor_type != 'admin')
+               AND (user_id IS NULL OR user_id != 'admin')
+               AND session_id NOT IN (
+                 SELECT identifier_value FROM admin_identifiers 
+                 WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL
+               )
+             GROUP BY slot_hour`,
+            [effectiveStart, currentEnd]
+          );
+          for (const row of res.rows) {
+            countsMap.set(Number(row.slot_hour), {
+              visitors: parseInt(row.visitors || '0', 10),
+              views: parseInt(row.views || '0', 10),
+            });
+          }
+        } catch (aggErr) {
+          console.warn('[PostgreSQL] Hourly timeline aggregation error, falling back to parallel slot queries:', aggErr);
+        }
+      }
 
       for (let h = 0; h < 24; h++) {
         const slotStartBkk = new Date(
@@ -788,23 +844,11 @@ export async function pgGetTimelineData(period: PeriodType): Promise<TimelineDat
         let views = 0;
 
         if (range.isValid && (!resetTime || slotEndUtc.getTime() >= resetTime)) {
-          const effectiveStart = resetTime && slotStartUtc.getTime() < resetTime ? resetAt! : slotStartStr;
-          const res = await p.query(
-            `SELECT 
-               COUNT(DISTINCT visitor_id) as visitors,
-               COUNT(DISTINCT session_id) as views
-             FROM analytics_events
-             WHERE created_at >= $1 AND created_at <= $2
-               AND (actor_type IS NULL OR actor_type != 'admin')
-               AND (user_id IS NULL OR user_id != 'admin')
-               AND session_id NOT IN (
-                 SELECT identifier_value FROM admin_identifiers 
-                 WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL
-               )`,
-            [effectiveStart, slotEndStr]
-          );
-          visitors = parseInt(res.rows[0]?.visitors || '0', 10);
-          views = parseInt(res.rows[0]?.views || '0', 10);
+          const slotCounts = countsMap.get(h);
+          if (slotCounts) {
+            visitors = slotCounts.visitors;
+            views = slotCounts.views;
+          }
         }
 
         const hourStr = String(h).padStart(2, '0');
@@ -828,6 +872,39 @@ export async function pgGetTimelineData(period: PeriodType): Promise<TimelineDat
     const todayBkk = new Date(now.getTime() + BANGKOK_OFFSET_MS);
     const points: TimelineDataPoint[] = [];
 
+    // Single grouped query for days
+    const effectiveStart = resetTime && new Date(currentStart).getTime() < resetTime ? resetAt! : currentStart;
+    const countsMap = new Map<string, { visitors: number; views: number }>();
+
+    if (range.isValid) {
+      try {
+        const res = await p.query(
+          `SELECT 
+             TO_CHAR(created_at + INTERVAL '7 hours', 'YYYY-MM-DD') as day_key,
+             COUNT(DISTINCT visitor_id) as visitors,
+             COUNT(DISTINCT session_id) as views
+           FROM analytics_events
+           WHERE created_at >= $1 AND created_at <= $2
+             AND (actor_type IS NULL OR actor_type != 'admin')
+             AND (user_id IS NULL OR user_id != 'admin')
+             AND session_id NOT IN (
+               SELECT identifier_value FROM admin_identifiers 
+               WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL
+             )
+           GROUP BY day_key`,
+          [effectiveStart, currentEnd]
+        );
+        for (const row of res.rows) {
+          countsMap.set(String(row.day_key), {
+            visitors: parseInt(row.visitors || '0', 10),
+            views: parseInt(row.views || '0', 10),
+          });
+        }
+      } catch (aggErr) {
+        console.warn('[PostgreSQL] Daily timeline aggregation error, falling back to parallel slot queries:', aggErr);
+      }
+    }
+
     for (let i = numDays - 1; i >= 0; i--) {
       const dayBkk = new Date(todayBkk.getTime() - i * 24 * 60 * 60 * 1000);
       const dayStartBkk = new Date(
@@ -843,24 +920,17 @@ export async function pgGetTimelineData(period: PeriodType): Promise<TimelineDat
       let visitors = 0;
       let views = 0;
 
+      const y = dayBkk.getUTCFullYear();
+      const m = String(dayBkk.getUTCMonth() + 1).padStart(2, '0');
+      const d = String(dayBkk.getUTCDate()).padStart(2, '0');
+      const dayKey = `${y}-${m}-${d}`;
+
       if (range.isValid && (!resetTime || dayEndUtc.getTime() >= resetTime)) {
-        const effectiveStart = resetTime && dayStartUtc.getTime() < resetTime ? resetAt! : dayStartStr;
-        const res = await p.query(
-          `SELECT 
-             COUNT(DISTINCT visitor_id) as visitors,
-             COUNT(DISTINCT session_id) as views
-           FROM analytics_events
-           WHERE created_at >= $1 AND created_at <= $2
-             AND (actor_type IS NULL OR actor_type != 'admin')
-             AND (user_id IS NULL OR user_id != 'admin')
-             AND session_id NOT IN (
-               SELECT identifier_value FROM admin_identifiers 
-               WHERE identifier_type = 'session_id' AND identifier_value IS NOT NULL
-             )`,
-          [effectiveStart, dayEndStr]
-        );
-        visitors = parseInt(res.rows[0]?.visitors || '0', 10);
-        views = parseInt(res.rows[0]?.views || '0', 10);
+        const slotCounts = countsMap.get(dayKey);
+        if (slotCounts) {
+          visitors = slotCounts.visitors;
+          views = slotCounts.views;
+        }
       }
 
       points.push({
@@ -883,13 +953,13 @@ export async function pgGetTimelineData(period: PeriodType): Promise<TimelineDat
 /**
  * Get Top Dormitories from PostgreSQL
  */
-export async function pgGetTopDormitories(period: PeriodType, limit = 5): Promise<TopDormitory[]> {
+export async function pgGetTopDormitories(period: PeriodType, limit = 5, cachedResetAt?: string | null): Promise<TopDormitory[]> {
   await ensurePostgresInitialized();
   const p = getPgPool();
   if (!p) return [];
 
   const { currentStart, currentEnd } = getPeriodDateRanges(period);
-  const resetAt = await pgGetDisplayResetTimestamp();
+  const resetAt = cachedResetAt !== undefined ? cachedResetAt : await pgGetDisplayResetTimestamp();
   const range = applyResetToRange(currentStart, currentEnd, resetAt);
 
   if (!range.isValid) return [];
@@ -930,13 +1000,13 @@ export async function pgGetTopDormitories(period: PeriodType, limit = 5): Promis
 /**
  * Get Top Searches from PostgreSQL
  */
-export async function pgGetTopSearchKeywords(period: PeriodType, limit = 5): Promise<TopSearch[]> {
+export async function pgGetTopSearchKeywords(period: PeriodType, limit = 5, cachedResetAt?: string | null): Promise<TopSearch[]> {
   await ensurePostgresInitialized();
   const p = getPgPool();
   if (!p) return [];
 
   const { currentStart, currentEnd } = getPeriodDateRanges(period);
-  const resetAt = await pgGetDisplayResetTimestamp();
+  const resetAt = cachedResetAt !== undefined ? cachedResetAt : await pgGetDisplayResetTimestamp();
   const range = applyResetToRange(currentStart, currentEnd, resetAt);
 
   if (!range.isValid) return [];
@@ -1027,15 +1097,35 @@ export async function pgGetRangeSummaryCounts(startAt: string | null, endAt: str
   }
 }
 
+let cachedHistoricalPeriods: HistoricalPeriod[] | null = null;
+
+export function clearHistoricalPeriodsCache(): void {
+  cachedHistoricalPeriods = null;
+}
+
 /**
  * Retrieve Historical Reset Periods from PostgreSQL
  */
 export async function pgGetHistoricalPeriods(): Promise<HistoricalPeriod[]> {
+  if (cachedHistoricalPeriods) {
+    return cachedHistoricalPeriods;
+  }
+
   const history = await pgGetResetHistory();
   if (history.length === 0) return [];
 
   const sortedAsc = [...history].sort(
     (a, b) => new Date(a.resetAt).getTime() - new Date(b.resetAt).getTime()
+  );
+
+  // Parallelize summary queries across all historical periods
+  const summaries = await Promise.all(
+    sortedAsc.map((currentReset, i) => {
+      const prevReset = i > 0 ? sortedAsc[i - 1] : null;
+      const startAt = prevReset ? prevReset.resetAt : null;
+      const endAt = currentReset.resetAt;
+      return pgGetRangeSummaryCounts(startAt, endAt);
+    })
   );
 
   const periods: HistoricalPeriod[] = [];
@@ -1062,8 +1152,6 @@ export async function pgGetHistoricalPeriods(): Promise<HistoricalPeriod[]> {
       year: 'numeric',
     });
 
-    const summary = await pgGetRangeSummaryCounts(startAt, endAt);
-
     periods.push({
       id: `epoch_${periodIndex}`,
       periodIndex,
@@ -1071,11 +1159,12 @@ export async function pgGetHistoricalPeriods(): Promise<HistoricalPeriod[]> {
       startAt,
       endAt,
       resetRecord: currentReset,
-      summaryPreview: summary,
+      summaryPreview: summaries[i],
     });
   }
 
-  return periods.reverse();
+  cachedHistoricalPeriods = periods.reverse();
+  return cachedHistoricalPeriods;
 }
 
 /**

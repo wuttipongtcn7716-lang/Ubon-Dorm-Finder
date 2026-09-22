@@ -48,8 +48,10 @@ export async function GET(request: Request) {
       ? (rawPeriod as PeriodType) 
       : '7d';
 
-    const data = await getAnalyticsDashboardData(period);
-    const diagnostics = await pgDiagnosticCheck();
+    const [data, diagnostics] = await Promise.all([
+      getAnalyticsDashboardData(period),
+      pgDiagnosticCheck(),
+    ]);
 
     return NextResponse.json(
       {

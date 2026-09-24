@@ -13,21 +13,23 @@ import {
 import { PeriodType, AnalyticsDashboardData, HistoricalPeriod } from '@/lib/analyticsDb';
 import AnalyticsChart from '@/components/admin/AnalyticsChart';
 import { getVisitorId, getSessionId, resetSessionId } from '@/utils/analytics';
-
-const PERIOD_OPTIONS: { label: string; value: PeriodType }[] = [
-  { label: 'วันนี้', value: 'today' },
-  { label: '7 วัน', value: '7d' },
-  { label: '30 วัน', value: '30d' },
-  { label: '90 วัน', value: '90d' },
-];
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function AdminAnalyticsPage() {
+  const { t, isEn, language, setLanguage } = useLanguage();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('7d');
   const [data, setData] = useState<AnalyticsDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const periodOptions: { label: string; value: PeriodType }[] = [
+    { label: isEn ? 'Today' : 'วันนี้', value: 'today' },
+    { label: isEn ? '7 Days' : '7 วัน', value: '7d' },
+    { label: isEn ? '30 Days' : '30 วัน', value: '30d' },
+    { label: isEn ? '90 Days' : '90 วัน', value: '90d' },
+  ];
 
   // In-page login state
   const [loginUsername, setLoginUsername] = useState('');
@@ -287,7 +289,7 @@ export default function AdminAnalyticsPage() {
     }
   };
 
-  const periodLabel = PERIOD_OPTIONS.find((p) => p.value === selectedPeriod)?.label || '7 วัน';
+  const periodLabel = periodOptions.find((p) => p.value === selectedPeriod)?.label || (isEn ? '7 Days' : '7 วัน');
 
   // State 1: Checking Authentication Loading Screen
   if (isAuthenticated === null && isLoading) {
@@ -296,7 +298,7 @@ export default function AdminAnalyticsPage() {
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-500 flex items-center justify-center text-slate-950 shadow-md animate-pulse mb-3">
           <Building2 className="w-6 h-6" />
         </div>
-        <p className="text-sm font-bold text-slate-600">กำลังตรวจสอบสิทธิ์ผู้ดูแลระบบ...</p>
+        <p className="text-sm font-bold text-slate-600">{isEn ? 'Verifying admin authorization...' : 'กำลังตรวจสอบสิทธิ์ผู้ดูแลระบบ...'}</p>
       </div>
     );
   }
@@ -314,7 +316,7 @@ export default function AdminAnalyticsPage() {
               Dormie <span className="text-amber-500">Analytics</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-500">
-              เข้าสู่ระบบผู้ดูแลระบบเพื่อดูสถิติการใช้งานจริง
+              {isEn ? 'Log in as administrator to view real analytics' : 'เข้าสู่ระบบผู้ดูแลระบบเพื่อดูสถิติการใช้งานจริง'}
             </p>
           </div>
 
@@ -437,17 +439,45 @@ export default function AdminAnalyticsPage() {
               </div>
             </div>
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-900/90 text-amber-300 border border-amber-400/30 hidden sm:inline-block">
-              ผู้ดูแลระบบ
+              {isEn ? 'Admin' : 'ผู้ดูแลระบบ'}
             </span>
           </div>
 
           {/* Navigation Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Language Switcher */}
+            <div className="flex items-center rounded-xl bg-blue-950/80 p-0.5 border border-blue-800/80 text-xs font-bold mr-1">
+              <button
+                type="button"
+                onClick={() => setLanguage('th')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  language === 'th'
+                    ? 'bg-amber-400 text-slate-950 shadow-xs'
+                    : 'text-blue-200 hover:text-white'
+                }`}
+                aria-label="Switch to Thai"
+              >
+                TH
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  language === 'en'
+                    ? 'bg-amber-400 text-slate-950 shadow-xs'
+                    : 'text-blue-200 hover:text-white'
+                }`}
+                aria-label="Switch to English"
+              >
+                EN
+              </button>
+            </div>
+
             <Link
               href="/"
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-blue-900/60 hover:bg-blue-900 text-blue-200 border border-blue-800/80 transition"
             >
-              <span>ดูหน้าเว็บหลัก</span>
+              <span>{isEn ? 'View Main Site' : 'ดูหน้าเว็บหลัก'}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
 
@@ -455,10 +485,10 @@ export default function AdminAnalyticsPage() {
               onClick={handleLogout}
               disabled={isLoggingOut}
               className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 transition cursor-pointer disabled:opacity-50"
-              title="ออกจากระบบ"
+              title={isEn ? 'Log out' : 'ออกจากระบบ'}
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">ออกจากระบบ</span>
+              <span className="hidden sm:inline">{isEn ? 'Log out' : 'ออกจากระบบ'}</span>
             </button>
           </div>
         </div>
@@ -470,10 +500,10 @@ export default function AdminAnalyticsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200/80">
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              ภาพรวมการใช้งานเว็บไซต์
+              {t('admin.title')}
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              ข้อมูลสถิติผู้เข้าชม การค้นหา และความสนใจหอพักรอบ ม.อุบลฯ จากฐานข้อมูลจริง
+              {t('admin.subtitle')}
             </p>
           </div>
 
@@ -487,10 +517,10 @@ export default function AdminAnalyticsPage() {
                 setIsResetModalOpen(true);
               }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition cursor-pointer"
-              title="รีเซ็ตการแสดงผลสถิติบน Dashboard"
+              title={isEn ? 'Reset display statistics' : 'รีเซ็ตการแสดงผลสถิติบน Dashboard'}
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>รีเซ็ตการแสดงผล</span>
+              <span>{isEn ? 'Reset Display' : 'รีเซ็ตการแสดงผล'}</span>
             </button>
 
             {/* View Reset History Button (Requirement 8) */}
@@ -501,10 +531,10 @@ export default function AdminAnalyticsPage() {
                 setIsHistoryModalOpen(true);
               }}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300/90 shadow-2xs transition cursor-pointer"
-              title="ดูประวัติสถิติที่ผ่านมา"
+              title={isEn ? 'View past statistics' : 'ดูประวัติสถิติที่ผ่านมา'}
             >
               <History className="w-3.5 h-3.5 text-blue-600" />
-              <span>ประวัติสถิติ</span>
+              <span>{isEn ? 'Stats History' : 'ประวัติสถิติ'}</span>
               {historyList.length > 0 && (
                 <span className="ml-1 px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black">
                   {historyList.length}
@@ -516,12 +546,12 @@ export default function AdminAnalyticsPage() {
             {isViewingHistorical ? (
               <div className="inline-flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-bold rounded-xl bg-amber-50 text-amber-900 border border-amber-300/80 shadow-2xs">
                 <Clock className="w-3.5 h-3.5 text-amber-700" />
-                <span>ช่วงในอดีต</span>
+                <span>{isEn ? 'Historical Period' : 'ช่วงในอดีต'}</span>
               </div>
             ) : (
               <div className="flex items-center gap-2">
                 <label htmlFor="period-select" className="text-xs font-semibold text-slate-500 whitespace-nowrap">
-                  ช่วงเวลา:
+                  {isEn ? 'Period:' : 'ช่วงเวลา:'}
                 </label>
                 <div className="relative">
                   <select
@@ -530,7 +560,7 @@ export default function AdminAnalyticsPage() {
                     onChange={(e) => setSelectedPeriod(e.target.value as PeriodType)}
                     className="appearance-none bg-white text-slate-800 text-xs sm:text-sm font-bold pl-3 pr-8 py-2 rounded-xl border border-slate-300/90 shadow-2xs hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 cursor-pointer"
                   >
-                    {PERIOD_OPTIONS.map((opt) => (
+                    {periodOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}
                       </option>
@@ -640,11 +670,11 @@ export default function AdminAnalyticsPage() {
         )}
 
         {/* Section 1 — Summary (4 Cards) */}
-        <section aria-label="สถิติภาพรวม">
+        <section aria-label={isEn ? 'Overview statistics' : 'สถิติภาพรวม'}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {/* Card 1: Unique Visitors */}
             <SummaryCard
-              title="ผู้ใช้งาน"
+              title={isEn ? 'Unique Visitors' : 'ผู้ใช้งาน'}
               subtitle="Unique Visitors"
               value={data?.summary.uniqueVisitors.value}
               changePercent={data?.summary.uniqueVisitors.changePercent}
@@ -655,8 +685,8 @@ export default function AdminAnalyticsPage() {
 
             {/* Card 2: Sessions */}
             <SummaryCard
-              title="การเข้าใช้งาน"
-              subtitle="Sessions"
+              title={isEn ? 'Page Views' : 'การเข้าใช้งาน'}
+              subtitle="Sessions / Views"
               value={data?.summary.pageViews.value}
               changePercent={data?.summary.pageViews.changePercent}
               icon={<Eye className="w-5 h-5 text-indigo-600" />}
@@ -666,7 +696,7 @@ export default function AdminAnalyticsPage() {
 
             {/* Card 3: Search Events */}
             <SummaryCard
-              title="การค้นหา"
+              title={isEn ? 'Searches' : 'การค้นหา'}
               subtitle="Search Events"
               value={data?.summary.searchEvents.value}
               changePercent={data?.summary.searchEvents.changePercent}
@@ -677,7 +707,7 @@ export default function AdminAnalyticsPage() {
 
             {/* Card 4: Dormitory Views */}
             <SummaryCard
-              title="ดูหอพัก"
+              title={isEn ? 'Dorm Views' : 'ดูหอพัก'}
               subtitle="Dormitory Views"
               value={data?.summary.dormitoryViews.value}
               changePercent={data?.summary.dormitoryViews.changePercent}
@@ -690,16 +720,18 @@ export default function AdminAnalyticsPage() {
 
         {/* Section 2 — Main Chart (1 Graph) */}
         <section 
-          aria-label="กราฟผู้ใช้งานตามช่วงเวลา"
+          aria-label={isEn ? 'Visitors over time chart' : 'กราฟผู้ใช้งานตามช่วงเวลา'}
           className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/90 shadow-2xs space-y-4"
         >
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 pb-2 border-b border-slate-100">
             <div>
               <h2 className="font-extrabold text-slate-900 text-base sm:text-lg">
-                ผู้ใช้งานตามช่วงเวลา
+                {isEn ? 'Visitors Over Time' : 'ผู้ใช้งานตามช่วงเวลา'}
               </h2>
               <p className="text-xs text-slate-500">
-                จำนวนผู้ใช้งานจริงแบบไม่ซ้ำ (Unique Visitors) ในช่วง {isViewingHistorical && activeHistoricalPeriod ? activeHistoricalPeriod.label : periodLabel}
+                {isEn
+                  ? `Unique visitors during ${isViewingHistorical && activeHistoricalPeriod ? activeHistoricalPeriod.label : periodLabel}`
+                  : `จำนวนผู้ใช้งานจริงแบบไม่ซ้ำ (Unique Visitors) ในช่วง ${isViewingHistorical && activeHistoricalPeriod ? activeHistoricalPeriod.label : periodLabel}`}
               </p>
             </div>
             <div className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border self-start sm:self-auto ${
@@ -707,7 +739,9 @@ export default function AdminAnalyticsPage() {
                 ? 'text-amber-800 bg-amber-50 border-amber-200' 
                 : 'text-blue-700 bg-blue-50 border-blue-100'
             }`}>
-              {isViewingHistorical ? 'ข้อมูลสถิติในอดีต (Historical Query)' : 'ฐานข้อมูลจริง (Live Query)'}
+              {isViewingHistorical 
+                ? (isEn ? 'Historical Query' : 'ข้อมูลสถิติในอดีต (Historical Query)')
+                : (isEn ? 'Live Database' : 'ฐานข้อมูลจริง (Live Query)')}
             </div>
           </div>
 
@@ -717,7 +751,7 @@ export default function AdminAnalyticsPage() {
         </section>
 
         {/* Section 3 — Insights (2 Cards: Top 5 Dorms & Top 5 Searches) */}
-        <section aria-label="ข้อมูลที่น่าสนใจ">
+        <section aria-label={isEn ? 'Platform Insights' : 'ข้อมูลที่น่าสนใจ'}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
             {/* Card Left: หอพักยอดนิยม (Top 5) */}
             <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4 flex flex-col justify-between">
@@ -728,7 +762,7 @@ export default function AdminAnalyticsPage() {
                       🏆
                     </div>
                     <h3 className="font-extrabold text-slate-900 text-base">
-                      หอพักยอดนิยม
+                      {isEn ? 'Top Dormitories' : 'หอพักยอดนิยม'}
                     </h3>
                   </div>
                   <span className="text-xs text-slate-400 font-medium">Top 5</span>
@@ -743,7 +777,7 @@ export default function AdminAnalyticsPage() {
                     </div>
                   ) : !data?.topDormitories || data.topDormitories.length === 0 ? (
                     <div className="py-8 text-center text-slate-400 text-xs sm:text-sm">
-                      ยังไม่มีข้อมูลการเข้าชมหอพักในช่วงเวลานี้
+                      {isEn ? 'No dormitory view data for this period' : 'ยังไม่มีข้อมูลการเข้าชมหอพักในช่วงเวลานี้'}
                     </div>
                   ) : (
                     <div className="space-y-2.5">
@@ -791,7 +825,7 @@ export default function AdminAnalyticsPage() {
                               <span className="text-xs sm:text-sm font-black text-slate-900 tabular-nums">
                                 {item.count.toLocaleString()}
                               </span>
-                              <span className="text-[10px] text-slate-500 ml-1">ครั้ง</span>
+                              <span className="text-[10px] text-slate-500 ml-1">{isEn ? 'views' : 'ครั้ง'}</span>
                             </div>
                           </div>
                         );
@@ -811,7 +845,7 @@ export default function AdminAnalyticsPage() {
                       🔍
                     </div>
                     <h3 className="font-extrabold text-slate-900 text-base">
-                      คำค้นหายอดนิยม
+                      {isEn ? 'Top Search Keywords' : 'คำค้นหายอดนิยม'}
                     </h3>
                   </div>
                   <span className="text-xs text-slate-400 font-medium">Top 5</span>
@@ -826,7 +860,7 @@ export default function AdminAnalyticsPage() {
                     </div>
                   ) : !data?.topSearches || data.topSearches.length === 0 ? (
                     <div className="py-8 text-center text-slate-400 text-xs sm:text-sm">
-                      ยังไม่มีข้อมูลการค้นหาในช่วงเวลานี้
+                      {isEn ? 'No search keyword data for this period' : 'ยังไม่มีข้อมูลการค้นหาในช่วงเวลานี้'}
                     </div>
                   ) : (
                     <div className="space-y-2.5">
@@ -857,7 +891,7 @@ export default function AdminAnalyticsPage() {
                               <span className="text-xs sm:text-sm font-black text-slate-900 tabular-nums">
                                 {item.count.toLocaleString()}
                               </span>
-                              <span className="text-[10px] text-slate-500 ml-1">ครั้ง</span>
+                              <span className="text-[10px] text-slate-500 ml-1">{isEn ? 'times' : 'ครั้ง'}</span>
                             </div>
                           </div>
                         );

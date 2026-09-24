@@ -15,84 +15,111 @@ import {
 import { Dormitory, PriceStructure } from '@/types/dormitory';
 import NavigationModal from '@/components/NavigationModal';
 import ShareButton from '@/components/ShareButton';
-import { getNearbyLandmarks } from '@/data/landmarks';
 import { useFavorites } from '@/hooks/useFavorites';
 import { parseThaiDateToIso, formatThaiDateFull } from '@/utils/dateUtils';
 import { trackDormitoryView, trackMapClick } from '@/utils/analytics';
+import DormLastDetailsSection from '@/components/DormLastDetailsSection';
+import { getDormLatestDetails } from '@/data/dormDetailsLast';
+import { useLanguage } from '@/context/LanguageContext';
+import { translateZone, getDormName, translateDormValue } from '@/utils/bilingualHelpers';
 
 interface DormProfileViewProps {
   dorm: Dormitory;
 }
 
-const WHITE_DORM_CRITERIA = [
+const getWhiteDormCriteria = (isEn: boolean) => [
   {
     id: 'security',
     number: 1,
-    title: 'ความปลอดภัย & ไร้อบายมุข',
+    title: isEn ? 'Safety & Vice-Free Environment' : 'ความปลอดภัย & ไร้อบายมุข',
     icon: Shield,
-    summary: 'มีกล้องวงจรปิด/รปภ. ดูแล และไม่มีการพนัน สุรา หรือยาเสพติดในบริเวณหอพัก',
-    details: [
+    summary: isEn ? '24h CCTV/Security monitoring, strictly no gambling, alcohol, or drugs on premises.' : 'มีกล้องวงจรปิด/รปภ. ดูแล และไม่มีการพนัน สุรา หรือยาเสพติดในบริเวณหอพัก',
+    details: isEn ? [
+      '24-hour CCTV camera surveillance at entrance, exit, and hallway points',
+      'Secure access control system, such as keycard entry or resident supervisor',
+      'Strictly alcohol, gambling, and drug-free environment throughout the premises',
+      'Adequate nighttime exterior and parking lot illumination',
+    ] : [
       'ติดตั้งกล้องวงจรปิด (CCTV) บันทึกภาพตลอด 24 ชั่วโมงในจุดเข้า-ออกและโถงทางเดิน',
       'มีระบบควบคุมการเข้าออกที่ปลอดภัย เช่น ประตูคีย์การ์ด หรือผู้ดูแลประจำ',
       'ปลอดการพนัน เครื่องดื่มแอลกอฮอล์ และสิ่งเสพติดทุกชนิดในบริเวณหอพัก',
       'มีแสงสว่างรอบอาคารและบริเวณลานจอดรถเพียงพอในยามค่ำคืน',
     ],
-    tags: ['กล้อง CCTV', 'คีย์การ์ด', 'ปลอดอบายมุข'],
+    tags: isEn ? ['CCTV', 'Keycard', 'Vice-Free'] : ['กล้อง CCTV', 'คีย์การ์ด', 'ปลอดอบายมุข'],
   },
   {
     id: 'cleanliness',
     number: 2,
-    title: 'สะอาด & ถูกสุขลักษณะ',
+    title: isEn ? 'Cleanliness & Sanitation' : 'สะอาด & ถูกสุขลักษณะ',
     icon: CheckCircle2,
-    summary: 'ห้องพักและพื้นที่ส่วนรวมสะอาด ถูกสุขอนามัย มีระบบกำจัดขยะมิดชิด',
-    details: [
+    summary: isEn ? 'Clean rooms and common areas, hygienic waste disposal system.' : 'ห้องพักและพื้นที่ส่วนรวมสะอาด ถูกสุขอนามัย มีระบบกำจัดขยะมิดชิด',
+    details: isEn ? [
+      'Clean living units and common spaces regularly cleaned and maintained',
+      'Covered and segregated trash bins preventing pest harborage',
+      'Standardized drainage and sewage preventing flooding or unpleasant odor',
+      'Good natural ventilation and sufficient room lighting without dampness',
+    ] : [
       'ห้องพักและพื้นที่ส่วนกลางสะอาด มีการทำความสะอาดและดูแลรักษาอย่างสม่ำเสมอ',
       'มีถังขยะและจุดคัดแยกขยะที่ถูกสุขอนามัย มีฝาปิดมิดชิดป้องกันสัตว์นำโรค',
       'ระบบระบายน้ำและสิ่งปฏิกูลได้มาตรฐาน ไม่มีน้ำท่วมขังหรือกลิ่นรบกวน',
       'การระบายอากาศและแสงสว่างในห้องพักถ่ายเทได้สะดวก ไม่อับชื้น',
     ],
-    tags: ['ถูกสุขอนามัย', 'จัดการขยะมิดชิด', 'ไม่อับชื้น'],
+    tags: isEn ? ['Hygienic', 'Covered Trash', 'Well-Ventilated'] : ['ถูกสุขอนามัย', 'จัดการขยะมิดชิด', 'ไม่อับชื้น'],
   },
   {
     id: 'facilities',
     number: 3,
-    title: 'สิ่งอำนวยความสะดวก',
+    title: isEn ? 'Facilities & Study Space' : 'สิ่งอำนวยความสะดวก',
     icon: BookOpen,
-    summary: 'มีสถานที่ทบทวนตำรา อินเทอร์เน็ต (Wi-Fi) และระบบสาธารณูปโภคปลอดภัย',
-    details: [
+    summary: isEn ? 'Study areas, stable high-speed Wi-Fi, and safe utility systems.' : 'มีสถานที่ทบทวนตำรา อินเทอร์เน็ต (Wi-Fi) และระบบสาธารณูปโภคปลอดภัย',
+    details: isEn ? [
+      'Stable high-speed Wi-Fi coverage across all rooms',
+      'Quiet study desks, chairs, or designated reading areas for assignments',
+      'Reliable tap water and electric systems with safety circuit breakers',
+      'Essential amenities like parking, coin laundry, or drinking water dispenser',
+    ] : [
       'มีสัญญาณอินเทอร์เน็ตความเร็วสูง (Wi-Fi) เสถียรและครอบคลุมทุกห้องพัก',
       'มีโต๊ะ เก้าอี้ หรือพื้นที่สงบสำหรับอ่านหนังสือและทำงานค้นคว้า',
       'ระบบน้ำประปาและไฟฟ้ามีความเสถียร มีเบรกเกอร์ตัดไฟปลอดภัย',
       'สิ่งอำนวยความสะดวกพื้นฐาน เช่น ที่จอดรถ เครื่องซักผ้าหยอดเหรียญ หรือตู้น้ำดื่ม',
     ],
-    tags: ['Wi-Fi ความเร็วสูง', 'โต๊ะอ่านหนังสือ', 'ระบบไฟปลอดภัย'],
+    tags: isEn ? ['High-Speed Wi-Fi', 'Study Desk', 'Electrical Safety'] : ['Wi-Fi ความเร็วสูง', 'โต๊ะอ่านหนังสือ', 'ระบบไฟปลอดภัย'],
   },
   {
     id: 'care24h',
     number: 4,
-    title: 'อุ่นใจดูแลฉุกเฉิน 24 ชม.',
+    title: isEn ? '24/7 Emergency Care' : 'อุ่นใจดูแลฉุกเฉิน 24 ชม.',
     icon: Clock4,
-    summary: 'มีผู้ดูแลหรือช่องทางติดต่อเพื่อช่วยเหลือฉุกเฉินตลอด 24 ชม.',
-    details: [
+    summary: isEn ? 'Caretaker or contact channel available 24/7 for urgent assistance.' : 'มีผู้ดูแลหรือช่องทางติดต่อเพื่อช่วยเหลือฉุกเฉินตลอด 24 ชม.',
+    details: isEn ? [
+      'Resident caretaker or 24-hour emergency phone line',
+      'First-aid kit and household medications ready for basic emergencies',
+      'Emergency protocols and direct transport channels to UBU Hospital',
+    ] : [
       'มีผู้ดูแลหอพักประจำ หรือมีช่องทางโทรศัพท์ติดต่อฉุกเฉินได้ตลอด 24 ชั่วโมง',
       'มีตู้ยาสามัญประจำบ้านและชุดปฐมพยาบาลเบื้องต้น',
       'มีแนวทางและช่องทางติดต่อส่งต่อนักศึกษาที่เจ็บป่วยฉุกเฉินไปยังโรงพยาบาล ม.อุบลฯ ทันที',
     ],
-    tags: ['ติดต่อได้ 24 ชม.', 'ปฐมพยาบาล', 'ส่งต่อ รพ.'],
+    tags: isEn ? ['24/7 Contact', 'First-Aid Kit', 'Hospital Transfer'] : ['ติดต่อได้ 24 ชม.', 'ปฐมพยาบาล', 'ส่งต่อ รพ.'],
   },
   {
     id: 'building',
     number: 5,
-    title: 'มาตรฐานอาคาร & อัคคีภัย',
+    title: isEn ? 'Building & Fire Safety Standards' : 'มาตรฐานอาคาร & อัคคีภัย',
     icon: Building,
-    summary: 'มีระเบียบประกาศชัดเจน มีอุปกรณ์ดับเพลิง และมีแผนผัง/ป้ายทางหนีไฟที่ได้มาตรฐาน',
-    details: [
+    summary: isEn ? 'Clear regulations, fire extinguishers on every floor, and standard evacuation routes.' : 'มีระเบียบประกาศชัดเจน มีอุปกรณ์ดับเพลิง และมีแผนผัง/ป้ายทางหนีไฟที่ได้มาตรฐาน',
+    details: isEn ? [
+      'Chemical fire extinguishers installed on every floor, clearly marked and operational',
+      'Prominently displayed fire exit signs and emergency evacuation floor plans',
+      'Structurally sound building inspected for student occupancy safety',
+      'Clearly posted dormitory rules and conduct guidelines for peaceful living',
+    ] : [
       'มีถังดับเพลิงเคมีติดตั้งในตำแหน่งที่เห็นเด่นชัดทุกชั้น พร้อมใช้งาน',
       'มีป้ายบอกทางหนีไฟและแผนผังอพยพกรณีเกิดเหตุฉุกเฉินชัดเจน',
       'โครงสร้างอาคารมั่นคง แข็งแรง ผ่านการตรวจสอบความปลอดภัย',
       'มีระเบียบข้อบังคับและข้อปฏิบัติของหอพักติดประกาศชัดเจนเพื่อความสงบเรียบร้อย',
     ],
-    tags: ['ถังดับเพลิงทุกชั้น', 'ป้ายทางหนีไฟ', 'ระเบียบชัดเจน'],
+    tags: isEn ? ['Extinguishers on Every Floor', 'Fire Exit Signs', 'Clear Policies'] : ['ถังดับเพลิงทุกชั้น', 'ป้ายทางหนีไฟ', 'ระเบียบชัดเจน'],
   },
 ];
 
@@ -104,6 +131,8 @@ const formatThaiEvalDate = (rawDate?: string | null) => {
 
 export default function DormProfileView({ dorm }: DormProfileViewProps) {
   const router = useRouter();
+  const { t, isEn } = useLanguage();
+  const displayName = getDormName(dorm, isEn);
   const [isNavOpen, setIsNavOpen] = useState(false);
 
   const handleBack = (e: React.MouseEvent) => {
@@ -167,9 +196,9 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
     const willBeSaved = !isFavorite(dorm.id);
     toggleFavorite(dorm.id);
     if (willBeSaved) {
-      setSaveStatusMessage(`บันทึกแล้ว: บันทึกหอพัก ${dorm.name} ลงในรายการโปรดเรียบร้อยแล้ว`);
+      setSaveStatusMessage(isEn ? `Saved: Added ${displayName} to favorites` : `บันทึกแล้ว: บันทึกหอพัก ${displayName} ลงในรายการโปรดเรียบร้อยแล้ว`);
     } else {
-      setSaveStatusMessage(`ยกเลิกแล้ว: ยกเลิกการบันทึกหอพัก ${dorm.name}`);
+      setSaveStatusMessage(isEn ? `Removed: Removed ${displayName} from favorites` : `ยกเลิกแล้ว: ยกเลิกการบันทึกหอพัก ${displayName}`);
     }
   };
 
@@ -196,6 +225,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
   const evaluationDate = formatThaiEvalDate(dorm.evaluationDate || dorm.evalDate);
   const evaluationDateFull = formatThaiDateFull(dorm.evaluationDate || dorm.evalDate);
   const isoDate = parseThaiDateToIso(dorm.evaluationDate || dorm.evalDate);
+  const latestDetails = getDormLatestDetails(dorm.id);
 
   // Structured price resolution
   const priceObj: PriceStructure | null = 
@@ -205,61 +235,20 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
   const airPrice = priceObj?.air ?? null;
   const hasBothPrices = fanPrice !== null && airPrice !== null && fanPrice !== airPrice;
 
-  // External website / facebook link resolution
-  const hasExternalLink = Boolean(
-    dorm.facebook && 
-    dorm.facebook.trim() !== '' && 
-    dorm.facebook.trim() !== '-' && 
-    dorm.facebook.trim() !== 'ไม่มี'
-  );
+  // Room type availability check without duplicating prices
+  const excelRoomType = latestDetails?.roomAndTenant.roomType || '';
+  const dormRoomType = dorm.roomType || dorm.type || '';
+  const combinedRoomType = `${excelRoomType} ${dormRoomType}`;
 
-  const externalName = hasExternalLink ? dorm.facebook : (dorm.name || 'เพจหอพัก');
+  const hasFanRoom = 
+    fanPrice !== null || 
+    combinedRoomType.includes('พัดลม') || 
+    combinedRoomType.includes('ทั้งสอง');
 
-  const externalHref = hasExternalLink
-    ? (dorm.facebook.startsWith('http') 
-        ? dorm.facebook 
-        : `https://www.facebook.com/search/top?q=${encodeURIComponent(dorm.facebook)}`)
-    : undefined;
-
-  // Multiple phone numbers resolution
-  const hasPhone = Boolean(
-    dorm.phone && 
-    dorm.phone.trim() !== '' && 
-    dorm.phone.trim() !== '-' && 
-    dorm.phone.trim() !== 'ไม่มี'
-  );
-
-  const phoneList = hasPhone
-    ? (dorm.phone || '')
-        .split(/[,/]|และ/)
-        .map((p) => p.trim())
-        .filter(Boolean)
-    : [];
-
-  // LINE ID resolution & Clickable link formatting
-  const rawLine = (dorm.lineId || '').trim();
-  const hasValidLine = Boolean(
-    rawLine &&
-    rawLine !== '-' &&
-    rawLine !== 'ไม่มี' &&
-    rawLine !== 'ไม่ระบุ' &&
-    rawLine !== 'ไม่ทราบ'
-  );
-
-  let lineHref: string | undefined = undefined;
-  let displayLineId = rawLine;
-
-  if (hasValidLine) {
-    if (rawLine.startsWith('http://') || rawLine.startsWith('https://')) {
-      lineHref = rawLine;
-      const match = rawLine.match(/line\.me\/ti\/p\/~?(.+)/i);
-      if (match && match[1]) {
-        displayLineId = match[1];
-      }
-    } else {
-      lineHref = `https://line.me/ti/p/~${rawLine}`;
-    }
-  }
+  const hasAirRoom = 
+    airPrice !== null || 
+    combinedRoomType.includes('แอร์') || 
+    combinedRoomType.includes('ทั้งสอง');
 
   return (
     <div className="min-h-screen bg-slate-50 pb-36 sm:pb-40">
@@ -281,8 +270,8 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
             type="button"
             onClick={handleBack}
             className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center text-blue-100 hover:text-white bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/15 transition-all duration-200 active:scale-95 flex-shrink-0 shadow-sm cursor-pointer"
-            title="ย้อนกลับหน้าหลัก"
-            aria-label="ย้อนกลับ"
+            title={t('details.back')}
+            aria-label={t('details.back')}
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -299,8 +288,8 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
                 }
               }}
               aria-pressed={isFavorite(dorm.id)}
-              aria-label={isFavorite(dorm.id) ? `ยกเลิกบันทึกหอพัก ${dorm.name}` : `บันทึกหอพัก ${dorm.name}`}
-              title={isFavorite(dorm.id) ? `ยกเลิกบันทึกหอพัก ${dorm.name}` : `บันทึกหอพัก ${dorm.name}`}
+              aria-label={isFavorite(dorm.id) ? (isEn ? `Remove ${displayName} from saved` : `ยกเลิกบันทึกหอพัก ${displayName}`) : (isEn ? `Save ${displayName}` : `บันทึกหอพัก ${displayName}`)}
+              title={isFavorite(dorm.id) ? (isEn ? `Remove ${displayName} from saved` : `ยกเลิกบันทึกหอพัก ${displayName}`) : (isEn ? `Save ${displayName}` : `บันทึกหอพัก ${displayName}`)}
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all duration-200 border backdrop-blur-md shadow-sm active:scale-95 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 cursor-pointer ${
                 isFavorite(dorm.id)
                   ? 'bg-rose-500/90 text-white border-rose-400/80 shadow-rose-500/25'
@@ -308,14 +297,14 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
               }`}
             >
               <Heart className={`w-3.5 h-3.5 ${isFavorite(dorm.id) ? 'fill-white' : ''}`} aria-hidden="true" />
-              <span>{isFavorite(dorm.id) ? 'บันทึกแล้ว' : 'บันทึก'}</span>
+              <span>{isFavorite(dorm.id) ? t('details.saved') : t('details.save')}</span>
             </button>
 
             {/* Share Button with Full Accessibility M-06 Standards */}
             <ShareButton
-              title={dorm.name}
-              dormName={dorm.name}
-              text={`ดูข้อมูลและแผนที่หอพัก ${dorm.name} (${dorm.zone}) มหาวิทยาลัยอุบลราชธานี`}
+              title={displayName}
+              dormName={displayName}
+              text={isEn ? `View dormitory details and map for ${displayName} (${translateZone(dorm.zone, isEn)}) at Ubon Ratchathani University` : `ดูข้อมูลและแผนที่หอพัก ${dorm.name} (${dorm.zone}) มหาวิทยาลัยอุบลราชธานี`}
               variant="glass"
             />
           </div>
@@ -329,14 +318,16 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
           {!isImageLoaded && (
             <div className="absolute inset-0 bg-slate-200 animate-pulse flex flex-col items-center justify-center text-slate-400 gap-2 z-0">
               <Building className="w-12 h-12 text-slate-300 animate-bounce" />
-              <span className="text-xs font-semibold text-slate-500">กำลังโหลดรูปภาพหอพัก...</span>
+              <span className="text-xs font-semibold text-slate-500">
+                {isEn ? 'Loading dormitory image...' : 'กำลังโหลดรูปภาพหอพัก...'}
+              </span>
             </div>
           )}
 
           <img 
             ref={imgRef}
             src={currentImgSrc} 
-            alt={imageHasError ? `รูปภาพตัวอย่างหอพัก ${dorm.name}` : `ภาพถ่ายอาคารหอพัก ${dorm.name}`}
+            alt={imageHasError ? (isEn ? `Photo preview of ${displayName}` : `รูปภาพตัวอย่างหอพัก ${displayName}`) : (isEn ? `Building photo of ${displayName}` : `ภาพถ่ายอาคารหอพัก ${displayName}`)}
             fetchPriority="high"
             decoding="async"
             className={`w-full h-full object-cover transition-opacity duration-300 relative z-10 ${
@@ -350,40 +341,40 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
           {isWhite ? (
             <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-blue-950/95 backdrop-blur-md text-amber-300 px-3.5 py-1.5 rounded-full shadow-lg text-xs sm:text-sm font-black border border-amber-400/40 z-20">
               <ShieldCheck className="w-4 h-4 text-amber-400" />
-              <span>หอพักสีขาว ม.อุบลฯ</span>
+              <span>{t('details.whiteBadge')}</span>
             </div>
           ) : (
             <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs font-medium z-20 flex items-center gap-1.5">
-              <span>ผลประเมิน: {dorm.status || dorm.evalResult || 'หอพักทั่วไป'}</span>
+              <span>{isEn ? `Evaluation: ${dorm.status || dorm.evalResult || 'Standard'}` : `ผลประเมิน: ${dorm.status || dorm.evalResult || 'หอพักทั่วไป'}`}</span>
             </div>
           )}
 
           <div className="absolute bottom-4 right-4 bg-blue-950/80 backdrop-blur-md text-amber-200 px-3.5 py-1.5 rounded-xl text-xs font-bold z-20">
             {dorm.genderType === 'female' || dorm.genderType === 'หอพักหญิง'
-              ? 'หอพักหญิง'
+              ? (isEn ? 'Female Only' : 'หอพักหญิง')
               : dorm.genderType === 'male' || dorm.genderType === 'หอพักชาย'
-              ? 'หอพักชาย'
-              : 'หอพักรวม'}
+              ? (isEn ? 'Male Only' : 'หอพักชาย')
+              : (isEn ? 'Mixed-gender' : 'หอพักรวม')}
           </div>
         </div>
 
         {/* Title & Pricing Card with Dual Room Prices Breakdown */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-blue-950 tracking-tight">
-                {dorm.name}
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-black text-blue-950 tracking-tight break-words leading-tight">
+                {displayName}
               </h1>
               <div className="flex items-center gap-2 text-slate-500 text-sm mt-1.5 flex-wrap">
                 <span className="inline-flex items-center gap-1">
                   <MapPin className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                  <span>{dorm.zone || 'รอบ ม.อุบลฯ'}</span>
+                  <span>{translateZone(dorm.zone, isEn)}</span>
                 </span>
-                {dorm.nearMainRoad && <span>• {dorm.nearMainRoad}</span>}
+                {dorm.nearMainRoad && <span>• {translateDormValue(dorm.nearMainRoad, isEn)}</span>}
               </div>
             </div>
 
-            <div className="text-amber-600 sm:text-right">
+            <div className="text-amber-600 sm:text-right flex-shrink-0">
               {hasBothPrices ? (
                 <>
                   <span className="text-3xl sm:text-4xl font-black text-amber-600">
@@ -398,73 +389,79 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
                   ฿{(airPrice || fanPrice || dorm.minPrice || 0).toLocaleString()}
                 </span>
               )}
-              <span className="text-xs text-slate-400 font-normal"> / เดือน</span>
+              <span className="text-xs text-slate-400 font-normal"> /{isEn ? 'month' : 'เดือน'}</span>
             </div>
           </div>
 
-          {/* Room Type Pricing Breakdown (ห้องพัดลม vs ห้องแอร์) */}
+          {/* Room Type Cards (ห้องพัดลม vs ห้องแอร์) - แสดงเฉพาะประเภทห้องโดยไม่มีราคาซ้ำ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             {/* Fan Room Card */}
-            <div className={`p-4 rounded-2xl border transition flex items-center justify-between ${
-              fanPrice !== null 
+            <div className={`p-4 rounded-2xl border transition flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 ${
+              hasFanRoom 
                 ? 'bg-amber-50/70 border-amber-200/80 text-amber-950' 
                 : 'bg-slate-50/40 border-slate-100 text-slate-400 opacity-60'
             }`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${fanPrice !== null ? 'bg-amber-200/70 text-amber-900' : 'bg-slate-200 text-slate-400'}`}>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${hasFanRoom ? 'bg-amber-200/70 text-amber-900' : 'bg-slate-200 text-slate-400'}`}>
                   <Fan className="w-5 h-5" />
                 </div>
-                <div>
-                  <h4 className="font-bold text-sm">ห้องพัดลม</h4>
-                  {fanPrice === null && (
-                    <p className="text-xs text-slate-400">ไม่มีห้องประเภทนี้</p>
-                  )}
+                <div className="min-w-0">
+                  <h4 className="font-bold text-sm truncate">{t('details.fanRoomTitle')}</h4>
+                  <p className="text-xs text-slate-500 truncate">
+                    {hasFanRoom ? t('details.fanRoomDesc') : t('details.notAvailable')}
+                  </p>
                 </div>
               </div>
-              <div className="text-right">
-                {fanPrice !== null ? (
-                  <div>
-                    <span className="text-lg font-black text-amber-700">฿{fanPrice.toLocaleString()}</span>
-                    <span className="text-[11px] text-slate-400 font-normal"> /ด.</span>
-                  </div>
+              <div className="flex-shrink-0">
+                {hasFanRoom ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                    <span>{t('details.available')}</span>
+                  </span>
                 ) : (
-                  <span className="text-xs text-slate-400 font-medium">-</span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-400 text-xs font-medium">
+                    <XCircle className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                    <span>{isEn ? 'None' : 'ไม่มี'}</span>
+                  </span>
                 )}
               </div>
             </div>
 
             {/* Air Conditioned Room Card */}
-            <div className={`p-4 rounded-2xl border transition flex items-center justify-between ${
-              airPrice !== null 
+            <div className={`p-4 rounded-2xl border transition flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 ${
+              hasAirRoom 
                 ? 'bg-blue-50/80 border-blue-200/80 text-blue-950' 
                 : 'bg-slate-50/40 border-slate-100 text-slate-400 opacity-60'
             }`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${airPrice !== null ? 'bg-blue-200/70 text-blue-900' : 'bg-slate-200 text-slate-400'}`}>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${hasAirRoom ? 'bg-blue-200/70 text-blue-900' : 'bg-slate-200 text-slate-400'}`}>
                   <Snowflake className="w-5 h-5" />
                 </div>
-                <div>
-                  <h4 className="font-bold text-sm">ห้องปรับอากาศ (แอร์)</h4>
-                  {airPrice === null && (
-                    <p className="text-xs text-slate-400">ไม่มีห้องประเภทนี้</p>
-                  )}
+                <div className="min-w-0">
+                  <h4 className="font-bold text-sm truncate">{t('details.airRoomTitle')}</h4>
+                  <p className="text-xs text-slate-500 truncate">
+                    {hasAirRoom ? t('details.airRoomDesc') : t('details.notAvailable')}
+                  </p>
                 </div>
               </div>
-              <div className="text-right">
-                {airPrice !== null ? (
-                  <div>
-                    <span className="text-lg font-black text-blue-800">฿{airPrice.toLocaleString()}</span>
-                    <span className="text-[11px] text-slate-400 font-normal"> /ด.</span>
-                  </div>
+              <div className="flex-shrink-0">
+                {hasAirRoom ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                    <span>{t('details.available')}</span>
+                  </span>
                 ) : (
-                  <span className="text-xs text-slate-400 font-medium">-</span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-400 text-xs font-medium">
+                    <XCircle className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                    <span>{isEn ? 'None' : 'ไม่มี'}</span>
+                  </span>
                 )}
               </div>
             </div>
           </div>
 
           <p className="text-sm text-gray-500 italic mt-4">
-            หมายเหตุ: ข้อมูลนี้เป็นข้อมูลพื้นฐานเพื่อประกอบการตัดสินใจ โปรดติดต่อสอบถามสถานะห้องว่างและราคาปัจจุบันกับทางหอพักโดยตรง
+            {t('details.priceNotice')}
           </p>
 
           {/* Last-Updated Information Bar from Real Evaluation Data */}
@@ -472,82 +469,14 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
             <div className="flex items-center gap-2 pt-3 border-t border-slate-100 text-xs text-slate-500 font-medium flex-wrap">
               <Calendar className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
               <span>
-                ข้อมูลตรวจประเมินและอัปเดตล่าสุด:{' '}
+                {t('details.evalUpdated')}:{' '}
                 <time dateTime={isoDate} className="font-bold text-slate-700">
                   {evaluationDateFull || evaluationDate}
                 </time>{' '}
-                (รอบตรวจประเมินมาตรฐานหอพัก ม.อุบลฯ)
+                ({t('details.evalStandard')})
               </span>
             </div>
           )}
-        </div>
-
-        {/* Amenities Card */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
-          <h3 className="font-extrabold text-blue-950 text-base sm:text-lg flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-500" />
-            <span>สิ่งอำนวยความสะดวกและกฎระเบียบ</span>
-          </h3>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
-            {/* Air Condition */}
-            <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold ${
-              airPrice !== null ? 'bg-blue-50/80 text-blue-900 border-blue-200/60' : 'bg-slate-50 text-slate-400 border-slate-100 opacity-60'
-            }`}>
-              <Wind className="w-4 h-4 text-blue-600 flex-shrink-0" />
-              <span>{airPrice !== null ? 'เครื่องปรับอากาศ' : 'ไม่มีแอร์'}</span>
-            </div>
-
-            {/* Fan */}
-            <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold ${
-              fanPrice !== null ? 'bg-amber-50/80 text-amber-900 border-amber-200/60' : 'bg-slate-50 text-slate-400 border-slate-100 opacity-60'
-            }`}>
-              <Fan className="w-4 h-4 text-amber-600 flex-shrink-0" />
-              <span>{fanPrice !== null ? 'พัดลม' : 'ไม่มีพัดลม'}</span>
-            </div>
-
-            {/* Wi-Fi */}
-            <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold ${
-              dorm.wifi ? 'bg-emerald-50 text-emerald-900 border-emerald-200/60' : 'bg-slate-50 text-slate-400 border-slate-100 opacity-60'
-            }`}>
-              <Wifi className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-              <span>{dorm.wifi ? 'ฟรีอินเทอร์เน็ต Wi-Fi' : 'ไม่มี Wi-Fi'}</span>
-            </div>
-
-            {/* Parking */}
-            <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold ${
-              dorm.parking ? 'bg-blue-50 text-blue-900 border-blue-200/60' : 'bg-slate-50 text-slate-400 border-slate-100 opacity-60'
-            }`}>
-              <Car className="w-4 h-4 text-blue-600 flex-shrink-0" />
-              <span>{dorm.parking ? 'มีที่จอดรถยนต์/มอเตอร์ไซค์' : 'ไม่มีที่จอดรถ'}</span>
-            </div>
-
-            {/* CCTV */}
-            <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold ${
-              dorm.cctv ? 'bg-indigo-50 text-indigo-900 border-indigo-200/60' : 'bg-slate-50 text-slate-400 border-slate-100 opacity-60'
-            }`}>
-              <Video className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-              <span>{dorm.cctv ? 'กล้องวงจรปิด CCTV' : 'ไม่มี CCTV'}</span>
-            </div>
-
-            {/* Pet Policy: 100% Opacity with Distinct Rule Styling */}
-            <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold ${
-              dorm.allowPet 
-                ? 'bg-emerald-50 text-emerald-900 border-emerald-200/80 shadow-xs' 
-                : 'bg-rose-50 text-rose-900 border-rose-200/80 shadow-xs'
-            }`}>
-              <Dog className={`w-4 h-4 flex-shrink-0 ${dorm.allowPet ? 'text-emerald-600' : 'text-rose-600'}`} />
-              <span>{dorm.allowPet ? 'เลี้ยงสัตว์ได้ 🐶' : 'ห้ามเลี้ยงสัตว์ 🚫'}</span>
-            </div>
-
-            {/* Flood Risk */}
-            <div className={`p-3 rounded-2xl border flex items-center gap-2.5 font-bold ${
-              !dorm.floodRisk ? 'bg-cyan-50 text-cyan-900 border-cyan-200/60' : 'bg-slate-50 text-slate-400 border-slate-100 opacity-60'
-            }`}>
-              <Waves className="w-4 h-4 text-cyan-600 flex-shrink-0" />
-              <span>{!dorm.floodRisk ? 'พื้นที่ไม่เสี่ยงน้ำท่วม' : 'พื้นที่เสี่ยงน้ำท่วม'}</span>
-            </div>
-          </div>
         </div>
 
         {/* White Dormitory Standards Accordion (เกณฑ์หอพักสีขาว ม.อุบลฯ - Collapsible) */}
@@ -565,19 +494,19 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-extrabold text-blue-950 text-base sm:text-lg">
-                    เกณฑ์หอพักสีขาว ม.อุบลฯ
+                    {t('details.whiteCriteriaTitle')}
                   </h3>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300/60">
-                    5 ด้านมาตรฐาน
+                    {t('details.white5Standards')}
                   </span>
                   {evaluationDate && (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
-                      ตรวจประเมิน: <time dateTime={isoDate}>{evaluationDate}</time>
+                      {isEn ? 'Evaluated' : 'ตรวจประเมิน'}: <time dateTime={isoDate}>{evaluationDate}</time>
                     </span>
                   )}
                 </div>
                 <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                  แตะเพื่อดูข้อกำหนด 5 ด้าน และมาตรฐานความปลอดภัยสำหรับนักศึกษา
+                  {t('details.whiteCriteriaSubtitle')}
                 </p>
               </div>
             </div>
@@ -598,7 +527,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
             <div className="p-4 sm:p-6 space-y-3">
               {/* 5 Topic Sub-Accordions (Single Active State prevents overlapping) */}
               <div className="space-y-2.5">
-                {WHITE_DORM_CRITERIA.map((criterion) => {
+                {getWhiteDormCriteria(isEn).map((criterion) => {
                   const IconComponent = criterion.icon;
                   const isItemExpanded = activeCriterionId === criterion.id;
 
@@ -628,7 +557,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 sm:gap-2">
                               <span className="text-[10px] font-extrabold text-amber-800 bg-amber-100/90 px-1.5 py-0.5 rounded-md flex-shrink-0 whitespace-nowrap">
-                                ด้านที่ {criterion.number}
+                                {isEn ? `Standard ${criterion.number}` : `ด้านที่ ${criterion.number}`}
                               </span>
                               <h4 className="font-bold text-blue-950 text-xs sm:text-sm leading-snug break-words">
                                 {criterion.title}
@@ -666,7 +595,9 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
 
                         {/* Tags */}
                         <div className="flex items-center gap-1.5 flex-wrap mt-3 pt-2.5 border-t border-amber-100">
-                          <span className="text-[10px] font-semibold text-slate-400">จุดเด่น:</span>
+                          <span className="text-[10px] font-semibold text-slate-400">
+                            {isEn ? 'Highlights:' : 'จุดเด่น:'}
+                          </span>
                           {criterion.tags.map((tag, tIdx) => (
                             <span
                               key={tIdx}
@@ -688,7 +619,11 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
                   <div className="flex items-center gap-2.5">
                     <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0" />
                     <span>
-                      หอพักที่มีสัญลักษณ์ <strong>หอพักสีขาว</strong> ได้รับการตรวจสอบและประเมินผ่านเกณฑ์โดยมหาวิทยาลัยอุบลราชธานี
+                      {isEn ? (
+                        <>Dormitories with the <strong>UBU White Dorm</strong> symbol have been inspected and certified by Ubon Ratchathani University.</>
+                      ) : (
+                        <>หอพักที่มีสัญลักษณ์ <strong>หอพักสีขาว</strong> ได้รับการตรวจสอบและประเมินผ่านเกณฑ์โดยมหาวิทยาลัยอุบลราชธานี</>
+                      )}
                     </span>
                   </div>
                   <a
@@ -696,9 +631,9 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-blue-950 hover:text-blue-700 font-bold underline underline-offset-4 flex-shrink-0 text-xs transition"
-                    title="เปิดหน้าประกาศเกณฑ์หอพักสีขาว มหาวิทยาลัยอุบลราชธานี ในแท็บใหม่"
+                    title={t('details.whiteCriteriaLink')}
                   >
-                    <span>อ้างอิงประกาศเกณฑ์หอพักสีขาว ม.อุบลฯ</span>
+                    <span>{t('details.whiteCriteriaLink')}</span>
                     <ExternalLink className="w-3.5 h-3.5 text-blue-800 flex-shrink-0" />
                   </a>
                 </div>
@@ -707,118 +642,10 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
           </div>
         </div>
 
-        {/* Nearby Landmarks & POIs */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-extrabold text-blue-950 text-base sm:text-lg flex items-center gap-2">
-              <Compass className="w-5 h-5 text-amber-500" />
-              <span>จุดสังเกตและสถานที่ใกล้เคียง</span>
-            </h3>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            {getNearbyLandmarks(dorm.lat ?? dorm.latitude, dorm.lng ?? dorm.longitude, 6).map((lm, idx) => (
-              <div 
-                key={`poi-${idx}`}
-                className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/90 border border-slate-100 hover:border-amber-200 transition"
-              >
-                <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                  <span className="text-lg flex-shrink-0">{lm.meta.icon}</span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 truncate">{lm.name}</p>
-                    <span className="text-[10px] text-slate-400 font-medium">{lm.meta.label}</span>
-                  </div>
-                </div>
-                <span className="text-xs font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg whitespace-nowrap flex-shrink-0 border border-amber-200/50">
-                  {lm.distFormatted}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Contact Info Card */}
-        <div id="contact-section" className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-sm space-y-4 scroll-mt-24">
-          <h3 className="font-extrabold text-blue-950 text-lg">ช่องทางติดต่อเจ้าของหอพัก</h3>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* 1. Phone Button(s) */}
-            {hasPhone ? (
-              phoneList.length > 1 ? (
-                <div className="flex flex-col justify-center gap-1.5 p-2 bg-amber-50 rounded-2xl border border-amber-200/80">
-                  {phoneList.map((p, idx) => (
-                    <a
-                      key={idx}
-                      href={`tel:${p.replace(/[^\d+]/g, '')}`}
-                      className="flex items-center justify-center gap-2 py-1 px-2.5 bg-white/90 hover:bg-amber-100/90 text-amber-950 rounded-xl font-bold text-xs sm:text-sm transition border border-amber-200/60 shadow-2xs"
-                    >
-                      <Phone className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                      <span className="truncate">{p}</span>
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <a
-                  href={`tel:${(phoneList[0] || dorm.phone || '').replace(/[^\d+]/g, '')}`}
-                  className="flex items-center justify-center gap-2.5 p-3.5 bg-amber-50 hover:bg-amber-100 text-amber-950 rounded-2xl font-bold text-sm transition border border-amber-200/80"
-                >
-                  <Phone className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                  <span className="truncate">{dorm.phone || 'โทรสอบถาม'}</span>
-                </a>
-              )
-            ) : (
-              <div className="flex items-center justify-center gap-2.5 p-3.5 bg-slate-50 text-slate-400 rounded-2xl text-sm border border-slate-200/60">
-                <Phone className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <span className="truncate text-slate-500">
-                  โทร: <span className="italic text-gray-400 font-normal">ไม่มีข้อมูล</span>
-                </span>
-              </div>
-            )}
-
-            {/* 2. LINE Button */}
-            {hasValidLine ? (
-              <a
-                href={lineHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2.5 p-3.5 bg-green-50 hover:bg-green-100 text-green-900 rounded-2xl font-semibold text-sm border border-green-200/60 transition cursor-pointer"
-                title={`เพิ่มเพื่อนใน LINE: ${displayLineId}`}
-              >
-                <MessageCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
-                <span className="truncate">Line: {displayLineId}</span>
-              </a>
-            ) : (
-              <div className="flex items-center justify-center gap-2.5 p-3.5 bg-slate-50 text-slate-400 rounded-2xl text-sm border border-slate-200/60">
-                <MessageCircle className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <span className="truncate text-slate-500">
-                  Line: <span className="italic text-gray-400 font-normal">ไม่มีข้อมูล</span>
-                </span>
-              </div>
-            )}
-
-            {/* 3. External / Facebook / Website Button */}
-            {hasExternalLink ? (
-              <a
-                href={externalHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2.5 p-3.5 bg-blue-50 hover:bg-blue-100 text-blue-900 rounded-2xl font-semibold text-sm border border-blue-200/60 transition cursor-pointer"
-                title={externalName}
-              >
-                <ExternalLink className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                <span className="truncate">{externalName}</span>
-              </a>
-            ) : (
-              <div
-                className="flex items-center justify-center gap-2.5 p-3.5 bg-blue-50 text-blue-900 rounded-2xl font-semibold text-sm border border-blue-200/60"
-                title={externalName}
-              >
-                <ExternalLink className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                <span className="truncate">{externalName}</span>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Latest Detailed Information Sections from Dorm last.xlsx */}
+        {latestDetails && (
+          <DormLastDetailsSection details={latestDetails} />
+        )}
       </main>
 
       {/* Main Call to Action: เริ่มนำทาง (Start Navigation) */}
@@ -832,12 +659,12 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
             {isLaunchingNav ? (
               <>
                 <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
-                <span>กำลังค้นหาตำแหน่ง & เชื่อมต่อ GPS...</span>
+                <span>{isEn ? 'Locating & connecting GPS...' : 'กำลังค้นหาตำแหน่ง & เชื่อมต่อ GPS...'}</span>
               </>
             ) : (
               <>
                 <Navigation className="w-5 h-5 text-amber-400 animate-pulse" />
-                <span>เริ่มนำทาง (Start Navigation)</span>
+                <span>{isEn ? 'Start Navigation' : 'เริ่มนำทาง (Start Navigation)'}</span>
               </>
             )}
           </button>
@@ -854,7 +681,7 @@ export default function DormProfileView({ dorm }: DormProfileViewProps) {
 
       {/* Screen Reader Announcement for Accessibility Test Case M-01 */}
       <div aria-live="polite" className="sr-only">
-        {saveStatusMessage || (isSaved ? 'บันทึกหอพักเรียบร้อยแล้ว' : 'ยกเลิกการบันทึกหอพักแล้ว')}
+        {saveStatusMessage || (isSaved ? (isEn ? 'Dormitory saved to favorites' : 'บันทึกหอพักเรียบร้อยแล้ว') : (isEn ? 'Removed from favorites' : 'ยกเลิกการบันทึกหอพักแล้ว'))}
       </div>
     </div>
   );

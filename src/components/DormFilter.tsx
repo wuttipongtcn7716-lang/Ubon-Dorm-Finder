@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { FilterState } from '@/types/dormitory';
 import { trackConfirmedSearch } from '@/utils/analytics';
+import { useLanguage } from '@/context/LanguageContext';
+import { translateZone } from '@/utils/bilingualHelpers';
 
 interface DormFilterProps {
   filters: FilterState;
@@ -29,6 +31,8 @@ export default function DormFilter({
   totalResults = 0,
   favoritesCount = 0,
 }: DormFilterProps) {
+  const { t, isEn } = useLanguage();
+
   const safeFilters = filters || {
     searchTerm: '',
     zone: 'all',
@@ -109,23 +113,23 @@ export default function DormFilter({
   return (
     <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-4 sm:p-5 space-y-3.5">
       {/* Top Search Bar & Main Action Controls */}
-      <div className="flex flex-col sm:flex-row gap-2.5">
+      <div className="flex flex-col sm:flex-row flex-wrap lg:flex-nowrap gap-2.5">
         {/* Search input with Accessibility M-01 Standards & Confirmed Search Action */}
         <form 
           onSubmit={handleSearchSubmit}
-          className="relative flex-1 min-w-0"
+          className="relative flex-1 min-w-0 sm:min-w-[200px]"
           role="search"
-          aria-label="ค้นหาหอพัก"
+          aria-label={t('filter.searchPlaceholder')}
         >
           <label htmlFor="dorm-search-input" className="sr-only">
-            ค้นหาชื่อหอพัก โซน หรือทำเลใกล้เคียง
+            {t('filter.searchPlaceholder')}
           </label>
           
           {/* Interactive Search Submit Button */}
           <button
             type="submit"
-            title="กดเพื่อค้นหา"
-            aria-label="ค้นหา"
+            title={isEn ? "Search" : "กดเพื่อค้นหา"}
+            aria-label={isEn ? "Search" : "ค้นหา"}
             className="w-8 h-8 absolute left-1 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 hover:text-amber-500 hover:bg-amber-50/80 rounded-xl active:scale-95 transition cursor-pointer z-10 focus:outline-none focus:ring-1 focus:ring-amber-400"
           >
             <Search className="w-4 h-4" aria-hidden="true" />
@@ -137,16 +141,16 @@ export default function DormFilter({
             type="search"
             value={safeFilters.searchTerm}
             onChange={(e) => updateFilter('searchTerm', e.target.value)}
-            placeholder="ค้นหาชื่อหอพัก, โซน หรือทำเลใกล้เคียง..."
-            aria-label="ค้นหาชื่อหอพัก โซน หรือทำเลใกล้เคียง"
+            placeholder={t('filter.searchPlaceholder')}
+            aria-label={t('filter.searchPlaceholder')}
             className="w-full pl-10 pr-9 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white transition"
           />
           {safeFilters.searchTerm && (
             <button
               type="button"
               onClick={() => updateFilter('searchTerm', '')}
-              aria-label="ล้างคำค้นหา"
-              title="ล้างคำค้นหา"
+              aria-label={isEn ? "Clear search" : "ล้างคำค้นหา"}
+              title={isEn ? "Clear search" : "ล้างคำค้นหา"}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 z-10 cursor-pointer"
             >
               <X className="w-4 h-4" aria-hidden="true" />
@@ -154,30 +158,30 @@ export default function DormFilter({
           )}
         </form>
 
-        {/* Zone Dropdown */}
-        <div className="w-full sm:w-48 flex-shrink-0">
+        {/* Zone Dropdown - with ample width for English zone labels without clipping */}
+        <div className="w-full sm:w-auto sm:min-w-[210px] md:min-w-[250px] flex-shrink-0">
           <label htmlFor="dorm-zone-select" className="sr-only">
-            เลือกโซน
+            {t('filter.zoneLabel')}
           </label>
           <select
             id="dorm-zone-select"
             name="zone"
             value={safeFilters.zone}
             onChange={(e) => updateFilter('zone', e.target.value)}
-            aria-label="เลือกโซน"
-            className="w-full px-3.5 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-bold text-blue-950 transition"
+            aria-label={t('filter.zoneLabel')}
+            className="w-full px-3.5 py-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-bold text-blue-950 transition truncate"
           >
-            <option value="all">📍 ทุกโซนรอบ ม.อุบลฯ</option>
+            <option value="all">📍 {t('filter.allZones')}</option>
             {zones.map((z) => (
               <option key={z} value={z}>
-                {z}
+                {translateZone(z, isEn)}
               </option>
             ))}
           </select>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Item 5: แยกปุ่ม "หอพักที่บันทึกไว้" ออกจากตัวกรองอย่างอิสระ */}
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap sm:flex-nowrap">
+          {/* Saved Dormitories Toggle */}
           {onToggleShowSaved && (
             <button
               type="button"
@@ -188,16 +192,8 @@ export default function DormFilter({
                 }
               }}
               aria-pressed={showOnlySaved}
-              aria-label={
-                showOnlySaved
-                  ? 'แสดงหอพักทั้งหมด (ปิดการกรองหอพักที่บันทึกไว้)'
-                  : `แสดงเฉพาะหอพักที่บันทึกไว้${favoritesCount > 0 ? ` (${favoritesCount} แห่ง)` : ''}`
-              }
-              title={
-                showOnlySaved
-                  ? 'แสดงหอพักทั้งหมด (ปิดการกรองหอพักที่บันทึกไว้)'
-                  : `แสดงเฉพาะหอพักที่บันทึกไว้${favoritesCount > 0 ? ` (${favoritesCount} แห่ง)` : ''}`
-              }
+              aria-label={t('filter.savedOnly')}
+              title={t('filter.savedOnly')}
               className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-2.5 rounded-2xl font-bold text-xs sm:text-sm transition flex-shrink-0 active:scale-95 border cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 ${
                 showOnlySaved
                   ? 'bg-rose-500 border-rose-500 text-white shadow-md shadow-rose-500/25'
@@ -205,7 +201,7 @@ export default function DormFilter({
               }`}
             >
               <Heart className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${showOnlySaved ? 'fill-white' : 'fill-rose-500'}`} aria-hidden="true" />
-              <span aria-hidden="true">ที่บันทึกไว้</span>
+              <span aria-hidden="true">{t('filter.savedOnly')}</span>
               {favoritesCount > 0 && (
                 <span aria-hidden="true" className={`px-1.5 py-0.2 text-[10px] rounded-full font-black ${showOnlySaved ? 'bg-white text-rose-600' : 'bg-rose-200 text-rose-800'}`}>
                   {favoritesCount}
@@ -214,7 +210,7 @@ export default function DormFilter({
             </button>
           )}
 
-          {/* Item 1: ปุ่มเปิด/พับเก็บตัวกรอง (Collapsible Toggle Button) */}
+          {/* Collapsible Filter Panel Toggle */}
           <button
             type="button"
             onClick={() => setIsOpenFilters(!isOpenFilters)}
@@ -226,7 +222,7 @@ export default function DormFilter({
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />
-            <span>ตัวกรอง</span>
+            <span>{isEn ? 'Filters' : 'ตัวกรอง'}</span>
             {activeCount > 0 && (
               <span className="w-5 h-5 rounded-full bg-amber-400 text-blue-950 text-[10px] font-black flex items-center justify-center">
                 {activeCount}
@@ -241,13 +237,15 @@ export default function DormFilter({
         </div>
       </div>
 
-      {/* Item 1: แผงพับเก็บตัวกรองด่วนและตัวกรองละเอียด (Collapsible Filter Panel) */}
+      {/* Collapsible Filter Panel */}
       {isOpenFilters && (
         <div className="pt-3 border-t border-slate-100 space-y-3.5 animate-in fade-in slide-in-from-top-2 duration-200">
-          {/* 1.1 แท็กตัวกรองด่วน (Quick Filter Chips) */}
+          {/* Quick Filter Chips */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-600">ตัวกรองด่วน:</span>
+              <span className="text-xs font-bold text-slate-600">
+                {isEn ? 'Quick Filters:' : 'ตัวกรองด่วน:'}
+              </span>
               {hasActiveFilters && (
                 <button
                   type="button"
@@ -255,7 +253,7 @@ export default function DormFilter({
                   className="flex items-center gap-1 px-2.5 py-1 rounded-full font-bold text-[11px] text-rose-600 hover:bg-rose-50 transition active:scale-95 cursor-pointer"
                 >
                   <RotateCcw className="w-3 h-3" />
-                  <span>ล้างตัวกรองทั้งหมด</span>
+                  <span>{t('filter.resetFilters')}</span>
                 </button>
               )}
             </div>
@@ -272,7 +270,7 @@ export default function DormFilter({
                 }`}
               >
                 <Wind className="w-3.5 h-3.5 text-blue-500" />
-                <span>ห้องแอร์</span>
+                <span>{t('filter.airRoom')}</span>
               </button>
 
               {/* Room Type: Fan */}
@@ -286,7 +284,7 @@ export default function DormFilter({
                 }`}
               >
                 <Fan className="w-3.5 h-3.5 text-amber-500" />
-                <span>ห้องพัดลม</span>
+                <span>{t('filter.fanRoom')}</span>
               </button>
 
               {/* Pet Allowed */}
@@ -300,7 +298,7 @@ export default function DormFilter({
                 }`}
               >
                 <Dog className="w-3.5 h-3.5 text-amber-500" />
-                <span>เลี้ยงสัตว์ได้</span>
+                <span>{t('filter.petFriendly')}</span>
               </button>
 
               {/* Parking */}
@@ -314,7 +312,7 @@ export default function DormFilter({
                 }`}
               >
                 <Car className="w-3.5 h-3.5 text-blue-500" />
-                <span>ที่จอดรถ</span>
+                <span>{t('filter.parking')}</span>
               </button>
 
               {/* No Flood */}
@@ -328,31 +326,31 @@ export default function DormFilter({
                 }`}
               >
                 <Waves className="w-3.5 h-3.5 text-cyan-600" />
-                <span>ไม่เสี่ยงน้ำท่วม</span>
+                <span>{t('filter.noFloodRisk')}</span>
               </button>
             </div>
           </div>
 
-          {/* 1.2 ตัวกรองราคาและประเภทผู้พักอาศัย */}
+          {/* Price Range & Tenants Filters */}
           <div className="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 text-xs">
             {/* Price Range Slider */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center text-slate-700 font-bold">
-                <span>งบประมาณสูงสุด / เดือน:</span>
+                <span>{isEn ? 'Max Budget / month:' : 'งบประมาณสูงสุด / เดือน:'}</span>
                 <span className="text-amber-600 font-black text-sm">
-                  {(safeFilters.maxPrice ?? 10000) >= 10000 ? 'ไม่จำกัด' : `฿${(safeFilters.maxPrice ?? 10000).toLocaleString()}`}
+                  {(safeFilters.maxPrice ?? 10000) >= 10000 ? (isEn ? 'Unlimited' : 'ไม่จำกัด') : `฿${(safeFilters.maxPrice ?? 10000).toLocaleString()}`}
                 </span>
               </div>
               <label htmlFor="priceRangeFilter" className="sr-only">
-                งบประมาณสูงสุดต่อเดือน
+                {t('filter.priceLabel')}
               </label>
               <input
                 id="priceRangeFilter"
-                aria-label="งบประมาณสูงสุดต่อเดือน"
+                aria-label={t('filter.priceLabel')}
                 aria-valuemin={1500}
                 aria-valuemax={10000}
                 aria-valuenow={safeFilters.maxPrice ?? 10000}
-                aria-valuetext={(safeFilters.maxPrice ?? 10000) >= 10000 ? 'ไม่จำกัดงบประมาณ' : `${(safeFilters.maxPrice ?? 10000).toLocaleString()} บาทต่อเดือน`}
+                aria-valuetext={(safeFilters.maxPrice ?? 10000) >= 10000 ? (isEn ? 'Unlimited budget' : 'ไม่จำกัดงบประมาณ') : `${(safeFilters.maxPrice ?? 10000).toLocaleString()} ${isEn ? 'THB/month' : 'บาทต่อเดือน'}`}
                 type="range"
                 min="1500"
                 max="10000"
@@ -364,7 +362,7 @@ export default function DormFilter({
               <div className="flex justify-between text-[10px] text-slate-400">
                 <span>฿1,500</span>
                 <span>฿5,000</span>
-                <span>ไม่จำกัด</span>
+                <span>{isEn ? 'Unlimited' : 'ไม่จำกัด'}</span>
               </div>
             </div>
 
@@ -372,29 +370,33 @@ export default function DormFilter({
             <div className="space-y-1.5">
               <label htmlFor="genderFilter" className="text-slate-700 font-bold flex items-center gap-1 cursor-pointer">
                 <Users className="w-3.5 h-3.5 text-blue-900" />
-                <span>ประเภทผู้พักอาศัย:</span>
+                <span>{t('filter.genderLabel')}:</span>
               </label>
               <select
                 id="genderFilter"
                 name="genderType"
-                aria-label="ประเภทผู้พักอาศัย"
+                aria-label={t('filter.genderLabel')}
                 value={safeFilters.genderType || 'all'}
                 onChange={(e) => updateFilter('genderType', e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200/80 rounded-xl text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 font-semibold text-slate-800"
               >
-                <option value="all">ทั้งหมด</option>
-                <option value="female">หอพักหญิง</option>
-                <option value="male">หอพักชาย</option>
-                <option value="mixed">หอพักรวม</option>
+                <option value="all">{t('filter.allGenders')}</option>
+                <option value="female">{t('filter.femaleDorm')}</option>
+                <option value="male">{t('filter.maleDorm')}</option>
+                <option value="mixed">{t('filter.mixedDorm')}</option>
               </select>
             </div>
 
             {/* Total Matching Badge */}
             <div className="flex items-center justify-between sm:justify-end sm:col-span-1 md:col-span-1 pt-1 sm:pt-0">
               <div className="p-2.5 bg-blue-50/80 border border-blue-200/70 rounded-2xl text-center w-full">
-                <span className="text-[11px] text-blue-900 font-semibold block">พบหอพักที่ตรงเงื่อนไข</span>
+                <span className="text-[11px] text-blue-900 font-semibold block">
+                  {isEn ? 'Matching Dormitories' : 'พบหอพักที่ตรงเงื่อนไข'}
+                </span>
                 <span className="text-lg font-black text-amber-600">{totalResults}</span>
-                <span className="text-[11px] text-blue-900 font-semibold"> แห่ง</span>
+                <span className="text-[11px] text-blue-900 font-semibold">
+                  {isEn ? ' dorms' : ' แห่ง'}
+                </span>
               </div>
             </div>
           </div>
@@ -403,4 +405,3 @@ export default function DormFilter({
     </div>
   );
 }
-

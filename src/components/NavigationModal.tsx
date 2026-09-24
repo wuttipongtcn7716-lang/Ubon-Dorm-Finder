@@ -13,6 +13,8 @@ import GpsPermissionModal from './GpsPermissionModal';
 import OriginSelectionModal, { SelectedOrigin } from './OriginSelectionModal';
 import MapSkeleton from './MapSkeleton';
 import { trackNavigationClick } from '@/utils/analytics';
+import { useLanguage } from '@/context/LanguageContext';
+import { getDormName, translateZone } from '@/utils/bilingualHelpers';
 
 // Dynamically Import Leaflet Map to ensure 100% SSR safety with realistic MapSkeleton
 const MapComponent = dynamic<MapComponentProps>(
@@ -29,6 +31,8 @@ interface NavigationModalProps {
 }
 
 export default function NavigationModal({ dorm, onClose }: NavigationModalProps) {
+  const { isEn } = useLanguage();
+  const displayName = getDormName(dorm, isEn);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [currentOrigin, setCurrentOrigin] = useState<SelectedOrigin | null>(null);
   const [isOriginModalOpen, setIsOriginModalOpen] = useState(false);
@@ -392,16 +396,16 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
             <div className="min-w-0 flex-1 overflow-hidden">
               <div className="flex items-center gap-2 max-w-full">
                 <h3 className="font-extrabold text-sm sm:text-base leading-tight truncate text-white">
-                  {dorm.name}
+                  {displayName}
                 </h3>
                 {isWhite && (
                   <span className="hidden sm:inline-flex items-center gap-1 bg-blue-900 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-400/40 flex-shrink-0">
-                    <ShieldCheck className="w-3 h-3 text-amber-400" /> หอพักสีขาว
+                    <ShieldCheck className="w-3 h-3 text-amber-400" /> {isEn ? 'White Dorm' : 'หอพักสีขาว'}
                   </span>
                 )}
               </div>
               <p className="text-[11px] text-blue-200/70 truncate mt-0.5">
-                โซน: {dorm.zone || 'รอบ ม.อุบลฯ'}
+                {isEn ? 'Zone: ' : 'โซน: '}{translateZone(dorm.zone, isEn) || (isEn ? 'Around UBU' : 'รอบ ม.อุบลฯ')}
               </p>
               
               {/* Origin Display & Switcher on Desktop */}
@@ -438,7 +442,7 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
                 {gpsStatus === 'requesting' && (
                   <div className="flex items-center gap-1.5 text-[11px] text-amber-300 font-medium bg-amber-950/60 px-2.5 py-1 rounded-xl border border-amber-500/30">
                     <Loader2 className="w-3 h-3 animate-spin text-amber-400 flex-shrink-0" />
-                    <span className="truncate">กำลังขอพิกัด GPS... (8s)</span>
+                    <span className="truncate">{isEn ? 'Getting GPS... (8s)' : 'กำลังขอพิกัด GPS... (8s)'}</span>
                   </div>
                 )}
 
@@ -447,11 +451,11 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
                     type="button"
                     onClick={requestGPS}
                     className="flex items-center gap-1.5 text-[11px] text-rose-300 font-medium bg-rose-950/60 hover:bg-rose-900/80 px-2.5 py-1 rounded-xl border border-rose-500/30 transition cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-rose-400"
-                    title="กดเพื่อลองค้นหา GPS ใหม่อีกครั้ง"
-                    aria-label="ลองค้นหา GPS ใหม่อีกครั้ง"
+                    title={isEn ? 'Retry GPS location' : 'กดเพื่อลองค้นหา GPS ใหม่อีกครั้ง'}
+                    aria-label={isEn ? 'Retry GPS location' : 'ลองค้นหา GPS ใหม่อีกครั้ง'}
                   >
                     <RotateCcw className="w-3 h-3 text-rose-400" aria-hidden="true" />
-                    <span className="truncate">{gpsErrorCode === 'denied' ? 'ปฏิเสธ GPS (ลองใหม่)' : 'ไม่พบ GPS (ลองใหม่)'}</span>
+                    <span className="truncate">{gpsErrorCode === 'denied' ? (isEn ? 'GPS Denied (Retry)' : 'ปฏิเสธ GPS (ลองใหม่)') : (isEn ? 'No GPS (Retry)' : 'ไม่พบ GPS (ลองใหม่)')}</span>
                   </button>
                 )}
               </div>
@@ -478,27 +482,27 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
           <div className="md:hidden absolute left-3 right-3 mobile-safe-top flex flex-col gap-2 z-[1400] pointer-events-none">
             {/* Floating Unified Mobile Top Card (Close Button + Route Info Card) */}
             <div 
-              className="pointer-events-auto flex items-center gap-2 bg-white/95 backdrop-blur-xl shadow-lg border border-slate-200/90 rounded-2xl py-1 px-2 pr-3 max-w-[calc(100vw-6rem)] animate-in fade-in slide-in-from-top-2 duration-200"
+              className="pointer-events-auto flex items-center gap-2 bg-white/95 backdrop-blur-xl shadow-lg border border-slate-200/90 rounded-2xl py-1 px-2 pr-3 max-w-[calc(100vw-3rem)] animate-in fade-in slide-in-from-top-2 duration-200"
             >
               {/* Integrated Close Button (X) */}
               <button 
                 type="button"
                 onClick={onClose}
                 className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 hover:text-slate-950 flex items-center justify-center active:scale-95 transition cursor-pointer flex-shrink-0"
-                title="ปิดหน้าต่างแผนที่"
-                aria-label="ปิดหน้าต่างแผนที่"
+                title={isEn ? 'Close map window' : 'ปิดหน้าต่างแผนที่'}
+                aria-label={isEn ? 'Close map window' : 'ปิดหน้าต่างแผนที่'}
               >
                 <X className="w-4 h-4 text-slate-700" />
               </button>
 
               {/* Target Dormitory & Real-Time Calculated Route Distance / Time */}
               <div className="flex flex-col min-w-0 pr-0.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-black text-[#0a1931] truncate max-w-[130px] xs:max-w-[160px]">
-                    {dorm.name}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs font-black text-[#0a1931] truncate max-w-[170px] xs:max-w-[220px]">
+                    {displayName}
                   </span>
                   {isWhite && (
-                    <span className="text-[10px] text-amber-500 font-bold flex-shrink-0" title="หอพักสีขาว">
+                    <span className="text-[10px] text-amber-500 font-bold flex-shrink-0" title={isEn ? 'White Dormitory Certified' : 'หอพักสีขาว'}>
                       🛡️
                     </span>
                   )}
@@ -508,33 +512,35 @@ export default function NavigationModal({ dorm, onClose }: NavigationModalProps)
                 <button
                   type="button"
                   onClick={() => setIsOriginModalOpen(true)}
-                  className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-blue-900 transition text-left cursor-pointer truncate max-w-[190px] focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-900 rounded"
-                  title="แตะเพื่อเปลี่ยนจุดเริ่มต้น"
-                  aria-label={currentOrigin ? `จุดเริ่มต้นปัจจุบัน: ${currentOrigin.name} แตะเพื่อเปลี่ยนจุดเริ่มต้น` : 'ยังไม่ได้เลือกจุดเริ่มต้น แตะเพื่อเลือก'}
+                  className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-blue-900 transition text-left cursor-pointer truncate max-w-[210px] focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-900 rounded"
+                  title={isEn ? 'Tap to change origin' : 'แตะเพื่อเปลี่ยนจุดเริ่มต้น'}
+                  aria-label={currentOrigin ? (isEn ? `Current origin: ${currentOrigin.type === 'gps' ? 'Your GPS Location' : currentOrigin.name}, tap to change` : `จุดเริ่มต้นปัจจุบัน: ${currentOrigin.name} แตะเพื่อเปลี่ยนจุดเริ่มต้น`) : (isEn ? 'No origin chosen, tap to select' : 'ยังไม่ได้เลือกจุดเริ่มต้น แตะเพื่อเลือก')}
                 >
-                  <span className="text-blue-700 font-bold">จาก:</span>
-                  <span className="truncate text-slate-700 font-bold underline decoration-dotted">{currentOrigin ? currentOrigin.name : 'ยังไม่ได้เลือก'}</span>
-                  <span className="text-[9px] text-blue-600 font-black ml-0.5" aria-hidden="true">✏️</span>
+                  <span className="text-blue-700 font-bold flex-shrink-0">{isEn ? 'From:' : 'จาก:'}</span>
+                  <span className="truncate text-slate-700 font-bold underline decoration-dotted">
+                    {currentOrigin ? (currentOrigin.type === 'gps' && isEn ? 'Your GPS Location' : currentOrigin.name) : (isEn ? 'Not selected' : 'ยังไม่ได้เลือก')}
+                  </span>
+                  <span className="text-[9px] text-blue-600 font-black ml-0.5 flex-shrink-0" aria-hidden="true">✏️</span>
                 </button>
 
                 {currentOrigin && distanceKm !== null ? (
                   <div className="flex items-center gap-1 text-[11px] font-bold text-slate-600 truncate mt-0.5">
                     <span className="text-blue-900 font-extrabold flex items-center gap-0.5">
                       <span>{travelMode === 'motorcycle' ? '🚲' : '🚗'}</span>
-                      <span>{distanceKm < 1 && distanceMeters ? `${distanceMeters} ม.` : `${distanceKm} กม.`}</span>
+                      <span>{distanceKm < 1 && distanceMeters ? `${distanceMeters} ${isEn ? 'm' : 'ม.'}` : `${distanceKm} ${isEn ? 'km' : 'กม.'}`}</span>
                     </span>
                     <span className="text-slate-300">•</span>
                     <span className="text-emerald-700 font-black">
-                      ~{estimatedMins} นาที
+                      ~{estimatedMins} {isEn ? 'mins' : 'นาที'}
                     </span>
                   </div>
                 ) : currentOrigin ? (
                   <span className="text-[10px] text-slate-400 font-medium animate-pulse">
-                    กำลังคำนวณเส้นทาง...
+                    {isEn ? 'Calculating route...' : 'กำลังคำนวณเส้นทาง...'}
                   </span>
                 ) : (
                   <span className="text-[10px] text-amber-600 font-medium">
-                    แตะเพื่อเลือกจุดเริ่มต้น
+                    {isEn ? 'Tap to select origin' : 'แตะเพื่อเลือกจุดเริ่มต้น'}
                   </span>
                 )}
               </div>

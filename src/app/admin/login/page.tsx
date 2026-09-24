@@ -8,9 +8,11 @@ import {
   ArrowRight, ShieldCheck, AlertCircle, Loader2 
 } from 'lucide-react';
 import { getVisitorId, getSessionId } from '@/utils/analytics';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const { t, isEn } = useLanguage();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,7 +22,7 @@ export default function AdminLoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
-      setErrorMessage('กรุณากรอกชื่อผู้ใช้และรหัสผ่านให้ครบถ้วน');
+      setErrorMessage(isEn ? 'Please enter both username and password.' : 'กรุณากรอกชื่อผู้ใช้และรหัสผ่านให้ครบถ้วน');
       return;
     }
 
@@ -47,7 +49,7 @@ export default function AdminLoginPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        setErrorMessage(data.error || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+        setErrorMessage(data.error || (isEn ? 'Invalid username or password' : 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'));
         setIsLoading(false);
         return;
       }
@@ -59,7 +61,7 @@ export default function AdminLoginPage() {
       // Login successful, redirect to admin analytics
       router.push('/admin/analytics');
     } catch (err) {
-      setErrorMessage('ไม่สามารถเชื่อมต่อระบบเข้าสู่ระบบได้ กรุณาลองใหม่');
+      setErrorMessage(isEn ? 'Failed to connect to authentication server. Please try again.' : 'ไม่สามารถเชื่อมต่อระบบเข้าสู่ระบบได้ กรุณาลองใหม่');
       setIsLoading(false);
     }
   };
@@ -82,7 +84,7 @@ export default function AdminLoginPage() {
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-500">
-              เข้าสู่ระบบเพื่อจัดการและดูสถิติการใช้งาน
+              {isEn ? 'Log in to view statistics and manage platform' : 'เข้าสู่ระบบเพื่อจัดการและดูสถิติการใช้งาน'}
             </p>
           </div>
         </div>
@@ -99,7 +101,7 @@ export default function AdminLoginPage() {
         <form onSubmit={handleLogin} className="space-y-4" autoComplete="off">
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              ชื่อผู้ดูแลระบบ (Username)
+              {isEn ? 'Username' : 'ชื่อผู้ดูแลระบบ (Username)'}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -110,7 +112,7 @@ export default function AdminLoginPage() {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="ระบุ username"
+                placeholder={isEn ? 'Enter username' : 'ระบุ username'}
                 autoComplete="off"
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition"
               />
@@ -119,7 +121,7 @@ export default function AdminLoginPage() {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              รหัสผ่าน (Password)
+              {isEn ? 'Password' : 'รหัสผ่าน (Password)'}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -153,11 +155,11 @@ export default function AdminLoginPage() {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
-                <span>กำลังตรวจสอบสิทธิ์...</span>
+                <span>{isEn ? 'Authenticating...' : 'กำลังตรวจสอบสิทธิ์...'}</span>
               </>
             ) : (
               <>
-                <span>เข้าสู่ระบบ Dashboard</span>
+                <span>{isEn ? 'Log in to Dashboard' : 'เข้าสู่ระบบ Dashboard'}</span>
                 <ArrowRight className="w-4 h-4 text-amber-400" />
               </>
             )}
@@ -170,7 +172,7 @@ export default function AdminLoginPage() {
             href="/"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-900 transition"
           >
-            <span>← กลับไปยังหน้าเว็บไซต์หลัก Dormie UBU</span>
+            <span>{isEn ? '← Back to main Dormie UBU website' : '← กลับไปยังหน้าเว็บไซต์หลัก Dormie UBU'}</span>
           </Link>
         </div>
       </div>

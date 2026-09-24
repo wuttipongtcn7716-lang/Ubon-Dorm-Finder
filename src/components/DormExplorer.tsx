@@ -7,21 +7,67 @@ import DormCard from './DormCard';
 import DormCardSkeleton from './DormCardSkeleton';
 import DormEmptyState from './DormEmptyState';
 import NavigationModal from './NavigationModal';
+import DormCompareBar from './DormCompareBar';
+import DormCompareModal from './DormCompareModal';
 import { Sparkles, Compass, Heart } from 'lucide-react';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useDormFiltersSync } from '@/hooks/useDormFiltersSync';
+import { useDormCompare } from '@/hooks/useDormCompare';
+import { useLanguage } from '@/context/LanguageContext';
+import { matchesBilingualSearch } from '@/data/bilingualSearch';
+import { getDormName } from '@/utils/bilingualHelpers';
 
 interface DormExplorerProps {
   initialDorms: Dormitory[];
 }
 
 export default function DormExplorer({ initialDorms }: DormExplorerProps) {
+  const { t, isEn } = useLanguage();
   const { filters, setFilters, resetFilters } = useDormFiltersSync();
   const [navigatingDorm, setNavigatingDorm] = useState<Dormitory | null>(null);
   const [isClientLoaded, setIsClientLoaded] = useState(true);
   const { isFavorite, toggleFavorite, count: favoritesCount } = useFavorites();
   const [isSaved, setIsSaved] = useState<boolean | null>(null);
   const [saveStatusMessage, setSaveStatusMessage] = useState<string>('');
+
+  // Dormitory Compare State Management
+  const {
+    selectedIds,
+    count: compareCount,
+    isCompared,
+    toggleCompare,
+    removeCompare,
+    clearAllCompare,
+    limitWarning,
+    clearLimitWarning,
+  } = useDormCompare();
+
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [compareAnnouncement, setCompareAnnouncement] = useState<string>('');
+
+  const handleToggleCompare = (dormId: number) => {
+    const dorm = initialDorms.find((d) => d.id === dormId);
+    const dormName = dorm ? (isEn ? getDormName(dorm, isEn) : `หอพัก ${dorm.name}`) : (isEn ? 'Dormitory' : 'หอพัก');
+    const wasCompared = isCompared(dormId);
+
+    const added = toggleCompare(dormId, dorm?.name);
+
+    if (wasCompared) {
+      setCompareAnnouncement(isEn ? `Removed ${dormName} from comparison` : `ยกเลิกการเปรียบเทียบ${dormName}แล้ว`);
+    } else if (added) {
+      setCompareAnnouncement(isEn ? `Added ${dormName} to comparison (${selectedIds.length + 1}/4)` : `เพิ่ม${dormName}ในการเปรียบเทียบแล้ว (รวม ${selectedIds.length + 1} จากสูงสุด 4 แห่ง)`);
+    } else {
+      setCompareAnnouncement(isEn ? 'You can compare up to 4 dormitories' : 'เลือกเปรียบเทียบได้สูงสุด 4 หอพัก');
+    }
+  };
+
+  // Map selected IDs back to complete Dormitory objects from initialDorms
+  // (Preserves selected dorms even when filtering changes the visible list)
+  const selectedDorms = useMemo(() => {
+    return selectedIds
+      .map((id) => initialDorms.find((d) => d.id === id))
+      .filter((d): d is Dormitory => d !== undefined);
+  }, [selectedIds, initialDorms]);
 
   const [showOnlySaved, setShowOnlySaved] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -36,8 +82,12 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
     toggleFavorite(dormId);
     setIsSaved(isNowSaved);
     const dorm = initialDorms.find((d) => d.id === dormId);
-    const dormName = dorm?.name ? `หอพัก ${dorm.name}` : 'หอพัก';
-    setSaveStatusMessage(isNowSaved ? `บันทึกแล้ว: บันทึก${dormName}เรียบร้อยแล้ว` : `ยกเลิกแล้ว: ยกเลิกการบันทึก${dormName}แล้ว`);
+    const dormName = dorm ? (isEn ? getDormName(dorm, isEn) : `หอพัก ${dorm.name}`) : (isEn ? 'Dormitory' : 'หอพัก');
+    if (isEn) {
+      setSaveStatusMessage(isNowSaved ? `Saved: ${dormName} saved` : `Removed: ${dormName} removed`);
+    } else {
+      setSaveStatusMessage(isNowSaved ? `บันทึกแล้ว: บันทึก${dormName}เรียบร้อยแล้ว` : `ยกเลิกแล้ว: ยกเลิกการบันทึก${dormName}แล้ว`);
+    }
   };
 
   useEffect(() => {
@@ -78,12 +128,7 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
       }
 
       if (f.searchTerm) {
-        const query = f.searchTerm.toLowerCase();
-        const matchesName = (d.name || '').toLowerCase().includes(query);
-        const matchesZone = (d.zone || '').toLowerCase().includes(query);
-        const matchesPhone = (d.phone || '').includes(query);
-        const matchesRemarks = (d.remarks || '').toLowerCase().includes(query);
-        if (!matchesName && !matchesZone && !matchesPhone && !matchesRemarks) return false;
+        if (!matchesBilingualSearch(d, f.searchTerm)) return false;
       }
 
       if (f.zone !== 'all' && d.zone !== f.zone) {
@@ -219,7 +264,7 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
   }, [filteredDorms, visibleCount]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 ${selectedDorms.length > 0 ? 'pb-24 sm:pb-28' : ''}`}>
       {/* Hero Search & Top Banner */}
       <div className="rounded-3xl bg-gradient-to-r from-[#0a1931] via-[#102a5c] to-[#0a1931] p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-blue-900/50">
         <div className="absolute -top-16 -right-16 w-64 h-64 bg-amber-400/10 rounded-full blur-2xl pointer-events-none" />
@@ -228,16 +273,24 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
         <div className="relative z-10 max-w-2xl md:max-w-3xl lg:max-w-4xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-900/80 text-amber-300 text-xs font-bold border border-amber-400/30 backdrop-blur-md">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>มาตรฐานหอพักสีขาว มหาวิทยาลัยอุบลราชธานี ปี 2569</span>
+            <span>
+              {isEn
+                ? 'Ubon Ratchathani University White Dormitory Standards 2026'
+                : 'มาตรฐานหอพักสีขาว มหาวิทยาลัยอุบลราชธานี ปี 2569'}
+            </span>
           </div>
 
           <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
-            ค้นหาหอพัก ม.อุบลฯ
-            <span className="text-amber-400 block sm:inline sm:ml-2">พร้อมระบบนำทาง</span>
+            {isEn ? 'Find UBU Dormitories' : 'ค้นหาหอพัก ม.อุบลฯ'}
+            <span className="text-amber-400 block sm:inline sm:ml-2">
+              {isEn ? 'with GPS Navigation' : 'พร้อมระบบนำทาง'}
+            </span>
           </h1>
 
           <p className="text-xs sm:text-sm text-blue-200/80 leading-relaxed">
-            สำรวจหอพัก 60 แห่งรอบรั้วมหาวิทยาลัย พร้อมเปรียบเทียบระยะทางไปยังสถานที่สำคัญ และเส้นทางนำทางแบบ<span className="whitespace-nowrap">เรียลไทม์</span>
+            {isEn
+              ? 'Explore 60 dormitories around UBU campus, compare distances to key landmarks, and get real-time navigation routes.'
+              : 'สำรวจหอพัก 60 แห่งรอบรั้วมหาวิทยาลัย พร้อมเปรียบเทียบระยะทางไปยังสถานที่สำคัญ และเส้นทางนำทางแบบเรียลไทม์'}
           </p>
         </div>
       </div>
@@ -261,8 +314,12 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
       >
         <span className="text-lg flex-shrink-0 mt-0.5">📌</span>
         <div className="text-xs sm:text-sm text-blue-950 font-bold leading-relaxed">
-          <span className="font-extrabold text-blue-900">หมายเหตุ: </span>
-          แพลตฟอร์มนี้จัดทำขึ้นเพื่อรวบรวมข้อมูลหอพักเครือข่ายมหาวิทยาลัยอุบลราชธานี จำนวน 60 แห่ง โดยให้บริการข้อมูลพื้นฐานและแนะนำเส้นทาง ทั้งนี้ ระบบไม่ครอบคลุมถึงการเช็คสถานะห้องว่างแบบเรียลไทม์ หรือการจัดการค่าน้ำ-ค่าไฟ
+          <span className="font-extrabold text-blue-900">
+            {isEn ? 'Note: ' : 'หมายเหตุ: '}
+          </span>
+          {isEn
+            ? 'This platform compiles information for 60 dormitories around Ubon Ratchathani University for basic guidance and navigation. The system does not provide real-time room vacancy tracking or utility billing management.'
+            : 'แพลตฟอร์มนี้จัดทำขึ้นเพื่อรวบรวมข้อมูลหอพักเครือข่ายมหาวิทยาลัยอุบลราชธานี จำนวน 60 แห่ง โดยให้บริการข้อมูลพื้นฐานและแนะนำเส้นทาง ทั้งนี้ ระบบไม่ครอบคลุมถึงการเช็คสถานะห้องว่างแบบเรียลไทม์ หรือการจัดการค่าน้ำ-ค่าไฟ'}
         </div>
       </div>
 
@@ -270,11 +327,11 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
       <div className="flex items-center justify-between pt-2">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-black text-slate-800">
-            พบหอพักทั้งหมด {filteredDorms.length} แห่ง
+            {t('filter.resultsCount', { count: filteredDorms.length })}
           </h2>
           {showOnlySaved && (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-xs font-bold">
-              <Heart className="w-3 h-3 fill-rose-600 text-rose-600" /> ที่บันทึกไว้
+              <Heart className="w-3 h-3 fill-rose-600 text-rose-600" /> {t('filter.savedOnly')}
             </span>
           )}
         </div>
@@ -304,6 +361,8 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
                 onNavigate={(d) => setNavigatingDorm(d)}
                 isFavorite={isFavorite(dorm.id)}
                 onToggleFavorite={handleToggleFavorite}
+                isCompared={isCompared(dorm.id)}
+                onToggleCompare={handleToggleCompare}
               />
             ))}
           </div>
@@ -316,10 +375,10 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
                 onClick={() => setVisibleCount((prev) => Math.min(prev + 12, filteredDorms.length))}
                 className="px-6 py-3 rounded-2xl bg-blue-950 hover:bg-blue-900 text-white font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 border border-blue-800/60 active:scale-95 cursor-pointer"
               >
-                <span>แสดงหอพักเพิ่มเติม (เหลืออีก {filteredDorms.length - visibleCount} แห่ง)</span>
+                <span>{isEn ? `Show more dormitories (${filteredDorms.length - visibleCount} remaining)` : `แสดงหอพักเพิ่มเติม (เหลืออีก ${filteredDorms.length - visibleCount} แห่ง)`}</span>
               </button>
               <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
-                กำลังแสดง {displayedDorms.length} จากทั้งหมด {filteredDorms.length} แห่ง
+                {isEn ? `Showing ${displayedDorms.length} of ${filteredDorms.length} dormitories` : `กำลังแสดง ${displayedDorms.length} จากทั้งหมด ${filteredDorms.length} แห่ง`}
               </p>
             </div>
           )}
@@ -334,9 +393,35 @@ export default function DormExplorer({ initialDorms }: DormExplorerProps) {
         />
       )}
 
+      {/* Dormitory Comparison Modal */}
+      <DormCompareModal
+        isOpen={isCompareModalOpen}
+        onClose={() => setIsCompareModalOpen(false)}
+        selectedDorms={selectedDorms}
+        onRemoveDorm={removeCompare}
+        onClearAll={() => {
+          clearAllCompare();
+          setIsCompareModalOpen(false);
+        }}
+        onNavigate={(dorm) => {
+          setIsCompareModalOpen(false);
+          setNavigatingDorm(dorm);
+        }}
+      />
+
+      {/* Floating Dormitory Comparison Bar */}
+      <DormCompareBar
+        selectedDorms={selectedDorms}
+        onOpenCompare={() => setIsCompareModalOpen(true)}
+        onRemoveDorm={removeCompare}
+        onClearAll={clearAllCompare}
+        limitWarning={limitWarning}
+        onDismissWarning={clearLimitWarning}
+      />
+
       {/* Screen Reader Announcement Region for Accessibility M-01 */}
       <div aria-live="polite" className="sr-only">
-        {saveStatusMessage || (isSaved !== null && (isSaved ? 'บันทึกหอพักเรียบร้อยแล้ว' : 'ยกเลิกการบันทึกหอพักแล้ว'))}
+        {compareAnnouncement || saveStatusMessage || (isSaved !== null && (isSaved ? 'บันทึกหอพักเรียบร้อยแล้ว' : 'ยกเลิกการบันทึกหอพักแล้ว'))}
       </div>
     </div>
   );
